@@ -1,0 +1,2 @@
+export { sendEmail } from "./resend"
+

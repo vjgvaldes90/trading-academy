@@ -1,0 +1,107 @@
+/**
+ * Dashboard design tokens — dark by default, light when OS prefers light.
+ * All dashboard children inherit these custom properties from .shell.
+ */
+.shell {
+    --ds-1: 8px;
+    --ds-2: 12px;
+    --ds-3: 16px;
+    --ds-4: 20px;
+    --ds-5: 24px;
+    --ds-max: 1100px;
+    --ds-r-sm: 10px;
+    --ds-r-md: 14px;
+    --ds-r-lg: 18px;
+    --ds-r-xl: 22px;
+    --ds-r-full: 9999px;
+
+    /* Dark (default) */
+    --ds-bg: #070b14;
+    --ds-bg-subtle: #0a0f1a;
+    --ds-elevated: #0f141f;
+    --ds-surface: rgba(255, 255, 255, 0.04);
+    --ds-surface-hover: rgba(255, 255, 255, 0.07);
+    --ds-border: rgba(148, 163, 184, 0.12);
+    --ds-border-subtle: rgba(148, 163, 184, 0.08);
+    --ds-border-strong: rgba(148, 163, 184, 0.18);
+    --ds-shadow: 0 1px 0 rgba(255, 255, 255, 0.05) inset, 0 8px 32px rgba(0, 0, 0, 0.35);
+    --ds-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2), 0 4px 16px rgba(0, 0, 0, 0.22);
+    --ds-shadow-card: 0 2px 8px rgba(0, 0, 0, 0.18);
+    --ds-text: #f1f5f9;
+    --ds-text-secondary: #cbd5e1;
+    --ds-text-muted: #64748b;
+    --ds-accent: #3b82f6;
+    --ds-accent-muted: rgba(59, 130, 246, 0.2);
+    --ds-danger: #f87171;
+    --ds-danger-border: rgba(248, 113, 113, 0.35);
+    --ds-danger-surface: rgba(248, 113, 113, 0.08);
+
+    background: var(--ds-bg);
+    color: var(--ds-text);
+    min-height: 100vh;
+    box-sizing: border-box;
+}
+
+.shell *,
+.shell *::before,
+.shell *::after {
+    box-sizing: border-box;
+}
+
+@media (prefers-color-scheme: light) {
+    .shell {
+        --ds-bg: #f4f6f9;
+        --ds-bg-subtle: #eef1f6;
+        --ds-elevated: #ffffff;
+        --ds-surface: rgba(15, 23, 42, 0.035);
+        --ds-surface-hover: rgba(15, 23, 42, 0.06);
+        --ds-border: rgba(15, 23, 42, 0.09);
+        --ds-border-subtle: rgba(15, 23, 42, 0.06);
+        --ds-border-strong: rgba(15, 23, 42, 0.12);
+        --ds-shadow: 0 1px 0 rgba(255, 255, 255, 0.95) inset, 0 4px 24px rgba(15, 23, 42, 0.06);
+        --ds-shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04), 0 4px 14px rgba(15, 23, 42, 0.05);
+        --ds-shadow-card: 0 2px 8px rgba(15, 23, 42, 0.05);
+        --ds-text: #0f172a;
+        --ds-text-secondary: #334155;
+        --ds-text-muted: #64748b;
+        --ds-accent-muted: rgba(59, 130, 246, 0.12);
+        --ds-danger-border: rgba(220, 38, 38, 0.25);
+        --ds-danger-surface: rgba(220, 38, 38, 0.06);
+    }
+}
+
+.loadingFlex {
+    min-height: 100vh;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.contentMax {
+    max-width: var(--ds-max);
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: var(--ds-4);
+    padding-right: var(--ds-4);
+    width: 100%;
+}
+
+.sectionGap {
+    padding-top: var(--ds-2);
+    padding-bottom: var(--ds-1);
+}
+
+.layoutColumn {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.footerBar {
+    flex-shrink: 0;
+    padding-top: var(--ds-2);
+    background: var(--ds-bg);
+    border-top: 1px solid var(--ds-border-subtle);
+}

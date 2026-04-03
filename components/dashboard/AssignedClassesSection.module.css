@@ -1,0 +1,49 @@
+.section {
+    max-width: var(--ds-max);
+    margin: 0 auto;
+    padding: var(--ds-3) var(--ds-4) 0;
+    width: 100%;
+}
+
+.title {
+    color: var(--ds-text);
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0 0 var(--ds-3);
+    letter-spacing: -0.01em;
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: var(--ds-3);
+}
+
+.card {
+    background: var(--ds-surface);
+    border: 1px solid var(--ds-border);
+    border-radius: var(--ds-r-md);
+    padding: var(--ds-3);
+    color: var(--ds-text);
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1.45;
+    box-shadow: var(--ds-shadow-card);
+    transition:
+        border-color 0.15s ease,
+        box-shadow 0.15s ease,
+        background 0.15s ease;
+}
+
+.card:hover {
+    background: var(--ds-surface-hover);
+    border-color: var(--ds-border-strong);
+    box-shadow: var(--ds-shadow-sm);
+}
+
+.empty {
+    margin: 0;
+    color: var(--ds-text-muted);
+    font-size: 0.875rem;
+    line-height: 1.55;
+}
