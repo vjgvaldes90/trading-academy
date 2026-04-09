@@ -2,27 +2,20 @@ import type { SupabaseClient } from "@supabase/supabase-js"
 import type { BookingActor } from "@/lib/access"
 
 /**
- * Tabla `bookings` (público, acceso vía service role) — ejemplo mínimo:
- *   session_id (uuid), user_id (uuid, nullable), email (text, nullable)
- *   UNIQUE(session_id, user_id) y/o UNIQUE(session_id, email) según tu modelo.
+ * Tabla `tradingbookings` (service role): fila por reserva de sesión.
+ * FK esperada: `session_id` -> `trading_sessions.id`.
  */
 export async function fetchBookedSessionIdsForActor(
     admin: SupabaseClient,
     actor: BookingActor
 ): Promise<string[]> {
     const email = actor.email?.trim().toLowerCase() ?? null
-    if (!actor.userId && !email) return []
+    if (!email) return []
 
-    let q = admin.from("bookings").select("session_id")
-    if (actor.userId && email) {
-        q = q.or(`user_id.eq.${actor.userId},email.eq.${email}`)
-    } else if (actor.userId) {
-        q = q.eq("user_id", actor.userId)
-    } else {
-        q = q.eq("email", email!)
-    }
-
-    const { data, error } = await q
+    const { data, error } = await admin
+        .from("tradingbookings")
+        .select("session_id")
+        .eq("email", email)
     if (error) {
         console.warn("[fetchBookedSessionIdsForActor]", error.message)
         return []
@@ -31,7 +24,7 @@ export async function fetchBookedSessionIdsForActor(
     const ids = new Set<string>()
     for (const row of data ?? []) {
         const sid = typeof (row as { session_id?: unknown }).session_id === "string"
-            ? (row as { session_id: string }).session_id
+            ? ((row as { session_id: string }).session_id)
             : null
         if (sid) ids.add(sid)
     }
@@ -44,18 +37,15 @@ export async function hasUserBookingForSession(
     actor: BookingActor
 ): Promise<boolean> {
     const email = actor.email?.trim().toLowerCase() ?? null
-    if (!actor.userId && !email) return false
+    if (!email) return false
 
-    let q = admin.from("bookings").select("id").eq("session_id", sessionId).limit(1)
-    if (actor.userId && email) {
-        q = q.or(`user_id.eq.${actor.userId},email.eq.${email}`)
-    } else if (actor.userId) {
-        q = q.eq("user_id", actor.userId)
-    } else {
-        q = q.eq("email", email!)
-    }
-
-    const { data, error } = await q.maybeSingle()
+    const { data, error } = await admin
+        .from("tradingbookings")
+        .select("id")
+        .eq("session_id", sessionId)
+        .eq("email", email)
+        .limit(1)
+        .maybeSingle()
     if (error && error.code !== "PGRST116") {
         console.warn("[hasUserBookingForSession]", error.message)
     }
@@ -69,9 +59,8 @@ export async function insertSessionBooking(
 ): Promise<{ ok: true } | { ok: false; message: string }> {
     const email = actor.email?.trim().toLowerCase() ?? null
     const row: Record<string, unknown> = { session_id: sessionId }
-    if (actor.userId) row.user_id = actor.userId
     if (email) row.email = email
-    const { error } = await admin.from("bookings").insert(row)
+    const { error } = await admin.from("tradingbookings").insert(row)
     if (error) {
         console.error("[insertSessionBooking]", error)
         return { ok: false, message: error.message.includes("duplicate") ? "Ya tenías esta reserva." : "No se pudo registrar la reserva." }

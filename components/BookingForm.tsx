@@ -114,6 +114,7 @@ export default function BookingForm() {
         // 💰 crear checkout
         const res = await fetch("/api/create-checkout", {
             method: "POST",
+            cache: "no-store",
             headers: {
                 "Content-Type": "application/json",
             },

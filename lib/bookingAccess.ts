@@ -1,6 +1,5 @@
 import { cookies } from "next/headers"
 import { canUserBook, createSupabaseServiceRoleClient, type BookingActor } from "@/lib/access"
-import { createSupabaseServerClient } from "@/lib/supabase/server"
 
 export type BookingAccessState = {
     canBook: boolean
@@ -8,27 +7,14 @@ export type BookingAccessState = {
     actor: BookingActor
 }
 
-/**
- * Resolve who is booking: Supabase Auth user (preferred) or legacy httpOnly `session` cookie (email).
- */
+/** Resolve who is booking from legacy httpOnly `session` cookie (email). */
 export async function resolveBookingActor(): Promise<BookingActor> {
-    let userId: string | null = null
+    const userId: string | null = null
     let email: string | null = null
-
-    try {
-        const supabase = await createSupabaseServerClient()
-        const { data: { user } } = await supabase.auth.getUser()
-        if (user) {
-            userId = user.id
-            email = user.email?.trim().toLowerCase() ?? null
-        }
-    } catch {
-        /* Missing env or no auth cookies */
-    }
 
     const cookieStore = await cookies()
     const legacyEmail = cookieStore.get("session")?.value?.trim().toLowerCase() ?? null
-    if (!email && legacyEmail) {
+    if (legacyEmail) {
         email = legacyEmail
     }
 

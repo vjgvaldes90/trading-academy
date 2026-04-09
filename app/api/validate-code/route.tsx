@@ -3,8 +3,8 @@ import { createSupabaseServiceRoleClient } from "@/lib/access"
 import { setAuthCookiesForPaidUser } from "@/lib/authCookies"
 import { buildStudentDisplayName } from "@/lib/studentLocalStorage"
 import {
+    dashboardPostLoginRedirect,
     ensureTradingStudentByEmail,
-    isTradingStudentProfileCompleted,
     type TradingStudentRow,
 } from "@/lib/tradingStudents"
 
@@ -25,28 +25,33 @@ export async function POST(req: Request) {
 
         const { data: studentByCode, error: studentLookupErr } = await supabase
             .from("trading_students")
-            .select("*")
+            .select(
+                "id, email, first_name, last_name, phone, profile_completed, access_code"
+            )
             .eq("access_code", cleanCode)
             .single()
 
         console.log("DB RESULT:", studentByCode)
 
         if (!studentLookupErr && studentByCode?.email) {
-            const email = studentByCode.email.trim().toLowerCase()
-            const profileCompleted = isTradingStudentProfileCompleted(studentByCode as TradingStudentRow)
+            const row = studentByCode as TradingStudentRow
+            const email = row.email.trim().toLowerCase()
+            const redirect = dashboardPostLoginRedirect(row)
+            const profileCompleted = redirect === "/dashboard"
             if (!profileCompleted) {
-                console.log("📄 profile incomplete", { email })
+                console.log("📄 profile incomplete (first_name / last_name / phone)", { email })
             } else {
                 console.log("✅ profile completed", { email })
             }
-            const displayName = buildStudentDisplayName(studentByCode as TradingStudentRow)
+            const displayName = buildStudentDisplayName(row)
             const response = NextResponse.json({
                 success: true,
-                user: { email: studentByCode.email, access_code: cleanCode },
+                redirect,
+                user: { email: row.email, access_code: cleanCode },
                 profileCompleted,
                 student: {
                     name: displayName,
-                    email: studentByCode.email,
+                    email: row.email,
                     classes: [] as string[],
                 },
             })
@@ -78,9 +83,10 @@ export async function POST(req: Request) {
         }
 
         const student = await ensureTradingStudentByEmail(supabase, email)
-        const profileCompleted = isTradingStudentProfileCompleted(student)
+        const redirect = dashboardPostLoginRedirect(student)
+        const profileCompleted = redirect === "/dashboard"
         if (!profileCompleted) {
-            console.log("📄 profile incomplete", { email })
+            console.log("📄 profile incomplete (first_name / last_name / phone)", { email })
         } else {
             console.log("✅ profile completed", { email })
         }
@@ -88,6 +94,7 @@ export async function POST(req: Request) {
         const displayName = buildStudentDisplayName(student)
         const response = NextResponse.json({
             success: true,
+            redirect,
             user: data,
             profileCompleted,
             student: {

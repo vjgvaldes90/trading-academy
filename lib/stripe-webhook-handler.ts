@@ -47,8 +47,22 @@ export async function handleStripeWebhook(req: Request): Promise<Response> {
         return new Response("Webhook error", { status: 400 })
     }
 
+    try {
+        console.log("STRIPE EVENT:", JSON.stringify(event, null, 2))
+    } catch (stringifyErr) {
+        console.log("STRIPE EVENT: (could not JSON.stringify)", stringifyErr)
+        console.log("STRIPE EVENT type:", event.type, "id:", event.id)
+    }
+
     if (event.type === "checkout.session.completed") {
         const session = event.data.object as Stripe.Checkout.Session
+
+        try {
+            console.log("STRIPE SESSION:", JSON.stringify(session, null, 2))
+        } catch (stringifyErr) {
+            console.log("STRIPE SESSION: (could not JSON.stringify)", stringifyErr)
+            console.log("STRIPE SESSION id:", session.id, "customer_email:", session.customer_email)
+        }
 
         const customerEmail = session.customer_email
 

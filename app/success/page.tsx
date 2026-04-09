@@ -41,8 +41,8 @@ function SuccessPageContent() {
         const timer = window.setTimeout(() => {
             if (didRedirect.current) return
             didRedirect.current = true
-            console.log("[success] redirecting to /dashboard after payment")
-            window.location.href = "/dashboard"
+            console.log("[success] redirecting to /complete-profile?from=payment after payment")
+            window.location.href = "/complete-profile?from=payment"
         }, REDIRECT_MS)
 
         return () => window.clearTimeout(timer)
@@ -96,7 +96,7 @@ function SuccessPageContent() {
                 </h1>
                 {!isError && (
                     <p style={{ color: "#94a3b8", fontSize: "0.95rem", margin: 0, lineHeight: 1.6 }}>
-                        Te llevamos al panel en unos segundos.
+                        Te llevamos a completar tu perfil en unos segundos.
                     </p>
                 )}
                 {isError && errorMessage && (

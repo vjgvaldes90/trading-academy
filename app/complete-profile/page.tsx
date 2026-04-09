@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation"
 import { resolveBookingActor } from "@/lib/bookingAccess"
 import { createSupabaseServiceRoleClient } from "@/lib/access"
-import { ensureTradingStudentByEmail, isTradingStudentProfileCompleted } from "@/lib/tradingStudents"
+import { ensureTradingStudentByEmail, isDashboardProfileComplete } from "@/lib/tradingStudents"
 import CompleteProfileForm from "./CompleteProfileForm"
 
 export default async function CompleteProfilePage() {
@@ -12,7 +12,7 @@ export default async function CompleteProfilePage() {
 
     const admin = createSupabaseServiceRoleClient()
     const row = await ensureTradingStudentByEmail(admin, actor.email)
-    if (isTradingStudentProfileCompleted(row)) {
+    if (isDashboardProfileComplete(row)) {
         console.log("✅ profile completed", { email: actor.email })
         redirect("/dashboard")
     }

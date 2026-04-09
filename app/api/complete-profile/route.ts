@@ -1,24 +1,13 @@
 import { NextResponse } from "next/server"
 import { cookies } from "next/headers"
 import { createSupabaseServiceRoleClient } from "@/lib/access"
-import { createSupabaseServerClient } from "@/lib/supabase/server"
 import { ensureTradingStudentByEmail } from "@/lib/tradingStudents"
 
 export const runtime = "nodejs"
 
 async function resolveSessionEmail(): Promise<string | null> {
     const cookieStore = await cookies()
-    const legacy = cookieStore.get("session")?.value?.trim().toLowerCase() ?? null
-    if (legacy) return legacy
-    try {
-        const supabase = await createSupabaseServerClient()
-        const {
-            data: { user },
-        } = await supabase.auth.getUser()
-        return user?.email?.trim().toLowerCase() ?? null
-    } catch {
-        return null
-    }
+    return cookieStore.get("session")?.value?.trim().toLowerCase() ?? null
 }
 
 export async function POST(req: Request) {

@@ -1,12 +1,17 @@
 export type DbSession = {
     id: string
+    /** Display label (e.g. weekday name); not used for filtering. */
     day: string | null
-    date: string | null // YYYY-MM-DD
-    time: string | null // e.g. "7:00 PM" or "19:00"
+    /** Canonical session calendar date (YYYY-MM-DD), maps from `session_date`. */
+    date: string | null
+    /** Display time label; maps from `session_hour`. */
+    time: string | null
     max_slots: number | null
     booked_slots: number | null
     link: string | null
-    /** Cupo reservado por el usuario actual (hydrate en dashboard + tras POST /api/book). */
+    /** Row closed / not offered; excluded from booking lists. */
+    is_booked?: boolean
+    /** Cupo reservado por el usuario actual (hydrate en dashboard + tras reserva en cliente). */
     isBookedByUser?: boolean
 }
 
@@ -59,24 +64,6 @@ export function toYmdKey(d: Date): string {
     const mm = String(d.getMonth() + 1).padStart(2, "0")
     const dd = String(d.getDate()).padStart(2, "0")
     return `${yyyy}-${mm}-${dd}`
-}
-
-export function isTradingWeekday(d: Date): boolean {
-    const day = d.getDay()
-    return day >= 1 && day <= 5
-}
-
-export function getWeekRange(ref: Date): { monday: Date; friday: Date } {
-    const d = new Date(ref.getFullYear(), ref.getMonth(), ref.getDate())
-    const day = d.getDay()
-    const diffToMonday = day === 0 ? -6 : 1 - day
-    d.setDate(d.getDate() + diffToMonday)
-    const monday = new Date(d.getFullYear(), d.getMonth(), d.getDate())
-    const friday = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate())
-    friday.setDate(friday.getDate() + 4)
-    monday.setHours(0, 0, 0, 0)
-    friday.setHours(0, 0, 0, 0)
-    return { monday, friday }
 }
 
 export function startAt(session: DbSession): Date | null {
@@ -133,6 +120,17 @@ export function weekdayLabel(session: DbSession): string {
     return session.day?.trim() || "Sesión"
 }
 
+/** Prefer stored `session_day`; fallback computed from `session_date` + `session_hour`. */
+export function sessionDisplayDay(session: DbSession): string {
+    const d = session.day?.trim()
+    if (d) return d
+    return weekdayLabel(session)
+}
+
+export function sessionDisplayHour(session: DbSession): string {
+    return formatTimeLabel(session) || session.time?.trim() || ""
+}
+
 export function sortSessionsForAgenda(list: DbSession[]): DbSession[] {
     return [...list].sort((a, b) => {
         const da = parseYmdToLocal(a.date)
@@ -154,49 +152,6 @@ export function sortSessionsForAgenda(list: DbSession[]): DbSession[] {
         if (ta != null) return -1
         if (tb != null) return 1
         return (a.time ?? "").localeCompare(b.time ?? "")
-    })
-}
-
-export function filterValidSessions(sessions: DbSession[], ref: Date): DbSession[] {
-    const today = new Date(ref.getFullYear(), ref.getMonth(), ref.getDate())
-    today.setHours(0, 0, 0, 0)
-    const valid = sessions.filter((s) => {
-        const d = parseYmdToLocal(s.date)
-        if (!d) return false
-        d.setHours(0, 0, 0, 0)
-        if (d.getTime() < today.getTime()) return false
-        return isTradingWeekday(d)
-    })
-    return sortSessionsForAgenda(valid)
-}
-
-export function getThisWeekSessions(sessions: DbSession[], ref: Date): DbSession[] {
-    const today = new Date(ref.getFullYear(), ref.getMonth(), ref.getDate())
-    today.setHours(0, 0, 0, 0)
-    const { friday } = getWeekRange(today)
-    return sessions.filter((s) => {
-        const d = parseYmdToLocal(s.date)
-        if (!d) return false
-        d.setHours(0, 0, 0, 0)
-        return d.getTime() >= today.getTime() && d.getTime() <= friday.getTime()
-    })
-}
-
-export function getNextWeekSessions(sessions: DbSession[], ref: Date): DbSession[] {
-    const today = new Date(ref.getFullYear(), ref.getMonth(), ref.getDate())
-    today.setHours(0, 0, 0, 0)
-    const { friday } = getWeekRange(today)
-    const nextMonday = new Date(friday.getFullYear(), friday.getMonth(), friday.getDate())
-    nextMonday.setDate(nextMonday.getDate() + 3)
-    nextMonday.setHours(0, 0, 0, 0)
-    const nextFriday = new Date(nextMonday.getFullYear(), nextMonday.getMonth(), nextMonday.getDate())
-    nextFriday.setDate(nextFriday.getDate() + 4)
-    nextFriday.setHours(0, 0, 0, 0)
-    return sessions.filter((s) => {
-        const d = parseYmdToLocal(s.date)
-        if (!d) return false
-        d.setHours(0, 0, 0, 0)
-        return d.getTime() >= nextMonday.getTime() && d.getTime() <= nextFriday.getTime()
     })
 }
 

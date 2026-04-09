@@ -45,3 +45,17 @@ export function isTradingStudentProfileCompleted(row: TradingStudentRow | null |
     return row?.profile_completed === true
 }
 
+/** Names + phone present (trimmed). Used for dashboard access and post-login redirect. */
+export function isDashboardProfileComplete(row: TradingStudentRow | null | undefined): boolean {
+    const fn = (row?.first_name ?? "").trim()
+    const ln = (row?.last_name ?? "").trim()
+    const ph = (row?.phone ?? "").trim()
+    return Boolean(fn && ln && ph)
+}
+
+export function dashboardPostLoginRedirect(
+    row: TradingStudentRow | null | undefined
+): "/dashboard" | "/complete-profile" {
+    return isDashboardProfileComplete(row) ? "/dashboard" : "/complete-profile"
+}
+

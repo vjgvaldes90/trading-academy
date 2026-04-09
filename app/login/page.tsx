@@ -41,6 +41,7 @@ function LoginPageInner() {
         try {
             const res = await fetch("/api/create-checkout", {
                 method: "POST",
+                cache: "no-store",
                 headers: {
                     "Content-Type": "application/json",
                 },
@@ -89,13 +90,23 @@ function LoginPageInner() {
             const data = await res.json()
 
             if (data.success) {
-                console.log("[login] access code OK → dashboard", {
+                const serverRedirect =
+                    typeof data.redirect === "string" ? data.redirect : null
+                const dest = sanitizeRedirect(serverRedirect ?? afterLoginTarget, afterLoginTarget)
+                console.log("[login] access code OK", {
                     profileCompleted: data.profileCompleted === true,
+                    redirect: dest,
                 })
                 const st = data.student as
                     | { name?: string; email?: string; classes?: unknown }
                     | undefined
-                if (st?.name && typeof st.name === "string" && typeof st.email === "string" && st.email.trim()) {
+                if (
+                    dest !== "/complete-profile" &&
+                    st?.name &&
+                    typeof st.name === "string" &&
+                    typeof st.email === "string" &&
+                    st.email.trim()
+                ) {
                     const cls = Array.isArray(st.classes)
                         ? st.classes.filter((x): x is string => typeof x === "string" && x.trim().length > 0)
                         : []
@@ -105,7 +116,7 @@ function LoginPageInner() {
                         classes: cls,
                     })
                 }
-                window.location.assign(afterLoginTarget)
+                window.location.assign(dest)
             } else {
                 console.log("[login] invalid code", { hasPaid: false })
                 setAccessError("Código inválido")

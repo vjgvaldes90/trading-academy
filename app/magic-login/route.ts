@@ -3,7 +3,7 @@ import { createSupabaseServiceRoleClient } from "@/lib/access"
 import { setAuthCookiesForPaidUser } from "@/lib/authCookies"
 import { emailHasPaid } from "@/lib/hasPaid"
 import { consumeMagicLoginToken } from "@/lib/magicLoginToken"
-import { ensureTradingStudentByEmail, isTradingStudentProfileCompleted } from "@/lib/tradingStudents"
+import { ensureTradingStudentByEmail, isDashboardProfileComplete } from "@/lib/tradingStudents"
 
 export const runtime = "nodejs"
 
@@ -39,17 +39,18 @@ export async function GET(req: Request) {
     }
 
     const profileRow = await ensureTradingStudentByEmail(supabase, email)
-    if (!isTradingStudentProfileCompleted(profileRow)) {
+    const destination = isDashboardProfileComplete(profileRow) ? "/dashboard" : "/complete-profile"
+    if (destination === "/complete-profile") {
         console.log("📄 profile incomplete", { email })
     } else {
         console.log("✅ profile completed", { email })
     }
 
-    const response = NextResponse.redirect(new URL("/dashboard", url))
+    const response = NextResponse.redirect(new URL(destination, url))
     setAuthCookiesForPaidUser(response, email)
     console.log("✅ session created", { email })
-    console.log("➡️ redirecting to dashboard")
-    console.log("✅ success login", { email, destination: "/dashboard" })
+    console.log("➡️ redirecting", { destination })
+    console.log("✅ success login", { email, destination })
 
     return response
 }

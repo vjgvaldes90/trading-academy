@@ -1,5 +1,36 @@
 export const STUDENT_STORAGE_KEY = "student"
 
+/** Non-httpOnly mirror of session email so the dashboard can run without server components or `/api` calls. */
+export const DASHBOARD_CLIENT_EMAIL_COOKIE = "ta_student_email"
+
+export function readDashboardClientEmailFromBrowserCookie(): string | null {
+    if (typeof document === "undefined") return null
+    const prefix = `${DASHBOARD_CLIENT_EMAIL_COOKIE}=`
+    const part = document.cookie.split("; ").find((c) => c.startsWith(prefix))
+    if (!part) return null
+    try {
+        const raw = part.slice(prefix.length)
+        const v = decodeURIComponent(raw).trim().toLowerCase()
+        return v || null
+    } catch {
+        return null
+    }
+}
+
+/** Prefer `localStorage` student; fall back to readable cookie (e.g. magic-login). */
+export function resolveDashboardStudent(): StoredStudent | null {
+    const stored = readStoredStudent()
+    const cookieEmail = readDashboardClientEmailFromBrowserCookie()
+    const email = (stored?.email ?? cookieEmail)?.trim().toLowerCase() ?? ""
+    if (!email) return null
+    const name =
+        stored?.name?.trim() ||
+        (email.includes("@") ? (email.split("@")[0] ?? "").trim() : email) ||
+        "Usuario"
+    const classes = stored?.classes ?? []
+    return { name, email, classes }
+}
+
 export type StoredStudent = {
     name: string
     email: string

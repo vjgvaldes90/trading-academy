@@ -1,25 +1,13 @@
 import { NextResponse } from "next/server"
 import Stripe from "stripe"
 import { createClient } from "@supabase/supabase-js"
-import { randomBytes } from "crypto"
+import { setAuthCookiesForPaidUser } from "@/lib/authCookies"
 
 export const runtime = "nodejs"
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
     apiVersion: "2026-02-25.clover",
 })
-
-function generateAccessCode(length = 6) {
-    const charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-    const bytes = randomBytes(length)
-    let code = ""
-
-    for (let i = 0; i < length; i++) {
-        code += charset[bytes[i] % charset.length]
-    }
-
-    return code
-}
 
 export async function POST(req: Request) {
     const stripeSecretKey = process.env.STRIPE_SECRET_KEY
@@ -54,32 +42,19 @@ export async function POST(req: Request) {
     }
 
     const supabase = createClient(supabaseUrl, supabaseServiceRoleKey)
-    const { data: updated, error: updateErr } = await supabase
+    const { error: updateErr } = await supabase
         .from("tradingbookings")
         .update({ paid: true })
         .eq("email", email)
-        .select("id")
 
     if (updateErr) {
         console.error("[get-session] Failed updating user:", updateErr)
         return NextResponse.json({ error: "Database update failed" }, { status: 500 })
     }
 
-    if (!updated?.length) {
-        const accessCode = generateAccessCode(6)
-        const { error: insertError } = await supabase.from("tradingbookings").insert({
-            email,
-            access_code: accessCode,
-            paid: true,
-        })
-
-        if (insertError) {
-            console.error("[get-session] Failed creating user:", insertError)
-            return NextResponse.json({ error: "Database insert failed" }, { status: 500 })
-        }
-    }
-
     console.log("[get-session] payment synced", { email, hasPaid: true })
 
-    return NextResponse.json({ email })
+    const res = NextResponse.json({ email })
+    setAuthCookiesForPaidUser(res, email)
+    return res
 }

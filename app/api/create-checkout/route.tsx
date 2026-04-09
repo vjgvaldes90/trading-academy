@@ -51,13 +51,19 @@ export async function POST(req: Request) {
             cancel_url,
         })
 
-        console.log("[checkout] Stripe session created", {
-            sessionId: session.id,
-            success_url,
-            cancel_url,
-        })
+        console.log("SUCCESS URL:", success_url)
+        console.log("STRIPE URL:", session.url)
+        console.log("[checkout] new session (no reuse):", session.id)
 
-        return NextResponse.json({ url: session.url })
+        return NextResponse.json(
+            { url: session.url },
+            {
+                headers: {
+                    "Cache-Control": "no-store, no-cache, must-revalidate",
+                    Pragma: "no-cache",
+                },
+            }
+        )
 
     } catch (error) {
         console.error("❌ Stripe error:", error)

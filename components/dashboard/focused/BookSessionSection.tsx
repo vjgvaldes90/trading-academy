@@ -3,35 +3,59 @@
 import type { TabKey } from "@/context/SessionContext"
 import { useSession } from "@/context/SessionContext"
 import { useBooking } from "@/hooks/useBooking"
-import { DbSession, formatTimeLabel, getSessionMeta, weekdayLabel } from "@/lib/sessions"
+import { DbSession, getSessionMeta, sessionDisplayDay, sessionDisplayHour } from "@/lib/sessions"
+import BookingInsertTestButton from "@/components/debug/BookingInsertTestButton"
 import Link from "next/link"
-import { useCallback } from "react"
+import { useState } from "react"
 
 function SlotRow({ session }: { session: DbSession }) {
-    const { bookingAccess } = useSession()
+    const {
+        bookingAccess,
+        userEmail,
+        myBookings,
+        cancelMyBooking,
+        setSessions,
+        applyReserveSuccess,
+    } = useSession()
     const canBook = bookingAccess.canBook
-    const bookedByUser = Boolean(session.isBookedByUser)
+    const myBooking =
+        userEmail != null
+            ? myBookings.find((b) => b.session_id === session.id && b.email === userEmail)
+            : undefined
+    const isMine = Boolean(myBooking)
     const meta = getSessionMeta(session)
-    const slotFull = meta.isFull
-    const lockedOut = slotFull || !canBook || bookedByUser
+    const isFull = meta.available <= 0
+    const lockedOutForReserve = isFull || !canBook || isMine
 
-    const { isLoading, status, message, bookSession } = useBooking(session, lockedOut, {
-        onReserved: useCallback(() => {
-            console.log("[dashboard] booking confirmed", { sessionId: session.id })
-        }, [session.id]),
+    const { isLoading, bookSession } = useBooking(session, lockedOutForReserve, {
+        userEmail,
+        setSessions,
+        applyReserveSuccess,
     })
 
-    const label = `${weekdayLabel(session)} - ${formatTimeLabel(session) || "—"}`
+    const [cancelLoading, setCancelLoading] = useState(false)
+    const [cancelError, setCancelError] = useState<string | null>(null)
 
-    const retryable = status === "error" && !isLoading && !slotFull && canBook && !bookedByUser
-    const ctaDisabled = (lockedOut && !retryable) || isLoading
+    const label = `${sessionDisplayDay(session)} · ${sessionDisplayHour(session) || "—"}`
 
-    let buttonLabel = "Reservar"
-    if (bookedByUser) buttonLabel = "Reservado"
-    else if (isLoading) buttonLabel = "Reservando…"
-    else if (!canBook) buttonLabel = "Sin acceso"
-    else if (slotFull) buttonLabel = "Lleno"
-    else if (retryable) buttonLabel = "Reintentar"
+    const reserveDisabled = lockedOutForReserve || isLoading
+
+    let reserveLabel = "Reservar"
+    if (isLoading) reserveLabel = "Reservando…"
+    else if (!canBook) reserveLabel = "Sin acceso"
+    else if (isFull) reserveLabel = "Lleno"
+
+    const handleCancel = async () => {
+        if (cancelLoading || !myBooking?.id) return
+        setCancelError(null)
+        setCancelLoading(true)
+        try {
+            const r = await cancelMyBooking(myBooking.id, session.id)
+            if (!r.ok) setCancelError(r.error ?? "No se pudo cancelar")
+        } finally {
+            setCancelLoading(false)
+        }
+    }
 
     return (
         <div
@@ -55,30 +79,58 @@ function SlotRow({ session }: { session: DbSession }) {
             >
                 {label}
             </div>
-            <button
-                type="button"
-                disabled={ctaDisabled}
-                onClick={() => {
-                    console.log("[dashboard] reserve click", { sessionId: session.id, label })
-                    void bookSession()
-                }}
-                style={{
-                    width: "100%",
-                    padding: "0.65rem 1rem",
-                    borderRadius: 12,
-                    border: "none",
-                    cursor: ctaDisabled ? "not-allowed" : "pointer",
-                    opacity: ctaDisabled ? 0.7 : 1,
-                    background: bookedByUser
-                        ? "var(--ds-accent-muted)"
-                        : "linear-gradient(135deg, var(--ds-accent), #2563eb)",
-                    color: bookedByUser ? "var(--ds-text)" : "#fff",
-                    fontWeight: 700,
-                    fontSize: "0.875rem",
-                }}
-            >
-                {buttonLabel}
-            </button>
+            {isMine ? (
+                <button
+                    type="button"
+                    disabled={cancelLoading}
+                    onClick={() => void handleCancel()}
+                    style={{
+                        width: "100%",
+                        padding: "0.65rem 1rem",
+                        borderRadius: 12,
+                        border: "1px solid var(--ds-border-strong)",
+                        cursor: cancelLoading ? "not-allowed" : "pointer",
+                        opacity: cancelLoading ? 0.7 : 1,
+                        background: "var(--ds-surface-hover)",
+                        color: "var(--ds-text)",
+                        fontWeight: 700,
+                        fontSize: "0.875rem",
+                    }}
+                >
+                    {cancelLoading ? "Cancelando…" : "Cancelar"}
+                </button>
+            ) : null}
+            {isMine && cancelError ? (
+                <p style={{ margin: 0, fontSize: "0.75rem", color: "#b91c1c" }} role="alert">
+                    {cancelError}
+                </p>
+            ) : null}
+            {!isMine ? (
+                <button
+                    type="button"
+                    disabled={reserveDisabled}
+                    onClick={() => void bookSession()}
+                    style={{
+                        width: "100%",
+                        padding: "0.65rem 1rem",
+                        borderRadius: 12,
+                        border: "none",
+                        cursor: reserveDisabled ? "not-allowed" : "pointer",
+                        opacity: reserveDisabled ? 0.7 : 1,
+                        background: isFull
+                            ? "#9ca3af"
+                            : "linear-gradient(135deg, var(--ds-accent), #2563eb)",
+                        color: isFull ? "var(--ds-text)" : "#fff",
+                        fontWeight: 700,
+                        fontSize: "0.875rem",
+                    }}
+                >
+                    {reserveLabel}
+                </button>
+            ) : null}
+            <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--ds-text-muted)" }}>
+                {meta.available} / {session.max_slots ?? 10} disponibles
+            </p>
             {!canBook ? (
                 <Link
                     href="/pricing"
@@ -86,9 +138,6 @@ function SlotRow({ session }: { session: DbSession }) {
                 >
                     Obtener acceso →
                 </Link>
-            ) : null}
-            {message && canBook && !bookedByUser ? (
-                <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--ds-danger)" }}>{message}</p>
             ) : null}
         </div>
     )
@@ -101,7 +150,8 @@ const TAB_LABELS: { key: TabKey; label: string }[] = [
 ]
 
 export default function BookSessionSection() {
-    const { activeTab, setActiveTab, filteredSessions } = useSession()
+    const { activeTab, setActiveTab, filteredSessions, userEmail } = useSession()
+    const testSessionId = filteredSessions[0]?.id ?? null
 
     return (
         <section id="reservar-sesion" aria-labelledby="reservar-sesion-title">
@@ -148,7 +198,7 @@ export default function BookSessionSection() {
 
             {filteredSessions.length === 0 ? (
                 <p style={{ color: "var(--ds-text-muted)", margin: 0, fontSize: "0.875rem" }}>
-                    No hay horarios en este rango.
+                    No hay sesiones disponibles
                 </p>
             ) : (
                 <div
@@ -163,6 +213,7 @@ export default function BookSessionSection() {
                     ))}
                 </div>
             )}
+            <BookingInsertTestButton sessionId={testSessionId} email={userEmail} />
         </section>
     )
 }

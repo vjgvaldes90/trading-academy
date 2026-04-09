@@ -1,34 +1,25 @@
 "use client"
 
 import { supabase } from "@/lib/supabase"
+import { mapSupabaseSessionRow } from "@/lib/mapSessionRow"
 import { DbSession } from "@/lib/sessions"
 import { useEffect } from "react"
 
-type RealtimeEvent = {
+export type RealtimeEvent = {
     type: "INSERT" | "UPDATE" | "DELETE"
+    /** Row id from `trading_sessions`, or `session_id` from `tradingbookings`. */
     sessionId: string
+    scope: "trading_sessions" | "tradingbookings"
     bookedSlots?: number | null
     session?: DbSession
+    /** Present for tradingbookings INSERT/DELETE when payload includes it. */
+    bookingEmail?: string | null
+    /** `tradingbookings.id` when present in the realtime payload. */
+    bookingId?: string | null
 }
 
 type UseRealtimeSessionsParams = {
     onEvent: (event: RealtimeEvent) => void
-}
-
-function toSessionRow(row: Record<string, unknown>): DbSession | null {
-    const id = typeof row.id === "string" ? row.id : null
-    if (!id) return null
-
-    return {
-        id,
-        day: typeof row.day === "string" ? row.day : null,
-        date: typeof row.date === "string" ? row.date : null,
-        time: typeof row.time === "string" ? row.time : null,
-        max_slots: typeof row.max_slots === "number" ? row.max_slots : null,
-        booked_slots: typeof row.booked_slots === "number" ? row.booked_slots : null,
-        link: typeof row.link === "string" ? row.link : null,
-        isBookedByUser: false,
-    }
 }
 
 export function useRealtimeSessions({ onEvent }: UseRealtimeSessionsParams) {
@@ -37,7 +28,7 @@ export function useRealtimeSessions({ onEvent }: UseRealtimeSessionsParams) {
             .channel("realtime:sessions-and-bookings")
             .on(
                 "postgres_changes",
-                { event: "*", schema: "public", table: "sessions" },
+                { event: "*", schema: "public", table: "trading_sessions" },
                 (payload) => {
                     const eventType = payload.eventType
                     const current = (payload.new ?? {}) as Record<string, unknown>
@@ -46,34 +37,72 @@ export function useRealtimeSessions({ onEvent }: UseRealtimeSessionsParams) {
                     if (!sessionId) return
 
                     if (eventType === "INSERT") {
-                        const session = toSessionRow(current)
+                        const session = mapSupabaseSessionRow(current)
                         if (!session) return
-                        onEvent({ type: "INSERT", sessionId, session })
+                        onEvent({ type: "INSERT", sessionId, scope: "trading_sessions", session })
                         return
                     }
 
                     if (eventType === "DELETE") {
-                        onEvent({ type: "DELETE", sessionId })
+                        onEvent({ type: "DELETE", sessionId, scope: "trading_sessions" })
                         return
                     }
 
                     const bookedSlots =
                         typeof current.booked_slots === "number" ? current.booked_slots : null
-                    onEvent({ type: "UPDATE", sessionId, bookedSlots, session: toSessionRow(current) ?? undefined })
+                    onEvent({
+                        type: "UPDATE",
+                        sessionId,
+                        scope: "trading_sessions",
+                        bookedSlots,
+                        session: mapSupabaseSessionRow(current) ?? undefined,
+                    })
                 }
             )
             .on(
                 "postgres_changes",
-                { event: "*", schema: "public", table: "bookings" },
+                { event: "*", schema: "public", table: "tradingbookings" },
                 (payload) => {
                     const eventType = payload.eventType
                     const current = (payload.new ?? {}) as Record<string, unknown>
                     const previous = (payload.old ?? {}) as Record<string, unknown>
                     const sessionId = (current.session_id ?? previous.session_id) as string | undefined
                     if (!sessionId) return
-                    if (eventType === "INSERT") onEvent({ type: "INSERT", sessionId })
-                    else if (eventType === "DELETE") onEvent({ type: "DELETE", sessionId })
-                    else onEvent({ type: "UPDATE", sessionId })
+                    const bookingEmail =
+                        typeof current.email === "string"
+                            ? current.email
+                            : typeof previous.email === "string"
+                              ? previous.email
+                              : null
+                    const rowId = (current.id ?? previous.id) as string | undefined
+                    const bookingId = typeof rowId === "string" && rowId.length > 0 ? rowId : null
+                    if (eventType === "INSERT") {
+                        onEvent({
+                            type: "INSERT",
+                            sessionId,
+                            scope: "tradingbookings",
+                            bookingEmail,
+                            bookingId,
+                        })
+                        return
+                    }
+                    if (eventType === "DELETE") {
+                        onEvent({
+                            type: "DELETE",
+                            sessionId,
+                            scope: "tradingbookings",
+                            bookingEmail,
+                            bookingId,
+                        })
+                        return
+                    }
+                    onEvent({
+                        type: "UPDATE",
+                        sessionId,
+                        scope: "tradingbookings",
+                        bookingEmail,
+                        bookingId,
+                    })
                 }
             )
 

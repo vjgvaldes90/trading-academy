@@ -1,19 +1,40 @@
 "use client"
 
-import { useSession } from "@/context/SessionContext"
+import type { SessionContextValue } from "@/context/SessionContext"
 import { ASSIST_CHANNELS } from "@/lib/assist/channels"
 import { useLearningAssist } from "@/hooks/useLearningAssist"
+import { supabase } from "@/lib/supabase"
 import { DbSession } from "@/lib/sessions"
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useRef, useState } from "react"
+
+/** Dashboard session state (email + list updates). Not Supabase Auth. */
+export type UseBookingDeps = Pick<
+    SessionContextValue,
+    "userEmail" | "setSessions" | "applyReserveSuccess"
+>
 
 const BOOKING_TIMEOUT_MS = 30_000
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+    return new Promise((resolve, reject) => {
+        const timer = window.setTimeout(() => {
+            reject(Object.assign(new Error("Tiempo agotado. Intenta de nuevo."), { name: "AbortError" }))
+        }, ms)
+        promise.then(
+            (v) => {
+                window.clearTimeout(timer)
+                resolve(v)
+            },
+            (e) => {
+                window.clearTimeout(timer)
+                reject(e)
+            }
+        )
+    })
+}
 
 export type BookingUiStatus = "idle" | "success" | "error"
-
-export type UseBookingOptions = {
-    /** Tras confirmar cupo en servidor (útil para toast / feedback). */
-    onReserved?: () => void
-}
 
 type UseBookingResult = {
     isLoading: boolean
@@ -22,37 +43,46 @@ type UseBookingResult = {
     bookSession: () => Promise<void>
 }
 
-export function useBooking(session: DbSession, lockedOut: boolean, options?: UseBookingOptions): UseBookingResult {
-    const { setSessions } = useSession()
+export function useBooking(
+    session: DbSession,
+    lockedOut: boolean,
+    { userEmail, setSessions, applyReserveSuccess }: UseBookingDeps
+): UseBookingResult {
     const { recordFailure, clearFailures, poke } = useLearningAssist()
-    const onReservedRef = useRef(options?.onReserved)
-    onReservedRef.current = options?.onReserved
     const [isLoading, setIsLoading] = useState(false)
     const [status, setStatus] = useState<BookingUiStatus>("idle")
     const [message, setMessage] = useState<string | null>(null)
     const rollbackRef = useRef<DbSession[] | null>(null)
     const inFlightRef = useRef(false)
-    const mountedRef = useRef(true)
-
-    useEffect(() => {
-        mountedRef.current = true
-        return () => {
-            mountedRef.current = false
-        }
-    }, [])
 
     const bookSession = useCallback(async () => {
+        console.log("[book click] client-only (no server route)", { sessionId: session.id })
         if (lockedOut || inFlightRef.current) return
+        if (!session.id || !UUID_RE.test(session.id)) {
+            setStatus("error")
+            setMessage("ID de sesión inválido")
+            console.error("[book client] invalid session id", { sessionId: session.id })
+            return
+        }
+        if (!userEmail) {
+            setStatus("error")
+            setMessage("Debes iniciar sesión con email para reservar.")
+            console.error("[book client] missing user email", {
+                sessionId: session.id,
+                userEmail,
+            })
+            return
+        }
+
+        const sessionId = session.id
+        const emailNorm = userEmail.trim().toLowerCase()
 
         inFlightRef.current = true
-        const abortController = new AbortController()
-        const timeoutId = window.setTimeout(() => abortController.abort(), BOOKING_TIMEOUT_MS)
-
-        poke()
-        rollbackRef.current = null
+        setIsLoading(true)
         setStatus("idle")
         setMessage(null)
-        setIsLoading(true)
+        poke()
+        rollbackRef.current = null
 
         try {
             setSessions((prev) => {
@@ -66,44 +96,87 @@ export function useBooking(session: DbSession, lockedOut: boolean, options?: Use
                 })
             })
 
-            const response = await fetch("/api/book", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ sessionId: session.id }),
-                signal: abortController.signal,
-            })
-            const payload = (await response.json().catch(() => null)) as
-                | {
-                      error?: string
-                      bookedSlots?: number
-                      sessionId?: string
-                      isBookedByUser?: boolean
-                  }
-                | null
+            const doBook = async () => {
+                const { data: dup, error: dupErr } = await supabase
+                    .from("tradingbookings")
+                    .select("id")
+                    .eq("session_id", sessionId)
+                    .eq("email", emailNorm)
+                    .maybeSingle()
+                if (dupErr) {
+                    throw new Error(dupErr.message || "No se pudo verificar la reserva")
+                }
+                if (dup) {
+                    throw new Error("Ya reservaste esta sesión.")
+                }
 
-            if (!response.ok) {
-                throw new Error(payload?.error || "No se pudo completar la reserva")
+                const maxSlots = session.max_slots ?? 0
+                const { count, error: countErr } = await supabase
+                    .from("tradingbookings")
+                    .select("*", { count: "exact", head: true })
+                    .eq("session_id", sessionId)
+                if (countErr) {
+                    throw new Error(countErr.message || "No se pudo completar la reserva.")
+                }
+                const used = count ?? 0
+                if (maxSlots > 0 && used >= maxSlots) {
+                    throw new Error("No hay cupos disponibles")
+                }
+
+                const { data: inserted, error: insertErr } = await supabase
+                    .from("tradingbookings")
+                    .insert({ session_id: sessionId, email: emailNorm })
+                    .select("id")
+                    .single()
+
+                if (insertErr) {
+                    const msg = insertErr.message ?? ""
+                    if (insertErr.code === "23505" || /duplicate|unique/i.test(msg)) {
+                        throw new Error("Ya reservaste esta sesión.")
+                    }
+                    throw new Error(msg || "No se pudo completar la reserva.")
+                }
+                const bookingId = typeof inserted?.id === "string" ? inserted.id : null
+                if (!bookingId) {
+                    throw new Error("Reserva inválida: sin id.")
+                }
+
+                const { count: afterCount, error: afterErr } = await supabase
+                    .from("tradingbookings")
+                    .select("*", { count: "exact", head: true })
+                    .eq("session_id", sessionId)
+                const slots = afterErr ? used + 1 : (afterCount ?? used + 1)
+
+                return { bookingId, slots }
             }
 
-            const sessionId = session.id
-            const bookedSlots = payload?.bookedSlots
+            const { bookingId, slots } = await withTimeout(doBook(), BOOKING_TIMEOUT_MS)
 
-            setSessions((prev) =>
-                prev.map((s) =>
-                    s.id === sessionId
-                        ? {
-                              ...s,
-                              booked_slots: typeof bookedSlots === "number" ? bookedSlots : s.booked_slots,
-                              isBookedByUser: true,
-                          }
-                        : s
+            console.log("[book client] insert ok", {
+                sessionId,
+                bookedSlots: slots,
+                bookingId,
+                userEmail: emailNorm,
+            })
+            if (!bookingId) {
+                console.warn(
+                    "[book client] missing bookingId in response; UI may not allow cancel until reload"
                 )
-            )
+            }
+
+            applyReserveSuccess({
+                sessionId,
+                bookedSlots: slots,
+                bookingId,
+                email: userEmail,
+                sessionDay: session.day,
+                sessionHour: session.time,
+                sessionDate: session.date,
+            })
 
             clearFailures(ASSIST_CHANNELS.booking)
             setStatus("success")
             setMessage(null)
-            onReservedRef.current?.()
         } catch (error) {
             if (rollbackRef.current) setSessions(rollbackRef.current)
             recordFailure(ASSIST_CHANNELS.booking)
@@ -113,14 +186,40 @@ export function useBooking(session: DbSession, lockedOut: boolean, options?: Use
                         ? "Tiempo agotado. Intenta de nuevo."
                         : error.message
                     : "No se pudo reservar"
+            console.error("[book client] caught error", { sessionId, error })
+            console.error(
+                "FULL ERROR:",
+                JSON.stringify(
+                    {
+                        sessionId,
+                        userEmail: emailNorm,
+                        error,
+                    },
+                    null,
+                    2
+                )
+            )
             setStatus("error")
             setMessage(text)
         } finally {
-            window.clearTimeout(timeoutId)
             inFlightRef.current = false
-            if (mountedRef.current) setIsLoading(false)
+            setIsLoading(false)
         }
-    }, [lockedOut, session.id, setSessions, recordFailure, clearFailures, poke])
+    }, [
+        lockedOut,
+        session.id,
+        session.day,
+        session.time,
+        session.date,
+        session.booked_slots,
+        session.max_slots,
+        setSessions,
+        applyReserveSuccess,
+        userEmail,
+        recordFailure,
+        clearFailures,
+        poke,
+    ])
 
     return {
         isLoading,

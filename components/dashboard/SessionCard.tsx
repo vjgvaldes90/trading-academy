@@ -2,11 +2,11 @@
 
 import Link from "next/link"
 import { motion, AnimatePresence } from "framer-motion"
-import { useCallback, useEffect, useState } from "react"
+import { useEffect, useState } from "react"
 import { useSession } from "@/context/SessionContext"
 import { useBooking } from "@/hooks/useBooking"
 import { getAvailabilityTone } from "@/lib/sessionAvailability"
-import { DbSession, formatTimeLabel, getSessionMeta, weekdayLabel } from "@/lib/sessions"
+import { DbSession, getSessionMeta, sessionDisplayDay, sessionDisplayHour } from "@/lib/sessions"
 
 type SessionCardProps = {
     session: DbSession
@@ -30,43 +30,45 @@ function reserveLabel(
 }
 
 export default function SessionCard({ session, isUpdated = false }: SessionCardProps) {
-    const { bookingAccess } = useSession()
+    const { bookingAccess, userEmail, setSessions, applyReserveSuccess } = useSession()
     const canBook = bookingAccess.canBook
     const bookedByUser = Boolean(session.isBookedByUser)
+    const isBooked = Boolean(session.is_booked)
     const meta = getSessionMeta(session)
     const tone = getAvailabilityTone(meta.available)
-    const slotFull = meta.isFull
-    const lockedOut = slotFull || !canBook || bookedByUser
+    const lockedOut = isBooked || !canBook || bookedByUser
 
     const [reservedToast, setReservedToast] = useState(false)
-    const showReservedToast = useCallback(() => setReservedToast(true), [])
 
     const { isLoading, status, message, bookSession } = useBooking(session, lockedOut, {
-        onReserved: showReservedToast,
+        userEmail,
+        setSessions,
+        applyReserveSuccess,
     })
 
     useEffect(() => {
-        if (!reservedToast) return
+        if (status !== "success") return
+        setReservedToast(true)
         const id = window.setTimeout(() => setReservedToast(false), 3200)
         return () => window.clearTimeout(id)
-    }, [reservedToast])
+    }, [status])
 
     const maxSlots = session.max_slots ?? 0
-    const timeLine = formatTimeLabel(session) || "—"
-    const dayLine = session.day?.trim() || weekdayLabel(session)
-    const dateLine = session.date ? `${dayLine} - ${session.date}` : dayLine
+    const timeLine = sessionDisplayHour(session) || "—"
+    const dayLine = sessionDisplayDay(session)
+    const dateLine = session.date ? `${dayLine} · ${session.date}` : dayLine
 
     const estado = bookedByUser
         ? { text: "Tu cupo", className: "text-emerald-400" }
-        : slotFull
+        : isBooked
           ? { text: "Lleno", className: "text-red-400" }
           : tone === "low"
             ? { text: "Pocos cupos", className: "text-amber-400" }
             : { text: "Disponible", className: "text-green-400" }
 
-    const label = reserveLabel(bookedByUser, slotFull, !canBook, isLoading, status)
+    const label = reserveLabel(bookedByUser, isBooked, !canBook, isLoading, status)
     const ctaDisabled = lockedOut || isLoading
-    const retryable = status === "error" && !isLoading && !slotFull && canBook && !bookedByUser
+    const retryable = status === "error" && !isLoading && !isBooked && canBook && !bookedByUser
 
     const cardSurface = bookedByUser
         ? "border-emerald-500/45 bg-emerald-950/20 opacity-[0.92] shadow-[0_0_0_1px_rgba(16,185,129,0.2)]"
@@ -119,8 +121,10 @@ export default function SessionCard({ session, isUpdated = false }: SessionCardP
                             ? "cursor-not-allowed bg-green-600 text-white"
                             : retryable
                               ? "bg-red-600 text-white hover:bg-red-500"
-                              : ctaDisabled && !isLoading
-                                ? "cursor-not-allowed bg-slate-700/80 text-slate-500"
+                              : isBooked
+                                ? "cursor-not-allowed bg-gray-400 text-slate-700"
+                                : ctaDisabled && !isLoading
+                                  ? "cursor-not-allowed bg-slate-700/80 text-slate-500"
                                 : "bg-blue-600 text-white hover:bg-blue-500",
                     ].join(" ")}
                 >
