@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import Stripe from "stripe"
 import { createClient } from "@supabase/supabase-js"
 import { setAuthCookiesForPaidUser } from "@/lib/authCookies"
+import { computeRenewalAccessExpiresAtIso } from "@/lib/studentSubscriptionRenewal"
 
 export const runtime = "nodejs"
 
@@ -42,17 +43,38 @@ export async function POST(req: Request) {
     }
 
     const supabase = createClient(supabaseUrl, supabaseServiceRoleKey)
-    const { error: updateErr } = await supabase
-        .from("tradingbookings")
-        .update({ paid: true })
-        .eq("email", email)
 
-    if (updateErr) {
-        console.error("[get-session] Failed updating user:", updateErr)
-        return NextResponse.json({ error: "Database update failed" }, { status: 500 })
+    const { data: student, error: fetchErr } = await supabase
+        .from("trading_students")
+        .select("access_code")
+        .eq("email", email)
+        .maybeSingle()
+
+    if (fetchErr) {
+        console.error("[get-session] trading_students lookup:", fetchErr)
+        return NextResponse.json({ error: "Database read failed" }, { status: 500 })
     }
 
-    console.log("[get-session] payment synced", { email, hasPaid: true })
+    if (!student?.access_code || String(student.access_code).trim().length === 0) {
+        const accessCode = Math.random().toString(36).substring(2, 8).toUpperCase()
+        const accessExpiresAt = computeRenewalAccessExpiresAtIso(null)
+        const { error: upsertErr } = await supabase.from("trading_students").upsert(
+            {
+                email,
+                access_code: accessCode,
+                access_type: "paid",
+                is_active: true,
+                access_expires_at: accessExpiresAt,
+            },
+            { onConflict: "email" }
+        )
+        if (upsertErr) {
+            console.error("[get-session] trading_students upsert:", upsertErr)
+            return NextResponse.json({ error: "Database update failed" }, { status: 500 })
+        }
+    }
+
+    console.log("[get-session] payment synced", { email })
 
     const res = NextResponse.json({ email })
     setAuthCookiesForPaidUser(res, email)

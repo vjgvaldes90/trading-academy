@@ -1,12 +1,17 @@
 "use client"
 
 import Link from "next/link"
-import { motion, AnimatePresence } from "framer-motion"
-import { useEffect, useState } from "react"
+import { motion } from "framer-motion"
 import { useSession } from "@/context/SessionContext"
 import { useBooking } from "@/hooks/useBooking"
 import { getAvailabilityTone } from "@/lib/sessionAvailability"
-import { DbSession, getSessionMeta, sessionDisplayDay, sessionDisplayHour } from "@/lib/sessions"
+import {
+    DbSession,
+    getSessionAvailableSeats,
+    getSessionMeta,
+    sessionDisplayDay,
+    sessionDisplayHour,
+} from "@/lib/sessions"
 
 type SessionCardProps = {
     session: DbSession
@@ -23,56 +28,67 @@ function reserveLabel(
     if (isBookedByUser) return "Reservado ✅"
     if (loading) return "Reservando..."
     if (blocked) return "Sin acceso"
-    if (slotFull) return "Lleno"
+    if (slotFull) return "Full"
     if (status === "success") return "Reservado ✅"
     if (status === "error") return "Reintentar"
     return "Reservar cupo"
 }
 
 export default function SessionCard({ session, isUpdated = false }: SessionCardProps) {
-    const { bookingAccess, userEmail, setSessions, applyReserveSuccess } = useSession()
+    const { bookingAccess, userEmail } = useSession()
     const canBook = bookingAccess.canBook
     const bookedByUser = Boolean(session.isBookedByUser)
     const isBooked = Boolean(session.is_booked)
+    const available = getSessionAvailableSeats(session)
     const meta = getSessionMeta(session)
     const tone = getAvailabilityTone(meta.available)
-    const lockedOut = isBooked || !canBook || bookedByUser
+    const slotFullByCapacity = available === 0 && !bookedByUser
+    const lockedOut =
+        isBooked || !canBook || bookedByUser || slotFullByCapacity || !userEmail
 
-    const [reservedToast, setReservedToast] = useState(false)
+    const { isLoading, status, bookSession } = useBooking()
 
-    const { isLoading, status, message, bookSession } = useBooking(session, lockedOut, {
-        userEmail,
-        setSessions,
-        applyReserveSuccess,
-    })
-
-    useEffect(() => {
-        if (status !== "success") return
-        setReservedToast(true)
-        const id = window.setTimeout(() => setReservedToast(false), 3200)
-        return () => window.clearTimeout(id)
-    }, [status])
-
-    const maxSlots = session.max_slots ?? 0
+    const capacity = session.max_slots ?? 0
     const timeLine = sessionDisplayHour(session) || "—"
     const dayLine = sessionDisplayDay(session)
     const dateLine = session.date ? `${dayLine} · ${session.date}` : dayLine
 
     const estado = bookedByUser
-        ? { text: "Tu cupo", className: "text-emerald-400" }
-        : isBooked
-          ? { text: "Lleno", className: "text-red-400" }
-          : tone === "low"
-            ? { text: "Pocos cupos", className: "text-amber-400" }
-            : { text: "Disponible", className: "text-green-400" }
+        ? {
+              text: "Reservado",
+              className: "bg-blue-500/20 text-blue-300 border border-blue-400/30",
+          }
+        : isBooked || slotFullByCapacity
+          ? {
+                text: "Lleno",
+                className: "bg-red-500/20 text-red-300 border border-red-400/30",
+            }
+          : {
+                text: "Disponible",
+                className: "bg-green-500/20 text-green-300 border border-green-400/30",
+            }
 
-    const label = reserveLabel(bookedByUser, isBooked, !canBook, isLoading, status)
+    const label = reserveLabel(
+        bookedByUser,
+        isBooked || slotFullByCapacity,
+        !canBook,
+        isLoading,
+        status
+    )
     const ctaDisabled = lockedOut || isLoading
-    const retryable = status === "error" && !isLoading && !isBooked && canBook && !bookedByUser
+    const retryable =
+        status === "error" &&
+        !isLoading &&
+        !isBooked &&
+        !slotFullByCapacity &&
+        canBook &&
+        !bookedByUser
 
     const cardSurface = bookedByUser
-        ? "border-emerald-500/45 bg-emerald-950/20 opacity-[0.92] shadow-[0_0_0_1px_rgba(16,185,129,0.2)]"
-        : "border-white/10 bg-[#0e1628] opacity-100 shadow-[0_8px_24px_rgba(0,0,0,0.2)]"
+        ? "border border-blue-500/30 bg-gradient-to-br from-[#111827] to-[#0B0F1A] shadow-xl shadow-blue-500/10"
+        : "border border-blue-500/20 bg-gradient-to-br from-[#111827] to-[#0B0F1A] shadow-xl shadow-blue-500/10"
+    const spotsToneClass =
+        available === 0 ? "text-red-500" : available <= 5 ? "text-yellow-400" : "text-green-400"
 
     return (
         <motion.div
@@ -88,8 +104,8 @@ export default function SessionCard({ session, isUpdated = false }: SessionCardP
                     : {}
             }
             transition={{ duration: 0.45, ease: "easeInOut" }}
-            whileHover={{ y: -3, transition: { duration: 0.18, ease: "easeOut" } }}
-            className={`flex h-full min-h-[140px] flex-col gap-2 rounded-xl border p-4 transition-colors duration-200 ${cardSurface}`}
+            whileHover={{ scale: 1.02, transition: { duration: 0.2, ease: "easeOut" } }}
+            className={`flex h-full min-h-[140px] flex-col gap-2 rounded-2xl p-4 transition-all duration-200 hover:scale-[1.02] ${cardSurface}`}
         >
             <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
@@ -97,55 +113,45 @@ export default function SessionCard({ session, isUpdated = false }: SessionCardP
                     <p className="text-xs text-gray-400">{dateLine}</p>
                 </div>
                 <div className="flex shrink-0 flex-col items-end gap-1">
-                    {bookedByUser ? (
-                        <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-400">
-                            Ya estás dentro
-                        </span>
-                    ) : null}
-                    <span className={`text-xs font-semibold ${estado.className}`}>{estado.text}</span>
+                    <span
+                        className={`rounded-full px-2 py-1 text-xs font-semibold ${estado.className}`}
+                    >
+                        {estado.text}
+                    </span>
                 </div>
             </div>
 
             <div className="mt-auto flex items-center justify-between gap-2 border-t border-white/5 pt-2">
-                <span className="text-xs tabular-nums text-gray-400">
-                    {maxSlots > 0 ? `${meta.available}/${maxSlots} cupos` : "—"}
+                <span className={`text-xs tabular-nums ${spotsToneClass}`}>
+                    {capacity > 0
+                        ? available === 0
+                            ? "Full"
+                            : `${available} cupos disponibles`
+                        : "—"}
                 </span>
                 <motion.button
                     type="button"
                     disabled={ctaDisabled}
                     whileTap={ctaDisabled ? {} : { scale: 0.97 }}
-                    onClick={() => void bookSession()}
+                    onClick={() =>
+                        void bookSession(session.id, userEmail ?? "").catch(() => {})
+                    }
                     className={[
-                        "shrink-0 rounded-lg px-3 py-1 text-sm font-bold transition-colors duration-200",
+                        "shrink-0 rounded-xl px-3 py-1 text-sm font-bold transition-all duration-200 active:scale-95",
                         bookedByUser
-                            ? "cursor-not-allowed bg-green-600 text-white"
+                            ? "cursor-not-allowed bg-gradient-to-r from-blue-500 to-blue-700 text-white shadow-lg shadow-blue-500/30"
                             : retryable
-                              ? "bg-red-600 text-white hover:bg-red-500"
-                              : isBooked
-                                ? "cursor-not-allowed bg-gray-400 text-slate-700"
+                              ? "bg-[#EF4444] text-white hover:bg-red-500"
+                              : isBooked || slotFullByCapacity
+                                ? "cursor-not-allowed bg-gray-800 text-gray-500"
                                 : ctaDisabled && !isLoading
-                                  ? "cursor-not-allowed bg-slate-700/80 text-slate-500"
-                                : "bg-blue-600 text-white hover:bg-blue-500",
+                                  ? "cursor-not-allowed bg-gray-800 text-gray-500"
+                                : "bg-gradient-to-r from-blue-500 to-blue-700 text-white shadow-lg shadow-blue-500/30 hover:from-blue-400 hover:to-blue-600",
                     ].join(" ")}
                 >
                     {label}
                 </motion.button>
             </div>
-
-            <AnimatePresence>
-                {reservedToast ? (
-                    <motion.p
-                        key="toast"
-                        initial={{ opacity: 0, y: 6 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -4 }}
-                        transition={{ duration: 0.2 }}
-                        className="text-center text-xs font-bold text-emerald-400"
-                    >
-                        Cupo reservado correctamente
-                    </motion.p>
-                ) : null}
-            </AnimatePresence>
 
             {!canBook ? (
                 <Link href="/#pricing" className="text-xs font-bold text-blue-400 hover:text-blue-300">
@@ -153,9 +159,6 @@ export default function SessionCard({ session, isUpdated = false }: SessionCardP
                 </Link>
             ) : null}
 
-            {message && canBook && !bookedByUser ? (
-                <p className="text-[11px] font-semibold leading-snug text-red-300">{message}</p>
-            ) : null}
         </motion.div>
     )
 }

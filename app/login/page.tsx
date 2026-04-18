@@ -31,39 +31,20 @@ function LoginPageInner() {
     }, [magicToken])
 
     useEffect(() => {
+        const err = searchParams.get("error")?.trim()
+        if (err === "access_denied") {
+            setAccessError(
+                "Tu acceso a la academia no está activo o ha caducado. Si crees que es un error, contacta al administrador."
+            )
+        }
+    }, [searchParams])
+
+    useEffect(() => {
         console.log("[login] redirect query param", {
             redirect: rawRedirect,
             resolvedTarget: afterLoginTarget,
         })
     }, [rawRedirect, afterLoginTarget])
-
-    const handleCheckout = async () => {
-        try {
-            const res = await fetch("/api/create-checkout", {
-                method: "POST",
-                cache: "no-store",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({ email }),
-            })
-
-            if (!res.ok) {
-                throw new Error("Error creando checkout")
-            }
-
-            const data = await res.json()
-
-            if (data?.url) {
-                window.location.href = data.url
-            } else {
-                console.error("No URL returned")
-            }
-        } catch (err) {
-            console.error("Checkout error:", err)
-            alert("Error al iniciar el pago")
-        }
-    }
 
     const handleAccess = async () => {
         setAccessError(null)
@@ -76,6 +57,7 @@ function LoginPageInner() {
         try {
             const res = await fetch("/api/validate-code", {
                 method: "POST",
+                credentials: "include",
                 headers: {
                     "Content-Type": "application/json",
                 },
@@ -87,7 +69,26 @@ function LoginPageInner() {
                 return
             }
 
-            const data = await res.json()
+            const data = (await res.json()) as {
+                success?: unknown
+                error?: string
+                reason?: string
+                message?: string
+                redirect?: string
+                profileCompleted?: boolean
+                student?: unknown
+            }
+
+            if (data.success === false && data.error === "ACCESS_DENIED") {
+                if (data.reason === "expired") {
+                    window.location.replace("/expired")
+                    return
+                }
+                if (typeof data.message === "string") {
+                    setAccessError(data.message)
+                    return
+                }
+            }
 
             if (data.success) {
                 const serverRedirect =
@@ -139,7 +140,6 @@ function LoginPageInner() {
                     setEmail={setEmail}
                     code={code}
                     setCode={setCode}
-                    handleCheckout={handleCheckout}
                     handleAccess={handleAccess}
                     accessError={accessError}
                     onClearAccessError={() => setAccessError(null)}

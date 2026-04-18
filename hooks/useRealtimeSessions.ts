@@ -7,14 +7,14 @@ import { useEffect } from "react"
 
 export type RealtimeEvent = {
     type: "INSERT" | "UPDATE" | "DELETE"
-    /** Row id from `trading_sessions`, or `session_id` from `tradingbookings`. */
+    /** Row id from `trading_sessions`, or `session_id` from `bookings`. */
     sessionId: string
-    scope: "trading_sessions" | "tradingbookings"
+    scope: "trading_sessions" | "bookings"
     bookedSlots?: number | null
     session?: DbSession
-    /** Present for tradingbookings INSERT/DELETE when payload includes it. */
+    /** Present for bookings INSERT/DELETE when payload includes it. */
     bookingEmail?: string | null
-    /** `tradingbookings.id` when present in the realtime payload. */
+    /** `bookings.id` when present in the realtime payload. */
     bookingId?: string | null
 }
 
@@ -49,7 +49,11 @@ export function useRealtimeSessions({ onEvent }: UseRealtimeSessionsParams) {
                     }
 
                     const bookedSlots =
-                        typeof current.booked_slots === "number" ? current.booked_slots : null
+                        typeof current.seats_taken === "number"
+                            ? current.seats_taken
+                            : typeof current.booked_slots === "number"
+                              ? current.booked_slots
+                              : null
                     onEvent({
                         type: "UPDATE",
                         sessionId,
@@ -61,7 +65,7 @@ export function useRealtimeSessions({ onEvent }: UseRealtimeSessionsParams) {
             )
             .on(
                 "postgres_changes",
-                { event: "*", schema: "public", table: "tradingbookings" },
+                { event: "*", schema: "public", table: "bookings" },
                 (payload) => {
                     const eventType = payload.eventType
                     const current = (payload.new ?? {}) as Record<string, unknown>
@@ -69,10 +73,10 @@ export function useRealtimeSessions({ onEvent }: UseRealtimeSessionsParams) {
                     const sessionId = (current.session_id ?? previous.session_id) as string | undefined
                     if (!sessionId) return
                     const bookingEmail =
-                        typeof current.email === "string"
-                            ? current.email
-                            : typeof previous.email === "string"
-                              ? previous.email
+                        typeof current.user_email === "string"
+                            ? current.user_email.trim().toLowerCase()
+                            : typeof previous.user_email === "string"
+                              ? String(previous.user_email).trim().toLowerCase()
                               : null
                     const rowId = (current.id ?? previous.id) as string | undefined
                     const bookingId = typeof rowId === "string" && rowId.length > 0 ? rowId : null
@@ -80,7 +84,7 @@ export function useRealtimeSessions({ onEvent }: UseRealtimeSessionsParams) {
                         onEvent({
                             type: "INSERT",
                             sessionId,
-                            scope: "tradingbookings",
+                            scope: "bookings",
                             bookingEmail,
                             bookingId,
                         })
@@ -90,7 +94,7 @@ export function useRealtimeSessions({ onEvent }: UseRealtimeSessionsParams) {
                         onEvent({
                             type: "DELETE",
                             sessionId,
-                            scope: "tradingbookings",
+                            scope: "bookings",
                             bookingEmail,
                             bookingId,
                         })
@@ -99,7 +103,7 @@ export function useRealtimeSessions({ onEvent }: UseRealtimeSessionsParams) {
                     onEvent({
                         type: "UPDATE",
                         sessionId,
-                        scope: "tradingbookings",
+                        scope: "bookings",
                         bookingEmail,
                         bookingId,
                     })

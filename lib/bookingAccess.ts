@@ -9,7 +9,6 @@ export type BookingAccessState = {
 
 /** Resolve who is booking from legacy httpOnly `session` cookie (email). */
 export async function resolveBookingActor(): Promise<BookingActor> {
-    const userId: string | null = null
     let email: string | null = null
 
     const cookieStore = await cookies()
@@ -18,7 +17,7 @@ export async function resolveBookingActor(): Promise<BookingActor> {
         email = legacyEmail
     }
 
-    return { userId, email }
+    return { email }
 }
 
 export async function getBookingAccessState(): Promise<BookingAccessState> {
@@ -26,7 +25,7 @@ export async function getBookingAccessState(): Promise<BookingAccessState> {
 
     try {
         const admin = createSupabaseServiceRoleClient()
-        const result = await canUserBook(admin, actor.userId, actor.email)
+        const result = await canUserBook(admin, null, actor.email)
         if (result.ok) {
             return { canBook: true, message: null, actor }
         }

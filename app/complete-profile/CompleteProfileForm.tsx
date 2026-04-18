@@ -30,6 +30,7 @@ export default function CompleteProfileForm({ userEmail }: CompleteProfileFormPr
         try {
             const res = await fetch("/api/complete-profile", {
                 method: "POST",
+                credentials: "include",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ firstName: fn, lastName: ln, phone: ph }),
             })

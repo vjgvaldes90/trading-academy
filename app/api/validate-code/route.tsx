@@ -3,6 +3,11 @@ import { createSupabaseServiceRoleClient } from "@/lib/access"
 import { setAuthCookiesForPaidUser } from "@/lib/authCookies"
 import { buildStudentDisplayName } from "@/lib/studentLocalStorage"
 import {
+    academyAccessDeniedMessageEs,
+    evaluateAcademyAccess,
+    type TradingStudentAccessRow,
+} from "@/lib/studentAcademyAccess"
+import {
     dashboardPostLoginRedirect,
     ensureTradingStudentByEmail,
     type TradingStudentRow,
@@ -26,7 +31,7 @@ export async function POST(req: Request) {
         const { data: studentByCode, error: studentLookupErr } = await supabase
             .from("trading_students")
             .select(
-                "id, email, first_name, last_name, phone, profile_completed, access_code"
+                "id, email, first_name, last_name, phone, profile_completed, access_code, access_type, is_active, access_expires_at"
             )
             .eq("access_code", cleanCode)
             .single()
@@ -35,6 +40,15 @@ export async function POST(req: Request) {
 
         if (!studentLookupErr && studentByCode?.email) {
             const row = studentByCode as TradingStudentRow
+            const access = evaluateAcademyAccess(row as TradingStudentAccessRow)
+            if (!access.ok) {
+                return NextResponse.json({
+                    success: false,
+                    error: "ACCESS_DENIED",
+                    reason: access.reason,
+                    message: academyAccessDeniedMessageEs(access.reason),
+                })
+            }
             const email = row.email.trim().toLowerCase()
             const redirect = dashboardPostLoginRedirect(row)
             const profileCompleted = redirect === "/dashboard"
@@ -60,54 +74,10 @@ export async function POST(req: Request) {
             return response
         }
 
-        const { data, error } = await supabase
-            .from("tradingbookings")
-            .select("*")
-            .eq("access_code", cleanCode)
-            .eq("paid", true)
-            .maybeSingle()
-
-        if (error || !data) {
-            console.log("[login] validate-code failed", { code: cleanCode.slice(0, 3) + "***", hasPaid: false })
-            return NextResponse.json({ success: false })
-        }
-
-        const email =
-            typeof data.email === "string" && data.email.trim().length > 0
-                ? data.email.trim().toLowerCase()
-                : null
-
-        if (!email) {
-            console.log("[login] validate-code no email on row")
-            return NextResponse.json({ success: false })
-        }
-
-        const student = await ensureTradingStudentByEmail(supabase, email)
-        const redirect = dashboardPostLoginRedirect(student)
-        const profileCompleted = redirect === "/dashboard"
-        if (!profileCompleted) {
-            console.log("📄 profile incomplete (first_name / last_name / phone)", { email })
-        } else {
-            console.log("✅ profile completed", { email })
-        }
-
-        const displayName = buildStudentDisplayName(student)
-        const response = NextResponse.json({
-            success: true,
-            redirect,
-            user: data,
-            profileCompleted,
-            student: {
-                name: displayName,
-                email,
-                classes: [] as string[],
-            },
+        console.log("[login] validate-code failed", {
+            code: cleanCode.slice(0, 3) + "***",
         })
-        setAuthCookiesForPaidUser(response, email)
-
-        console.log("[login] user logged in (access code)", { email, hasPaid: true })
-
-        return response
+        return NextResponse.json({ success: false })
     } catch (err) {
         console.error("❌ ERROR VALIDATE:", err)
         return NextResponse.json({ success: false }, { status: 500 })

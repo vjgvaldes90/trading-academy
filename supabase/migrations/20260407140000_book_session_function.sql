@@ -4,9 +4,6 @@
 ALTER TABLE public.trading_sessions
     ADD COLUMN IF NOT EXISTS capacity integer NOT NULL DEFAULT 10;
 
-ALTER TABLE public.tradingbookings
-    ADD COLUMN IF NOT EXISTS user_id uuid;
-
 DELETE FROM public.tradingbookings
 WHERE session_id IS NULL;
 

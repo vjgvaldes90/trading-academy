@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server"
 import { cookies } from "next/headers"
 import { createSupabaseServiceRoleClient } from "@/lib/access"
+import {
+    academyAccessDeniedMessageEs,
+    evaluateAcademyAccess,
+    type TradingStudentAccessRow,
+} from "@/lib/studentAcademyAccess"
 import { ensureTradingStudentByEmail } from "@/lib/tradingStudents"
 
 export const runtime = "nodejs"
@@ -39,6 +44,25 @@ export async function POST(req: Request) {
     try {
         const supabase = createSupabaseServiceRoleClient()
         await ensureTradingStudentByEmail(supabase, user.email)
+
+        const { data: accessRow, error: accessReadErr } = await supabase
+            .from("trading_students")
+            .select("access_code, access_type, is_active, access_expires_at")
+            .eq("email", user.email)
+            .maybeSingle()
+
+        if (accessReadErr) {
+            console.error("[complete-profile] access read", accessReadErr)
+            return NextResponse.json({ error: "No pudimos verificar tu acceso" }, { status: 500 })
+        }
+
+        const accessEv = evaluateAcademyAccess(accessRow as TradingStudentAccessRow | null)
+        if (!accessEv.ok) {
+            return NextResponse.json(
+                { error: academyAccessDeniedMessageEs(accessEv.reason) },
+                { status: 403 }
+            )
+        }
 
         const { data, error } = await supabase
             .from("trading_students")

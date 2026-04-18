@@ -8,6 +8,8 @@ export type DbSession = {
     time: string | null
     max_slots: number | null
     booked_slots: number | null
+    /** Backend-computed real-time availability from /api/sessions. */
+    available_spots?: number | null
     link: string | null
     /** Row closed / not offered; excluded from booking lists. */
     is_booked?: boolean
@@ -230,8 +232,24 @@ export function buildNextSessionTicker(
     return { line: `🟢 Próxima sesión en ${countdown} → ${wd} ${tm}`, joinHref }
 }
 
+/** DB `capacity` / `seats_taken` are exposed as `max_slots` / `booked_slots` on `DbSession`. */
+export function getSessionCapacityAndTaken(session: DbSession): { capacity: number; seatsTaken: number } {
+    const capacity = session.max_slots ?? 0
+    const seatsTaken = session.booked_slots ?? 0
+    return { capacity, seatsTaken }
+}
+
+/** Free seats = capacity − seats_taken (never negative). */
+export function getSessionAvailableSeats(session: DbSession): number {
+    if (typeof session.available_spots === "number") {
+        return Math.max(0, session.available_spots)
+    }
+    const { capacity, seatsTaken } = getSessionCapacityAndTaken(session)
+    return Math.max(0, capacity - seatsTaken)
+}
+
 export function getSessionMeta(session: DbSession) {
-    const available = Math.max(0, (session.max_slots ?? 0) - (session.booked_slots ?? 0))
+    const available = getSessionAvailableSeats(session)
     const isFull = available <= 0
     const status = isFull ? "Completo" : available <= 2 ? "Últimos cupos" : "Disponible"
     const statusColor = isFull ? "#fca5a5" : available <= 2 ? "#fbbf24" : "#a7f3d0"

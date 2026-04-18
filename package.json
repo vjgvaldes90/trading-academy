@@ -4,12 +4,14 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "dev:full": "concurrently -n APP,STRIPE -c cyan,magenta \"npm run dev\" \"stripe listen --forward-to localhost:3000/api/webhooks/stripe\"",
+    "dev:full": "concurrently -n APP,STRIPE -c cyan,magenta \"npm run dev\" \"stripe listen --forward-to localhost:3000/api/stripe/webhook\"",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"
   },
   "dependencies": {
+    "@supabase/auth-helpers-nextjs": "^0.15.0",
+    "@supabase/ssr": "^0.10.2",
     "@supabase/supabase-js": "^2.99.2",
     "framer-motion": "^12.38.0",
     "lucide-react": "^1.7.0",

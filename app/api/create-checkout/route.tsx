@@ -3,9 +3,16 @@ import Stripe from "stripe"
 
 export const runtime = "nodejs"
 
+// IMPORTANT:
+// Do NOT reserve seats here.
+// Booking must only happen from dashboard.
+
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
     apiVersion: "2026-02-25.clover",
 })
+
+/** Stripe Dashboard recurring price (monthly subscription). */
+const MONTHLY_SUBSCRIPTION_PRICE_ID = "price_1TNLRdCM6zKu8aLu2HxK3w2W"
 
 function appOrigin(): string {
     const raw = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"
@@ -14,39 +21,42 @@ function appOrigin(): string {
 
 export async function POST(req: Request) {
     try {
-        const { email } = await req.json()
+        const body = (await req.json().catch(() => null)) as {
+            email?: unknown
+            sessionId?: unknown
+        } | null
+        const email = typeof body?.email === "string" ? body.email.trim() : ""
+        const sessionId =
+            typeof body?.sessionId === "string" && body.sessionId.trim().length > 0
+                ? body.sessionId.trim()
+                : null
 
         if (!email) {
-            return NextResponse.json(
-                { error: "Email requerido" },
-                { status: 400 }
-            )
+            return NextResponse.json({ error: "Email requerido" }, { status: 400 })
         }
 
         const DOMAIN = appOrigin()
         const success_url = `${DOMAIN}/success?session_id={CHECKOUT_SESSION_ID}`
-        const cancel_url = `${DOMAIN}/login`
+        const cancel_url = `${DOMAIN}/`
+
+        const metadata: Record<string, string> = {
+            email: email.toLowerCase(),
+        }
+        if (sessionId) {
+            metadata.trading_session_id = sessionId
+        }
 
         const session = await stripe.checkout.sessions.create({
-            mode: "payment",
             payment_method_types: ["card"],
-
+            mode: "subscription",
             customer_email: email,
-
+            metadata,
             line_items: [
                 {
-                    price_data: {
-                        currency: "usd",
-                        product_data: {
-                            name: "Smart Option Academy",
-                            description: "Acceso completo a la academia de trading",
-                        },
-                        unit_amount: 15000,
-                    },
+                    price: MONTHLY_SUBSCRIPTION_PRICE_ID,
                     quantity: 1,
                 },
             ],
-
             success_url,
             cancel_url,
         })
@@ -64,13 +74,9 @@ export async function POST(req: Request) {
                 },
             }
         )
-
     } catch (error) {
         console.error("❌ Stripe error:", error)
 
-        return NextResponse.json(
-            { error: "Error creando checkout" },
-            { status: 500 }
-        )
+        return NextResponse.json({ error: "Error creando checkout" }, { status: 500 })
     }
 }

@@ -31,9 +31,9 @@ export default function MyBookingsSection() {
                 style={{
                     borderRadius: 12,
                     padding: "var(--ds-4)",
-                    background: "var(--ds-surface-hover)",
-                    border: "1px solid var(--ds-border-strong)",
-                    boxShadow: "var(--ds-shadow-sm)",
+                    background: "linear-gradient(145deg, #111827 0%, #0B0F1A 100%)",
+                    border: "1px solid rgba(59,130,246,0.2)",
+                    boxShadow: "0 20px 30px -20px rgba(59,130,246,0.25)",
                 }}
             >
                 {sorted.length === 0 ? (
@@ -65,9 +65,9 @@ export default function MyBookingsSection() {
                                 style={{
                                     padding: "var(--ds-2) var(--ds-3)",
                                     borderRadius: 8,
-                                    background: "var(--ds-surface)",
-                                    border: "1px solid var(--ds-border)",
-                                    color: "var(--ds-text)",
+                                    background: "rgba(15,23,42,0.7)",
+                                    border: "1px solid rgba(59,130,246,0.2)",
+                                    color: "#f8fafc",
                                     fontSize: "0.9375rem",
                                     fontWeight: 600,
                                 }}

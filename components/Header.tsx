@@ -42,7 +42,7 @@ export default function Header({ welcomeName }: HeaderProps) {
             <button
                 onClick={() => {
                     clearStoredStudent()
-                    fetch("/api/logout", { method: "POST" }).finally(() => {
+                    fetch("/api/logout", { method: "POST", credentials: "include" }).finally(() => {
                         window.location.href = "/login"
                     })
                 }}

@@ -2,6 +2,23 @@ import type { SupabaseClient } from "@supabase/supabase-js"
 import { mapSupabaseSessionRow } from "@/lib/mapSessionRow"
 import type { DbSession } from "@/lib/sessions"
 
+/** Uses `/api/student/access` (service-backed) so access rules do not depend on anon RLS. */
+async function fetchClientAcademyAccessOk(email: string): Promise<boolean> {
+    const norm = email.trim().toLowerCase()
+    if (!norm) return false
+    try {
+        const res = await fetch(`/api/student/access?user_email=${encodeURIComponent(norm)}`, {
+            cache: "no-store",
+            credentials: "include",
+        })
+        if (!res.ok) return false
+        const data = (await res.json().catch(() => ({}))) as { ok?: unknown }
+        return data.ok === true
+    } catch {
+        return false
+    }
+}
+
 /** Matches `MyBooking` in SessionContext (avoid circular imports). */
 export type ClientMyBooking = {
     id: string
@@ -13,39 +30,11 @@ export type ClientMyBooking = {
 }
 
 /**
- * Same rules as `emailHasPaid` (lib/hasPaid), using the browser Supabase client.
- * Requires SELECT policies (or RLS off) on `tradingbookings` and `trading_students`.
+ * Academy access check for the logged-in dashboard email (uses `/api/student/access`).
+ * @param _client unused; kept for call-site compatibility with `loadDashboardFromClient(supabase, email)`.
  */
-export async function clientEmailHasPaid(client: SupabaseClient, email: string): Promise<boolean> {
-    const norm = email.trim().toLowerCase()
-    if (!norm) return false
-
-    const { data, error } = await client
-        .from("tradingbookings")
-        .select("paid")
-        .eq("email", norm)
-        .limit(20)
-
-    if (error) {
-        console.warn("[clientEmailHasPaid] tradingbookings", error.message)
-    } else {
-        const rows = (data ?? []) as { paid?: boolean | null }[]
-        if (rows.some((r) => Boolean(r.paid))) return true
-    }
-
-    const { data: student, error: stErr } = await client
-        .from("trading_students")
-        .select("access_code")
-        .eq("email", norm)
-        .limit(1)
-        .maybeSingle()
-
-    if (stErr) {
-        console.warn("[clientEmailHasPaid] trading_students", stErr.message)
-        return false
-    }
-
-    return typeof student?.access_code === "string" && student.access_code.length > 0
+export async function clientEmailHasPaid(_client: SupabaseClient, email: string): Promise<boolean> {
+    return fetchClientAcademyAccessOk(email)
 }
 
 export type LoadDashboardResult = {
@@ -59,97 +48,112 @@ export async function loadDashboardFromClient(
     userEmail: string
 ): Promise<LoadDashboardResult> {
     const email = userEmail.trim().toLowerCase()
-    const canBook = await clientEmailHasPaid(client, email)
+    if (!email) {
+        throw new Error("Missing user_email")
+    }
+    const canBook = await fetchClientAcademyAccessOk(email)
 
-    const { data: sessionRows, error: sessionErr } = await client
-        .from("trading_sessions")
-        .select("*")
-        .order("session_date", { ascending: true })
-        .order("session_hour", { ascending: true })
-
-    if (sessionErr) {
-        console.error("[loadDashboardFromClient] sessions", sessionErr)
+    const sessionsRes = await fetch("/api/sessions", {
+        cache: "no-store",
+        credentials: "include",
+    })
+    if (!sessionsRes.ok) {
+        const errBody = await sessionsRes.json().catch(() => ({}))
+        console.error("[loadDashboardFromClient] /api/sessions", sessionsRes.status, errBody)
         return { sessions: [], myBookings: [], canBook }
     }
 
+    const sessionRows = await sessionsRes.json()
     const rows = Array.isArray(sessionRows) ? sessionRows : []
-    const sessionIds = rows
-        .map((r) => (typeof (r as { id?: unknown }).id === "string" ? (r as { id: string }).id : null))
-        .filter((id): id is string => id != null)
 
-    const bookingCounts = new Map<string, number>()
-    let bookingRows: { session_id?: unknown }[] = []
-
-    if (sessionIds.length > 0) {
-        const { data: br, error: bookingErr } = await client
-            .from("tradingbookings")
-            .select("session_id")
-            .in("session_id", sessionIds)
-        if (bookingErr) {
-            console.error("[loadDashboardFromClient] booking counts", bookingErr)
-        } else {
-            bookingRows = br ?? []
-            for (const row of bookingRows) {
-                const sid = typeof row.session_id === "string" ? row.session_id : null
-                if (!sid) continue
-                bookingCounts.set(sid, (bookingCounts.get(sid) ?? 0) + 1)
-            }
+    const bookingsRes = await fetch(
+        `/api/my-bookings?user_email=${encodeURIComponent(email)}`,
+        {
+            cache: "no-store",
+            credentials: "include",
         }
+    )
+    if (!bookingsRes.ok) {
+        const errBody = await bookingsRes.json().catch(() => ({}))
+        console.error("[loadDashboardFromClient] /api/my-bookings", bookingsRes.status, errBody)
+        const sessionsNoBookings: DbSession[] = rows
+            .map((row) => mapSupabaseSessionRow(row as Record<string, unknown>))
+            .filter((s): s is DbSession => s != null)
+            .map((s) => ({
+                ...s,
+                booked_slots: s.booked_slots ?? 0,
+                isBookedByUser: false,
+            }))
+        return { sessions: sessionsNoBookings, myBookings: [], canBook }
     }
+
+    const bookingsPayload = (await bookingsRes.json()) as unknown
+    const bookingList = Array.isArray(bookingsPayload) ? bookingsPayload : []
+
+    type SessionRec = {
+        session_day: string | null
+        session_hour: string | null
+        session_date: string | null
+    }
+
+    const sessionMap = new Map<string, SessionRec>(
+        rows.map((row) => {
+            const rec = row as Record<string, unknown>
+            const id = typeof rec.id === "string" ? rec.id : ""
+            const session_date =
+                (typeof rec.session_date === "string" ? rec.session_date : null) ??
+                (typeof rec.date === "string" ? rec.date : null)
+            const session_hour =
+                (typeof rec.session_hour === "string" ? rec.session_hour : null) ??
+                (typeof rec.time === "string" ? rec.time : null)
+            const session_day =
+                (typeof rec.session_day === "string" ? rec.session_day : null) ??
+                (typeof rec.day === "string" ? rec.day : null)
+            return [id, { session_date, session_hour, session_day }] as const
+        })
+    )
 
     const bookedIds = new Set<string>()
-    const { data: mineRows, error: mineErr } = await client
-        .from("tradingbookings")
-        .select("id, session_id, email")
-        .eq("email", email)
+    const initialMyBookings: ClientMyBooking[] = []
 
-    let myBookingRows: { id: string; session_id: string; email: string }[] = []
+    for (const raw of bookingList) {
+        const r = raw as Record<string, unknown>
+        const id = typeof r.id === "string" ? r.id : null
+        const session_id = typeof r.session_id === "string" ? r.session_id : null
+        const user_email_row =
+            typeof r.user_email === "string" ? r.user_email.trim().toLowerCase() : null
+        if (!id || !session_id) continue
 
-    if (mineErr) {
-        console.error("[loadDashboardFromClient] my bookings", mineErr)
-    } else {
-        myBookingRows =
-            (mineRows ?? [])
-                .map((r) => {
-                    const rec = r as { id?: unknown; session_id?: unknown; email?: unknown }
-                    const id = typeof rec.id === "string" ? rec.id : null
-                    const session_id = typeof rec.session_id === "string" ? rec.session_id : null
-                    const bookingEmail = typeof rec.email === "string" ? rec.email : null
-                    if (!id || !session_id || bookingEmail !== email) return null
-                    bookedIds.add(session_id)
-                    return { id, session_id, email: bookingEmail }
-                })
-                .filter((x): x is { id: string; session_id: string; email: string } => x != null) ?? []
-    }
+        bookedIds.add(session_id)
 
-    let initialMyBookings: ClientMyBooking[] = []
-    const mineIds = [...new Set(myBookingRows.map((b) => b.session_id))]
-    if (mineIds.length > 0) {
-        const { data: sessRows } = await client
-            .from("trading_sessions")
-            .select("id, session_day, session_hour, session_date")
-            .in("id", mineIds)
-        const sessionMap = new Map(
-            (sessRows ?? []).map((row) => {
-                const rec = row as {
-                    id: string
-                    session_day?: string | null
-                    session_hour?: string | null
-                    session_date?: string | null
-                }
-                return [rec.id, rec] as const
-            })
-        )
-        initialMyBookings = myBookingRows.map((b) => {
-            const rec = sessionMap.get(b.session_id)
-            return {
-                id: b.id,
-                session_id: b.session_id,
-                email: b.email,
-                sessionDay: typeof rec?.session_day === "string" ? rec.session_day : null,
-                sessionHour: typeof rec?.session_hour === "string" ? rec.session_hour : null,
-                sessionDate: typeof rec?.session_date === "string" ? rec.session_date : null,
-            }
+        const join = r.sessions as Record<string, unknown> | null | undefined
+        const joinDate =
+            join && typeof join.session_date === "string"
+                ? join.session_date
+                : join && typeof join.date === "string"
+                  ? join.date
+                  : null
+        const joinTime =
+            join && typeof join.session_hour === "string"
+                ? join.session_hour
+                : join && typeof join.time === "string"
+                  ? join.time
+                  : null
+        const joinDay =
+            join && typeof join.session_day === "string"
+                ? join.session_day
+                : join && typeof join.day === "string"
+                  ? join.day
+                  : null
+
+        const rec = sessionMap.get(session_id)
+        initialMyBookings.push({
+            id,
+            session_id,
+            email: user_email_row ?? email,
+            sessionDay: joinDay ?? rec?.session_day ?? null,
+            sessionHour: joinTime ?? rec?.session_hour ?? null,
+            sessionDate: joinDate ?? rec?.session_date ?? null,
         })
     }
 
@@ -158,7 +162,7 @@ export async function loadDashboardFromClient(
         .filter((s): s is DbSession => s != null)
         .map((s) => ({
             ...s,
-            booked_slots: bookingCounts.get(s.id) ?? 0,
+            booked_slots: s.booked_slots ?? 0,
             isBookedByUser: bookedIds.has(s.id),
         }))
 

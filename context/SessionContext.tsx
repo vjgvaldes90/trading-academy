@@ -30,7 +30,7 @@ import {
 
 export type TabKey = "today" | "thisWeek" | "nextWeek"
 
-/** One row from `tradingbookings` for the logged-in student (+ display fields). */
+/** One row from `bookings` for the logged-in student (+ display fields). */
 export type MyBooking = {
     id: string
     session_id: string
@@ -61,7 +61,7 @@ export type SessionContextValue = {
     showTradingActivity: boolean
     userEmail: string | null
     myBookings: MyBooking[]
-    /** After successful client insert into `tradingbookings`: update sessions + append local booking row. */
+    /** Optimistic UI after reserve (optional; refresh from API is preferred). */
     applyReserveSuccess: (args: {
         sessionId: string
         bookedSlots: number
@@ -74,6 +74,17 @@ export type SessionContextValue = {
     cancelMyBooking: (bookingId: string, sessionId: string) => Promise<{ ok: boolean; error?: string }>
     /** False until client finished loading sessions/bookings from Supabase (no server RSC queries). */
     dashboardDataReady: boolean
+    /** Re-fetch sessions/bookings from Supabase (e.g. after a successful reserve). */
+    refreshDashboardSessions: () => Promise<void>
+    /** Which session is currently reserving (dashboard); null if idle. */
+    bookingLoadingSessionId: string | null
+    setBookingLoadingSessionId: Dispatch<SetStateAction<string | null>>
+    /** Inline banner above session lists (errors). */
+    sessionBookingError: string | null
+    setSessionBookingError: Dispatch<SetStateAction<string | null>>
+    /** Inline banner above session lists (success). */
+    sessionBookingSuccess: string | null
+    setSessionBookingSuccess: Dispatch<SetStateAction<string | null>>
 }
 
 const SessionContext = createContext<SessionContextValue | null>(null)
@@ -100,6 +111,15 @@ export function SessionProvider({
     const [activeTab, setActiveTab] = useState<TabKey>("today")
     const [now, setNow] = useState(() => new Date())
     const [updatedSessionIds, setUpdatedSessionIds] = useState<string[]>([])
+    const [bookingLoadingSessionId, setBookingLoadingSessionId] = useState<string | null>(null)
+    const [sessionBookingError, setSessionBookingError] = useState<string | null>(null)
+    const [sessionBookingSuccess, setSessionBookingSuccess] = useState<string | null>(null)
+
+    useEffect(() => {
+        if (!sessionBookingSuccess) return
+        const t = window.setTimeout(() => setSessionBookingSuccess(null), 4200)
+        return () => window.clearTimeout(t)
+    }, [sessionBookingSuccess])
 
     useEffect(() => {
         const t = setInterval(() => setNow(new Date()), 30_000)
@@ -126,7 +146,7 @@ export function SessionProvider({
                 setBookingAccess({
                     canBook,
                     message: canBook ? null : "No tienes acceso activo. Compra acceso para reservar cupos.",
-                    actor: { userId: null, email },
+                    actor: { email },
                 })
                 setSessions(nextSessions)
                 setMyBookings([...nextMine].sort(sortMyBookings))
@@ -136,7 +156,7 @@ export function SessionProvider({
                     setBookingAccess({
                         canBook: false,
                         message: "No pudimos cargar el calendario. Recarga la página.",
-                        actor: { userId: null, email },
+                        actor: { email },
                     })
                 }
             } finally {
@@ -149,6 +169,24 @@ export function SessionProvider({
         }
     }, [initialSessions.length, initialUserEmail])
 
+    const refreshDashboardSessions = useCallback(async () => {
+        const email = initialUserEmail?.trim().toLowerCase() ?? ""
+        if (!email) return
+        try {
+            const { sessions: nextSessions, myBookings: nextMine, canBook } =
+                await loadDashboardFromClient(supabase, email)
+            setBookingAccess({
+                canBook,
+                message: canBook ? null : "No tienes acceso activo. Compra acceso para reservar cupos.",
+                actor: { email },
+            })
+            setSessions(nextSessions)
+            setMyBookings([...nextMine].sort(sortMyBookings))
+        } catch (e) {
+            console.error("[SessionProvider] refreshDashboardSessions failed", e)
+        }
+    }, [initialUserEmail])
+
     const applyReserveSuccess = useCallback(
         (args: {
             sessionId: string
@@ -159,16 +197,10 @@ export function SessionProvider({
             sessionHour: string | null
             sessionDate: string | null
         }) => {
-            const { sessionId, bookedSlots, bookingId, email, sessionDay, sessionHour, sessionDate } = args
+            const { sessionId, bookingId, email, sessionDay, sessionHour, sessionDate } = args
             setSessions((prev) =>
                 prev.map((s) =>
-                    s.id === sessionId
-                        ? {
-                              ...s,
-                              booked_slots: bookedSlots,
-                              isBookedByUser: true,
-                          }
-                        : s
+                    s.id === sessionId ? { ...s, isBookedByUser: true } : s
                 )
             )
             if (bookingId && email) {
@@ -192,43 +224,34 @@ export function SessionProvider({
     )
 
     const cancelMyBooking = useCallback(
-        async (bookingId: string, sessionId: string) => {
+        async (bookingId: string, _sessionId: string) => {
             const email = initialUserEmail?.trim().toLowerCase() ?? ""
             if (!email) {
                 return { ok: false as const, error: "Sesión no disponible" }
             }
             try {
-                const { data, error } = await supabase
-                    .from("tradingbookings")
-                    .delete()
-                    .eq("id", bookingId)
-                    .eq("email", email)
-                    .select("id")
-                if (error) {
-                    console.error("[cancelMyBooking]", error)
-                    return { ok: false as const, error: error.message || "No se pudo cancelar" }
+                const res = await fetch("/api/cancel-booking", {
+                    method: "POST",
+                    credentials: "include",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ booking_id: bookingId }),
+                })
+                if (!res.ok) {
+                    const data = (await res.json().catch(() => ({}))) as { error?: string }
+                    console.error("[cancelMyBooking]", res.status, data)
+                    return {
+                        ok: false as const,
+                        error: data.error || "No se pudo cancelar",
+                    }
                 }
-                if (!data?.length) {
-                    return { ok: false as const, error: "Reserva no encontrada." }
-                }
-                setSessions((prev) =>
-                    prev.map((s) =>
-                        s.id === sessionId
-                            ? {
-                                  ...s,
-                                  booked_slots: Math.max(0, (s.booked_slots ?? 0) - 1),
-                                  isBookedByUser: false,
-                              }
-                            : s
-                    )
-                )
-                setMyBookings((prev) => prev.filter((x) => x.id !== bookingId))
+                await refreshDashboardSessions()
                 return { ok: true as const }
-            } catch {
+            } catch (e) {
+                console.error("[cancelMyBooking]", e)
                 return { ok: false as const, error: "No se pudo cancelar" }
             }
         },
-        [initialUserEmail]
+        [initialUserEmail, refreshDashboardSessions]
     )
 
     const handleRealtimeEvent = useCallback(
@@ -248,24 +271,21 @@ export function SessionProvider({
                     return prev.filter((s) => s.id !== event.sessionId)
                 }
 
-                if (event.type === "DELETE" && event.scope === "tradingbookings") {
+                if (event.type === "DELETE" && event.scope === "bookings") {
                     return prev.map((s) => {
                         if (s.id !== event.sessionId) return s
-                        const nextBooked = Math.max(0, (s.booked_slots ?? 0) - 1)
                         return {
                             ...s,
-                            booked_slots: nextBooked,
                             ...(bookingIsMine ? { isBookedByUser: false } : {}),
                         }
                     })
                 }
 
-                if (event.type === "INSERT" && event.scope === "tradingbookings") {
+                if (event.type === "INSERT" && event.scope === "bookings") {
                     return prev.map((s) => {
                         if (s.id !== event.sessionId) return s
                         return {
                             ...s,
-                            booked_slots: (s.booked_slots ?? 0) + 1,
                             ...(bookingIsMine ? { isBookedByUser: true } : {}),
                         }
                     })
@@ -280,7 +300,7 @@ export function SessionProvider({
                     return prev
                 }
 
-                if (event.type === "UPDATE" && event.scope === "tradingbookings") {
+                if (event.type === "UPDATE" && event.scope === "bookings") {
                     return prev
                 }
 
@@ -298,13 +318,13 @@ export function SessionProvider({
                 })
             })
 
-            if (event.type === "DELETE" && event.scope === "tradingbookings" && bookingIsMine) {
+            if (event.type === "DELETE" && event.scope === "bookings" && bookingIsMine) {
                 setMyBookings((p) => {
                     if (event.bookingId) return p.filter((x) => x.id !== event.bookingId)
                     return p.filter((x) => x.session_id !== event.sessionId)
                 })
             }
-            if (event.type === "INSERT" && event.scope === "tradingbookings" && bookingIsMine && initialUserEmail) {
+            if (event.type === "INSERT" && event.scope === "bookings" && bookingIsMine && initialUserEmail) {
                 setMyBookings((prev) => {
                     if (prev.some((x) => x.session_id === event.sessionId)) return prev
                     const bid =
@@ -366,6 +386,13 @@ export function SessionProvider({
             applyReserveSuccess,
             cancelMyBooking,
             dashboardDataReady,
+            refreshDashboardSessions,
+            bookingLoadingSessionId,
+            setBookingLoadingSessionId,
+            sessionBookingError,
+            setSessionBookingError,
+            sessionBookingSuccess,
+            setSessionBookingSuccess,
         }),
         [
             sessions,
@@ -382,6 +409,10 @@ export function SessionProvider({
             applyReserveSuccess,
             cancelMyBooking,
             dashboardDataReady,
+            refreshDashboardSessions,
+            bookingLoadingSessionId,
+            sessionBookingError,
+            sessionBookingSuccess,
         ]
     )
 

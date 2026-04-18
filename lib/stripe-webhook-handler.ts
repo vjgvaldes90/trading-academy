@@ -1,6 +1,32 @@
 import Stripe from "stripe"
 import { Resend } from "resend"
 import { createSupabaseServiceRoleClient } from "@/lib/access"
+import { computeRenewalAccessExpiresAtIso } from "@/lib/studentSubscriptionRenewal"
+
+async function resolveInvoiceCustomerEmail(
+    stripe: Stripe,
+    invoice: Stripe.Invoice
+): Promise<string | null> {
+    const direct = invoice.customer_email?.trim().toLowerCase()
+    if (direct) return direct
+
+    const c = invoice.customer
+    const customerId =
+        typeof c === "string" && c.trim()
+            ? c
+            : c && typeof c === "object" && "deleted" in c && (c as Stripe.DeletedCustomer).deleted
+              ? null
+              : c && typeof c === "object" && "id" in c && typeof (c as { id: string }).id === "string"
+                ? (c as { id: string }).id
+                : null
+
+    if (!customerId) return null
+
+    const customer = await stripe.customers.retrieve(customerId)
+    if (customer.deleted) return null
+    const em = "email" in customer ? customer.email?.trim().toLowerCase() : ""
+    return em || null
+}
 
 function escapeHtml(text: string): string {
     return text
@@ -86,12 +112,15 @@ export async function handleStripeWebhook(req: Request): Promise<Response> {
             const accessCode = Math.random().toString(36).substring(2, 8).toUpperCase()
 
             const supabase = createSupabaseServiceRoleClient()
+
             const { data: savedRow, error: dbErr } = await supabase
                 .from("trading_students")
                 .upsert(
                     {
                         email,
                         access_code: accessCode,
+                        access_type: "paid",
+                        is_active: true,
                     },
                     { onConflict: "email" }
                 )
@@ -154,6 +183,76 @@ export async function handleStripeWebhook(req: Request): Promise<Response> {
             console.log("✅ Email enviado")
         } catch (error) {
             console.error("❌ Error enviando email:", error)
+        }
+    }
+
+    if (event.type === "invoice.payment_succeeded") {
+        const invoice = event.data.object as Stripe.Invoice
+        try {
+            const email = await resolveInvoiceCustomerEmail(stripe, invoice)
+            if (!email) {
+                console.warn("[stripe-webhook] invoice.payment_succeeded: no customer email", {
+                    invoiceId: invoice.id,
+                })
+            } else {
+                const supabase = createSupabaseServiceRoleClient()
+                const { data: row, error: selErr } = await supabase
+                    .from("trading_students")
+                    .select("access_expires_at")
+                    .eq("email", email)
+                    .maybeSingle()
+
+                if (selErr) {
+                    console.error("[stripe-webhook] invoice.payment_succeeded select:", selErr)
+                } else {
+                    const accessExpiresAt = computeRenewalAccessExpiresAtIso(
+                        (row as { access_expires_at?: string | null } | null)?.access_expires_at
+                    )
+                    const { error: upErr } = await supabase
+                        .from("trading_students")
+                        .update({
+                            is_active: true,
+                            access_expires_at: accessExpiresAt,
+                        })
+                        .eq("email", email)
+
+                    if (upErr) {
+                        console.error("[stripe-webhook] invoice.payment_succeeded update:", upErr)
+                    } else {
+                        console.log("[stripe-webhook] access extended after invoice payment", { email })
+                    }
+                }
+            }
+        } catch (err) {
+            console.error("[stripe-webhook] invoice.payment_succeeded handler:", err)
+        }
+    }
+
+    if (event.type === "invoice.payment_failed") {
+        const invoice = event.data.object as Stripe.Invoice
+        try {
+            const email = await resolveInvoiceCustomerEmail(stripe, invoice)
+            if (!email) {
+                console.warn("[stripe-webhook] invoice.payment_failed: no customer email", {
+                    invoiceId: invoice.id,
+                })
+            } else {
+                const supabase = createSupabaseServiceRoleClient()
+                const { error: upErr } = await supabase
+                    .from("trading_students")
+                    .update({ is_active: false })
+                    .eq("email", email)
+
+                if (upErr) {
+                    console.error("[stripe-webhook] invoice.payment_failed update:", upErr)
+                } else {
+                    console.log("[stripe-webhook] access deactivated after failed invoice payment", {
+                        email,
+                    })
+                }
+            }
+        } catch (err) {
+            console.error("[stripe-webhook] invoice.payment_failed handler:", err)
         }
     }
 

@@ -4,28 +4,33 @@ import { createClient } from "@supabase/supabase-js"
 export const runtime = "nodejs"
 
 const supabase = createClient(
-  process.env.SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
+    process.env.SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
 export async function POST(req: Request) {
-  const { email } = await req.json()
+    try {
+        const body = (await req.json().catch(() => null)) as { email?: unknown } | null
+        const raw = typeof body?.email === "string" ? body.email.trim().toLowerCase() : ""
+        if (!raw) {
+            return NextResponse.json({ error: "Email required" }, { status: 400 })
+        }
 
-  // 🔑 generar código
-  const accessCode = Math.random()
-    .toString(36)
-    .substring(2, 8)
-    .toUpperCase()
+        const accessCode = Math.random().toString(36).substring(2, 8).toUpperCase()
 
-  const { error } = await supabase.from("tradingbookings").insert({
-    email,
-    access_code: accessCode,
-    paid: true,
-  })
+        const { error } = await supabase.from("trading_students").upsert(
+            { email: raw, access_code: accessCode, access_type: "paid", is_active: true },
+            { onConflict: "email" }
+        )
 
-  if (error) {
-    return NextResponse.json({ error: "Error guardando" }, { status: 500 })
-  }
+        if (error) {
+            console.error("[create-user]", error)
+            return NextResponse.json({ error: "Error guardando" }, { status: 500 })
+        }
 
-  return NextResponse.json({ accessCode })
+        return NextResponse.json({ accessCode })
+    } catch (e) {
+        console.error("[create-user]", e)
+        return NextResponse.json({ error: "Error interno" }, { status: 500 })
+    }
 }

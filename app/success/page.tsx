@@ -24,6 +24,7 @@ function SuccessPageContent() {
             try {
                 const res = await fetch("/api/get-session", {
                     method: "POST",
+                    credentials: "include",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ session_id: sessionId }),
                 })

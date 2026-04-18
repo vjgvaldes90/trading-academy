@@ -1,9 +1,9 @@
 .wrap {
     width: 100%;
     padding: var(--ds-3) var(--ds-4);
-    background: var(--ds-elevated);
-    border-bottom: 1px solid var(--ds-border-subtle);
-    box-shadow: var(--ds-shadow-sm);
+    background: linear-gradient(180deg, #0f172a 0%, #0b0f1a 100%);
+    border-bottom: 1px solid rgba(59, 130, 246, 0.2);
+    box-shadow: 0 8px 20px rgba(37, 99, 235, 0.12);
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -11,11 +11,12 @@
 }
 
 .title {
-    color: var(--ds-text);
+    color: #60a5fa;
     font-weight: 700;
     font-size: 1.0625rem;
     letter-spacing: -0.02em;
     flex-shrink: 0;
+    filter: drop-shadow(0 0 10px rgba(59, 130, 246, 0.5));
 }
 
 .right {
@@ -45,8 +46,8 @@
     padding: 0.5rem 0.875rem;
     border-radius: var(--ds-r-full);
     border: 1px solid var(--ds-border);
-    background: var(--ds-surface);
-    color: var(--ds-text-secondary);
+    background: rgba(55, 65, 81, 0.8);
+    color: #e2e8f0;
     font-size: 0.8125rem;
     font-weight: 600;
     cursor: pointer;
@@ -55,12 +56,12 @@
         border-color 0.15s ease,
         box-shadow 0.15s ease,
         transform 0.12s ease;
-    box-shadow: var(--ds-shadow-card);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.25);
 }
 
 .logout:hover {
-    background: var(--ds-surface-hover);
-    border-color: var(--ds-border-strong);
+    background: rgba(75, 85, 99, 0.95);
+    border-color: rgba(59, 130, 246, 0.3);
     transform: translateY(-1px);
     box-shadow: var(--ds-shadow-sm);
 }

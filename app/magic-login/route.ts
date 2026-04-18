@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { createSupabaseServiceRoleClient } from "@/lib/access"
 import { setAuthCookiesForPaidUser } from "@/lib/authCookies"
-import { emailHasPaid } from "@/lib/hasPaid"
+import { emailAcademyAccessEvaluation } from "@/lib/hasPaid"
 import { consumeMagicLoginToken } from "@/lib/magicLoginToken"
 import { ensureTradingStudentByEmail, isDashboardProfileComplete } from "@/lib/tradingStudents"
 
@@ -30,11 +30,15 @@ export async function GET(req: Request) {
 
     const email = result.email.trim().toLowerCase()
     console.log("✅ token valid", { email })
-    const paid = await emailHasPaid(supabase, email)
-    console.log("[magic-login] hasPaid check", { email, hasPaid: paid })
+    const accessEv = await emailAcademyAccessEvaluation(supabase, email)
+    console.log("[magic-login] academy access check", { email, ok: accessEv.ok, reason: accessEv.reason })
 
-    if (!paid) {
-        console.log("[magic-login] unpaid → /pricing")
+    if (!accessEv.ok) {
+        if (accessEv.reason === "expired") {
+            console.log("[magic-login] subscription expired → /expired")
+            return NextResponse.redirect(new URL("/expired", url))
+        }
+        console.log("[magic-login] no academy access → /pricing")
         return NextResponse.redirect(new URL("/pricing", url))
     }
 

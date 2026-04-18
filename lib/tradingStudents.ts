@@ -8,6 +8,9 @@ export type TradingStudentRow = {
     phone: string | null
     profile_completed: boolean | null
     access_code?: string | null
+    access_type?: string | null
+    is_active?: boolean | null
+    access_expires_at?: string | null
 }
 
 export async function ensureTradingStudentByEmail(
@@ -17,7 +20,7 @@ export async function ensureTradingStudentByEmail(
     const normalized = email.trim().toLowerCase()
     const { data, error } = await admin
         .from("trading_students")
-        .select("id, email, first_name, last_name, phone, profile_completed")
+        .select("id, email, first_name, last_name, phone, profile_completed, access_type, is_active, access_expires_at")
         .eq("email", normalized)
         .limit(1)
         .maybeSingle()
@@ -29,8 +32,10 @@ export async function ensureTradingStudentByEmail(
         .insert({
             email: normalized,
             profile_completed: false,
+            access_type: "paid",
+            is_active: true,
         })
-        .select("id, email, first_name, last_name, phone, profile_completed")
+        .select("id, email, first_name, last_name, phone, profile_completed, access_type, is_active, access_expires_at")
         .single()
 
     if (insertErr || !inserted) {

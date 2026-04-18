@@ -32,15 +32,15 @@ export default function NextSessionCard() {
                 style={{
                     borderRadius: 12,
                     padding: "var(--ds-4)",
-                    background: "var(--ds-surface-hover)",
-                    border: "1px solid var(--ds-border-strong)",
-                    boxShadow: "var(--ds-shadow-sm)",
+                    background: "linear-gradient(145deg, #111827 0%, #0B0F1A 100%)",
+                    border: "1px solid rgba(59,130,246,0.2)",
+                    boxShadow: "0 20px 30px -20px rgba(59,130,246,0.25)",
                 }}
             >
                 <p
                     style={{
                         margin: "0 0 var(--ds-3)",
-                        color: "var(--ds-text)",
+                        color: "#f8fafc",
                         fontSize: "1.0625rem",
                         fontWeight: 700,
                         lineHeight: 1.35,
@@ -60,12 +60,13 @@ export default function NextSessionCard() {
                             alignItems: "center",
                             padding: "0.75rem 1.25rem",
                             borderRadius: 12,
-                            background: "linear-gradient(135deg, var(--ds-accent), #2563eb)",
+                            background: "linear-gradient(90deg, #3b82f6 0%, #1d4ed8 100%)",
                             color: "#fff",
                             fontWeight: 700,
                             fontSize: "0.9375rem",
                             textDecoration: "none",
-                            boxShadow: "var(--ds-shadow-card)",
+                            boxShadow: "0 10px 24px rgba(59,130,246,0.3)",
+                            transition: "all 0.2s ease",
                         }}
                     >
                         Unirse
@@ -80,11 +81,12 @@ export default function NextSessionCard() {
                             borderRadius: 12,
                             border: "none",
                             cursor: "pointer",
-                            background: "linear-gradient(135deg, var(--ds-accent), #2563eb)",
+                            background: "linear-gradient(90deg, #3b82f6 0%, #1d4ed8 100%)",
                             color: "#fff",
                             fontWeight: 700,
                             fontSize: "0.9375rem",
-                            boxShadow: "var(--ds-shadow-card)",
+                            boxShadow: "0 10px 24px rgba(59,130,246,0.3)",
+                            transition: "all 0.2s ease",
                         }}
                     >
                         Ver horarios

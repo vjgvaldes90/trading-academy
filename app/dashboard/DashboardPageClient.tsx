@@ -2,13 +2,19 @@
 
 import BookSessionSection from "@/components/dashboard/focused/BookSessionSection"
 import MyBookingsSection from "@/components/dashboard/focused/MyBookingsSection"
+import StudentNotificationsSection from "@/components/dashboard/focused/StudentNotificationsSection"
 import NextSessionCard from "@/components/dashboard/focused/NextSessionCard"
 import ResourcesSection from "@/components/dashboard/focused/ResourcesSection"
 import DashboardHeader from "@/components/dashboard/DashboardHeader"
 import dashboardTheme from "@/components/dashboard/dashboardTheme.module.css"
 import { LearningAssistProvider } from "@/context/LearningAssistContext"
 import { SessionProvider, useSession } from "@/context/SessionContext"
-import { persistStudent, readStoredStudent, resolveDashboardStudent } from "@/lib/studentLocalStorage"
+import {
+    clearStoredStudent,
+    persistStudent,
+    readStoredStudent,
+    resolveDashboardStudent,
+} from "@/lib/studentLocalStorage"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 
@@ -49,6 +55,7 @@ function DashboardShell({ welcomeName }: { welcomeName: string }) {
                         paddingBottom: "var(--ds-5)",
                     }}
                 >
+                    <StudentNotificationsSection />
                     <MyBookingsSection />
                     <NextSessionCard />
                     <BookSessionSection />
@@ -77,9 +84,45 @@ export default function DashboardPageClient() {
         if (!readStoredStudent()) {
             persistStudent(student)
         }
-        setWelcomeName(student.name)
-        setUserEmail(student.email.trim().toLowerCase())
-        setReady(true)
+
+        const email = student.email.trim().toLowerCase()
+        let cancelled = false
+
+        void (async () => {
+            try {
+                const res = await fetch(
+                    `/api/student/access?user_email=${encodeURIComponent(email)}`,
+                    { credentials: "include", cache: "no-store" }
+                )
+                const data = (await res.json().catch(() => ({}))) as {
+                    ok?: unknown
+                    message?: string
+                    reason?: string
+                }
+                if (cancelled) return
+                if (data.ok !== true) {
+                    if (data.reason === "expired") {
+                        router.replace("/expired")
+                        return
+                    }
+                    clearStoredStudent()
+                    router.replace("/login?redirect=/dashboard&error=access_denied")
+                    return
+                }
+                setWelcomeName(student.name)
+                setUserEmail(email)
+                setReady(true)
+            } catch {
+                if (!cancelled) {
+                    clearStoredStudent()
+                    router.replace("/login?redirect=/dashboard&error=access_denied")
+                }
+            }
+        })()
+
+        return () => {
+            cancelled = true
+        }
     }, [router])
 
     if (!ready || !userEmail) {
@@ -98,7 +141,7 @@ export default function DashboardPageClient() {
             initialBookingAccess={{
                 canBook: false,
                 message: null,
-                actor: { userId: null, email: userEmail },
+                actor: { email: userEmail },
             }}
             initialUserEmail={userEmail}
             initialMyBookings={[]}

@@ -15,7 +15,6 @@ type LoginCardProps = {
     setEmail: (value: string) => void
     code: string
     setCode: (value: string) => void
-    handleCheckout: () => void
     handleAccess: () => void | Promise<void>
     accessError?: string | null
     onClearAccessError?: () => void
@@ -30,7 +29,6 @@ export default function LoginCard({
     setEmail,
     code,
     setCode,
-    handleCheckout,
     handleAccess,
     accessError,
     onClearAccessError,
@@ -80,11 +78,7 @@ export default function LoginCard({
                             exit={{ opacity: 0, y: -25 }}
                             transition={{ duration: 0.3 }}
                         >
-                            <PurchaseForm
-                                email={email}
-                                setEmail={setEmail}
-                                handleCheckout={handleCheckout}
-                            />
+                            <PurchaseForm email={email} setEmail={setEmail} />
                         </motion.div>
                     )}
 

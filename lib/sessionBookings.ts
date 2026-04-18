@@ -2,8 +2,8 @@ import type { SupabaseClient } from "@supabase/supabase-js"
 import type { BookingActor } from "@/lib/access"
 
 /**
- * Tabla `tradingbookings` (service role): fila por reserva de sesión.
- * FK esperada: `session_id` -> `trading_sessions.id`.
+ * `bookings` table (service role): one row per session reservation.
+ * FK: `session_id` → `trading_sessions.id`.
  */
 export async function fetchBookedSessionIdsForActor(
     admin: SupabaseClient,
@@ -13,9 +13,9 @@ export async function fetchBookedSessionIdsForActor(
     if (!email) return []
 
     const { data, error } = await admin
-        .from("tradingbookings")
+        .from("bookings")
         .select("session_id")
-        .eq("email", email)
+        .eq("user_email", email)
     if (error) {
         console.warn("[fetchBookedSessionIdsForActor]", error.message)
         return []
@@ -24,7 +24,7 @@ export async function fetchBookedSessionIdsForActor(
     const ids = new Set<string>()
     for (const row of data ?? []) {
         const sid = typeof (row as { session_id?: unknown }).session_id === "string"
-            ? ((row as { session_id: string }).session_id)
+            ? (row as { session_id: string }).session_id
             : null
         if (sid) ids.add(sid)
     }
@@ -40,10 +40,10 @@ export async function hasUserBookingForSession(
     if (!email) return false
 
     const { data, error } = await admin
-        .from("tradingbookings")
+        .from("bookings")
         .select("id")
         .eq("session_id", sessionId)
-        .eq("email", email)
+        .eq("user_email", email)
         .limit(1)
         .maybeSingle()
     if (error && error.code !== "PGRST116") {
@@ -58,12 +58,18 @@ export async function insertSessionBooking(
     actor: BookingActor
 ): Promise<{ ok: true } | { ok: false; message: string }> {
     const email = actor.email?.trim().toLowerCase() ?? null
-    const row: Record<string, unknown> = { session_id: sessionId }
-    if (email) row.email = email
-    const { error } = await admin.from("tradingbookings").insert(row)
+    if (!email) {
+        return { ok: false, message: "Email requerido." }
+    }
+    const { error } = await admin.from("bookings").insert({ session_id: sessionId, user_email: email })
     if (error) {
         console.error("[insertSessionBooking]", error)
-        return { ok: false, message: error.message.includes("duplicate") ? "Ya tenías esta reserva." : "No se pudo registrar la reserva." }
+        return {
+            ok: false,
+            message: error.code === "23505" || /duplicate|unique/i.test(error.message ?? "")
+                ? "Ya tenías esta reserva."
+                : "No se pudo registrar la reserva.",
+        }
     }
     return { ok: true }
 }

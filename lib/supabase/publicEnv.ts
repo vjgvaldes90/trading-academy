@@ -43,7 +43,7 @@ export function requireBrowserSupabaseEnv(): SupabasePublicEnv {
     return { url, anonKey }
 }
 
-/** Para `createServerClient` en servidor (RSC, API con cookies, etc.). */
+/** Para helpers de servidor que consumen URL + anon key públicas. */
 export function requireServerSupabasePublicEnv(): SupabasePublicEnv {
     const url =
         process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() ||
@@ -66,7 +66,7 @@ export function requireServerSupabasePublicEnv(): SupabasePublicEnv {
     if (!url || !anonKey) {
         throw new Error(
             [
-                "Supabase (servidor): faltan URL y/o clave anon para createServerClient.",
+                "Supabase (servidor): faltan URL y/o clave anon para clientes de servidor.",
                 "En trading-academy/.env.local define:",
                 "  NEXT_PUBLIC_SUPABASE_URL y NEXT_PUBLIC_SUPABASE_ANON_KEY (recomendado),",
                 "o SUPABASE_URL + SUPABASE_ANON_KEY (solo servidor, no llegan al navegador).",

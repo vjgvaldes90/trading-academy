@@ -1,0 +1,78 @@
+import { NextResponse } from "next/server"
+import { createSupabaseServiceRoleClient } from "@/lib/access"
+
+export const runtime = "nodejs"
+
+export async function GET() {
+    try {
+        const supabase = createSupabaseServiceRoleClient()
+
+        const { data: sessions, error: sessionsErr } = await supabase
+            .from("sessions")
+            .select("*")
+            .eq("status", "active")
+
+        if (sessionsErr) {
+            console.error("[api/admin/sessions] sessions query error", sessionsErr)
+            return NextResponse.json(
+                { error: "Failed to load admin sessions", details: sessionsErr.message },
+                { status: 500 }
+            )
+        }
+
+        const { data: bookings, error: bookingsErr } = await supabase
+            .from("bookings")
+            .select("session_id")
+            .eq("status", "confirmed")
+
+        if (bookingsErr) {
+            console.error("[api/admin/sessions] bookings query error", bookingsErr)
+            return NextResponse.json(
+                { error: "Failed to load admin sessions", details: bookingsErr.message },
+                { status: 500 }
+            )
+        }
+
+        const bookedCountBySession = new Map<string, number>()
+        for (const row of bookings ?? []) {
+            const sessionId =
+                typeof (row as { session_id?: unknown }).session_id === "string"
+                    ? (row as { session_id: string }).session_id
+                    : null
+            if (!sessionId) continue
+            bookedCountBySession.set(sessionId, (bookedCountBySession.get(sessionId) ?? 0) + 1)
+        }
+
+        const payload = (sessions ?? []).map((row) => {
+            const r = row as Record<string, unknown>
+            const id = typeof r.id === "string" ? r.id : ""
+            return {
+                id,
+                date:
+                    typeof r.date === "string"
+                        ? r.date
+                        : typeof r.session_date === "string"
+                          ? r.session_date
+                          : null,
+                time:
+                    typeof r.time === "string"
+                        ? r.time
+                        : typeof r.session_hour === "string"
+                          ? r.session_hour
+                          : null,
+                capacity: typeof r.capacity === "number" ? r.capacity : 0,
+                booked: bookedCountBySession.get(id) ?? 0,
+                status: typeof r.status === "string" ? r.status : "active",
+            }
+        })
+
+        return NextResponse.json(payload)
+    } catch (err: any) {
+        console.error("[api/admin/sessions] GET", err)
+        return NextResponse.json(
+            { error: "Internal error", details: err?.message ?? "Unknown error" },
+            { status: 500 }
+        )
+    }
+}
+
