@@ -4,7 +4,7 @@ import LoginTabs from "./LoginTabs"
 import PurchaseForm from "./PurchaseForm"
 import AccessForm from "./AccessForm"
 import { motion, AnimatePresence } from "framer-motion"
-import { useEffect, useState } from "react"
+import { useEffect } from "react"
 
 export type LoginMode = "buy" | "access"
 
@@ -34,27 +34,24 @@ export default function LoginCard({
     onClearAccessError,
     startOnAccessTab = false,
 }: LoginCardProps) {
-    const [showForm, setShowForm] = useState(true)
-
     useEffect(() => {
         if (!startOnAccessTab) return
         setMode("access")
-        setShowForm(true)
     }, [startOnAccessTab, setMode])
 
     return (
-        <div className="w-full max-w-md space-y-4">
+        <div className="w-full max-w-md space-y-4 rounded-3xl border border-blue-400/20 bg-[#0B1220]/85 p-7 shadow-[0_28px_68px_rgba(2,6,23,0.7)] backdrop-blur-2xl">
 
             {/* 🔥 TITLE */}
-            <h1 className="text-2xl font-bold text-gray-900">
+            <h1 className="text-2xl font-bold text-slate-100">
                 Smart Option Academy
             </h1>
 
             {/* 🔥 SUBTEXT */}
-            <p className="text-gray-500">
+            <p className="text-slate-300">
                 {mode === "buy"
-                    ? "Accede a las sesiones en vivo"
-                    : "Ingresa tu código de acceso"}
+                    ? "Accede a mentoría institucional"
+                    : "Ingresa al ecosistema Smart Option Academy"}
             </p>
 
             {/* 🔥 TABS */}
@@ -62,54 +59,51 @@ export default function LoginCard({
                 mode={mode}
                 setMode={(value) => {
                     setMode(value)
-                    setShowForm(true)
                 }}
             />
 
             {/* 🔥 FORM (ANIMADO) */}
-            {showForm && (
-                <AnimatePresence mode="wait">
+            <AnimatePresence mode="wait">
 
-                    {mode === "buy" && (
-                        <motion.div
-                            key="buy"
-                            initial={{ opacity: 0, y: 25 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -25 }}
-                            transition={{ duration: 0.3 }}
-                        >
-                            <PurchaseForm email={email} setEmail={setEmail} />
-                        </motion.div>
-                    )}
+                {mode === "buy" && (
+                    <motion.div
+                        key="buy"
+                        initial={{ opacity: 0, y: 25 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -25 }}
+                        transition={{ duration: 0.3 }}
+                    >
+                        <PurchaseForm email={email} setEmail={setEmail} />
+                    </motion.div>
+                )}
 
-                    {mode === "access" && (
-                        <motion.div
-                            key="access"
-                            initial={{ opacity: 0, y: 25 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -25 }}
-                            transition={{ duration: 0.3 }}
-                        >
-                            <AccessForm
-                                code={code}
-                                setCode={setCode}
-                                handleAccess={handleAccess}
-                                error={accessError}
-                                onClearError={onClearAccessError}
-                            />
-                        </motion.div>
-                    )}
+                {mode === "access" && (
+                    <motion.div
+                        key="access"
+                        initial={{ opacity: 0, y: 25 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -25 }}
+                        transition={{ duration: 0.3 }}
+                    >
+                        <AccessForm
+                            code={code}
+                            setCode={setCode}
+                            handleAccess={handleAccess}
+                            error={accessError}
+                            onClearError={onClearAccessError}
+                        />
+                    </motion.div>
+                )}
 
-                </AnimatePresence>
-            )}
+            </AnimatePresence>
 
 
             {/* 🔥 CTA EXTRA */}
-            <p className="text-sm text-gray-500 text-center pt-2">
+            <p className="pt-2 text-center text-sm text-slate-400">
                 ¿Aún no tienes acceso?{" "}
                 <span
                     onClick={() => setMode("buy")}
-                    className="text-green-600 font-semibold cursor-pointer"
+                    className="cursor-pointer font-semibold text-blue-300"
                 >
                     Obtener acceso
                 </span>

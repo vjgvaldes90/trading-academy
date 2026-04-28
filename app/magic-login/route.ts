@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { createSupabaseServiceRoleClient } from "@/lib/access"
 import { setAuthCookiesForPaidUser } from "@/lib/authCookies"
+import { attachSingleDeviceSessionCookies } from "@/lib/studentSingleSession"
 import { emailAcademyAccessEvaluation } from "@/lib/hasPaid"
 import { consumeMagicLoginToken } from "@/lib/magicLoginToken"
 import { ensureTradingStudentByEmail, isDashboardProfileComplete } from "@/lib/tradingStudents"
@@ -38,6 +39,10 @@ export async function GET(req: Request) {
             console.log("[magic-login] subscription expired → /expired")
             return NextResponse.redirect(new URL("/expired", url))
         }
+        if (accessEv.reason === "inactive") {
+            console.log("[magic-login] access revoked → /blocked")
+            return NextResponse.redirect(new URL("/blocked", url))
+        }
         console.log("[magic-login] no academy access → /pricing")
         return NextResponse.redirect(new URL("/pricing", url))
     }
@@ -52,6 +57,7 @@ export async function GET(req: Request) {
 
     const response = NextResponse.redirect(new URL(destination, url))
     setAuthCookiesForPaidUser(response, email)
+    await attachSingleDeviceSessionCookies(response, email)
     console.log("✅ session created", { email })
     console.log("➡️ redirecting", { destination })
     console.log("✅ success login", { email, destination })

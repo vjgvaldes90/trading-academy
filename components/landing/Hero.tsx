@@ -18,14 +18,15 @@ export default function Hero() {
       </video>
 
       {/* 🌑 OVERLAY (clave para que se lea el texto) */}
-      <div className="absolute inset-0 bg-black/70"></div>
+      <div className="absolute inset-0 bg-gradient-to-tr from-[#020617]/90 via-black/70 to-[#0B1120]/75"></div>
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_20%,rgba(59,130,246,0.32),transparent_40%),radial-gradient(circle_at_80%_80%,rgba(239,68,68,0.2),transparent_45%)]" />
 
       {/* 🧠 CONTENIDO */}
       <div className="relative z-10 max-w-4xl px-6">
 
         {/* 🔥 HOOK */}
         <motion.h1
-          className="text-4xl md:text-6xl font-bold leading-tight mb-6"
+          className="mb-6 text-4xl font-bold leading-tight text-slate-100 md:text-6xl"
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
         >
@@ -34,7 +35,7 @@ export default function Hero() {
 
         {/* 💥 SUBTEXTO */}
         <motion.p
-          className="text-lg md:text-xl text-gray-300 mb-8"
+          className="mb-8 text-lg text-slate-300 md:text-xl"
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
@@ -46,7 +47,7 @@ export default function Hero() {
         {/* 💰 CTA */}
         <motion.a
           href="/login"
-          className="inline-block bg-green-500 text-black px-8 py-4 rounded-xl text-lg font-bold hover:bg-green-400 transition transform hover:scale-105"
+          className="inline-block rounded-xl border border-blue-300/25 bg-gradient-to-r from-blue-500 to-blue-700 px-8 py-4 text-lg font-bold text-white shadow-[0_14px_34px_rgba(37,99,235,0.4)] transition hover:scale-105 hover:brightness-110"
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
@@ -55,7 +56,7 @@ export default function Hero() {
         </motion.a>
 
         {/* 🧲 PRUEBA SOCIAL */}
-        <p className="text-sm text-gray-400 mt-4">
+        <p className="mt-4 text-sm text-slate-400">
           +100 estudiantes ya están aprendiendo en vivo
         </p>
 

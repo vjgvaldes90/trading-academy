@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import Stripe from "stripe"
 import { createClient } from "@supabase/supabase-js"
 import { setAuthCookiesForPaidUser } from "@/lib/authCookies"
+import { attachSingleDeviceSessionCookies } from "@/lib/studentSingleSession"
 import { computeRenewalAccessExpiresAtIso } from "@/lib/studentSubscriptionRenewal"
 
 export const runtime = "nodejs"
@@ -78,5 +79,6 @@ export async function POST(req: Request) {
 
     const res = NextResponse.json({ email })
     setAuthCookiesForPaidUser(res, email)
+    await attachSingleDeviceSessionCookies(res, email)
     return res
 }

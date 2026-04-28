@@ -4,14 +4,23 @@ import { useState } from "react"
 
 type CancelSessionConfirmModalProps = {
     open: boolean
-    sessionSummary: string
+    sessionSummary?: string
+    title?: string
+    description?: string
+    confirmText?: string
+    /** Runs after a successful `onConfirm`, before `onClose`. */
+    onAfterConfirm?: () => void | Promise<void>
     onClose: () => void
     onConfirm: () => Promise<void>
 }
 
 export default function CancelSessionConfirmModal({
     open,
-    sessionSummary,
+    sessionSummary = "",
+    title = "Cancel session?",
+    description = "Are you sure? This will notify all students.",
+    confirmText = "Yes, cancel session",
+    onAfterConfirm,
     onClose,
     onConfirm,
 }: CancelSessionConfirmModalProps) {
@@ -25,6 +34,7 @@ export default function CancelSessionConfirmModal({
         setSubmitting(true)
         try {
             await onConfirm()
+            await onAfterConfirm?.()
             onClose()
         } catch (e: unknown) {
             setError(e instanceof Error ? e.message : "Could not cancel session")
@@ -66,14 +76,16 @@ export default function CancelSessionConfirmModal({
                         id="cancel-session-confirm-title"
                         style={{ margin: "0 0 12px", fontSize: "1.1rem", fontWeight: 800, color: "#f8fafc" }}
                     >
-                        Cancel session?
+                        {title}
                     </h2>
                     <p style={{ margin: "0 0 8px", color: "#94a3b8", fontSize: "0.875rem", lineHeight: 1.55 }}>
-                        Are you sure? This will notify all students.
+                        {description}
                     </p>
-                    <p style={{ margin: 0, color: "#cbd5e1", fontSize: "0.8125rem" }}>
-                        <strong style={{ color: "#e2e8f0" }}>{sessionSummary}</strong>
-                    </p>
+                    {sessionSummary ? (
+                        <p style={{ margin: 0, color: "#cbd5e1", fontSize: "0.8125rem" }}>
+                            <strong style={{ color: "#e2e8f0" }}>{sessionSummary}</strong>
+                        </p>
+                    ) : null}
                 </div>
                 {error ? (
                     <p style={{ margin: "0 22px 12px", color: "#f87171", fontSize: "0.875rem" }}>{error}</p>
@@ -120,7 +132,7 @@ export default function CancelSessionConfirmModal({
                             cursor: submitting ? "not-allowed" : "pointer",
                         }}
                     >
-                        {submitting ? "Cancelling…" : "Yes, cancel session"}
+                        {submitting ? "Cancelling…" : confirmText}
                     </button>
                 </div>
             </div>

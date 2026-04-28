@@ -32,6 +32,7 @@ export async function GET(req: Request, context: RouteCtx) {
             .select("id")
             .eq("session_id", sessionId)
             .eq("user_email", userEmail)
+            .eq("status", "confirmed")
             .maybeSingle()
 
         if (bookErr) {

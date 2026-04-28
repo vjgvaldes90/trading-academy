@@ -2,6 +2,7 @@
 
 import type { CSSProperties, FormEvent } from "react"
 import { useEffect, useState } from "react"
+import { DEFAULT_MEET_LINK } from "@/lib/defaultMeetLink"
 
 const inputStyle: CSSProperties = {
     width: "100%",
@@ -35,6 +36,7 @@ export default function CreateSessionModal({ open, onClose, onSuccess }: CreateS
     const [date, setDate] = useState("")
     const [time, setTime] = useState("")
     const [capacity, setCapacity] = useState("")
+    const [link, setLink] = useState(DEFAULT_MEET_LINK)
     const [submitError, setSubmitError] = useState<string | null>(null)
     const [submitting, setSubmitting] = useState(false)
 
@@ -43,6 +45,7 @@ export default function CreateSessionModal({ open, onClose, onSuccess }: CreateS
         setDate("")
         setTime("")
         setCapacity("")
+        setLink(DEFAULT_MEET_LINK)
         setSubmitError(null)
         setSubmitting(false)
     }, [open])
@@ -73,6 +76,7 @@ export default function CreateSessionModal({ open, onClose, onSuccess }: CreateS
 
         setSubmitting(true)
         try {
+            const linkPayload = link.trim() !== "" ? link.trim() : DEFAULT_MEET_LINK
             const res = await fetch("/api/admin/sessions/create", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -80,6 +84,7 @@ export default function CreateSessionModal({ open, onClose, onSuccess }: CreateS
                     date: date.trim(),
                     time: time.trim(),
                     capacity: cap,
+                    link: linkPayload,
                 }),
                 cache: "no-store",
             })
@@ -194,6 +199,20 @@ export default function CreateSessionModal({ open, onClose, onSuccess }: CreateS
                             value={time}
                             onChange={(e) => setTime(e.target.value)}
                             disabled={submitting}
+                            style={inputStyle}
+                        />
+                    </div>
+                    <div style={{ marginBottom: 18 }}>
+                        <label htmlFor="create-session-link" style={labelStyle}>
+                            Link de la sesión (Meet / Zoom)
+                        </label>
+                        <input
+                            id="create-session-link"
+                            type="text"
+                            value={link}
+                            onChange={(e) => setLink(e.target.value)}
+                            disabled={submitting}
+                            placeholder="https://meet.google.com/xxx-xxx"
                             style={inputStyle}
                         />
                     </div>

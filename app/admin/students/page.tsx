@@ -1,5 +1,6 @@
 "use client"
 
+import CancelSessionConfirmModal from "@/app/admin/CancelSessionConfirmModal"
 import Link from "next/link"
 import { useCallback, useEffect, useState } from "react"
 
@@ -8,6 +9,13 @@ type TradingStudentListRow = {
     email: string
     access_type: string | null
     is_active: boolean | null
+    subscription_id: string | null
+    subscription_status: string | null
+}
+
+type RefundModalTarget = {
+    userId: string
+    refundDisplay: string
 }
 
 /** PATCH body must use values accepted by `/api/admin/students/[email]`. */
@@ -22,6 +30,8 @@ export default function AdminStudentsPage() {
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
     const [busyEmail, setBusyEmail] = useState<string | null>(null)
+    const [refundModal, setRefundModal] = useState<RefundModalTarget | null>(null)
+    const [busyRefundUserId, setBusyRefundUserId] = useState<string | null>(null)
 
     const load = useCallback(async () => {
         setLoading(true)
@@ -43,6 +53,14 @@ export default function AdminStudentsPage() {
                     email: typeof r.email === "string" ? r.email : "",
                     access_type: typeof r.access_type === "string" ? r.access_type : "paid",
                     is_active: r.is_active !== false,
+                    subscription_id:
+                        typeof r.subscription_id === "string" && r.subscription_id.trim()
+                            ? r.subscription_id.trim()
+                            : null,
+                    subscription_status:
+                        typeof r.subscription_status === "string" && r.subscription_status.trim()
+                            ? r.subscription_status.trim()
+                            : null,
                 }))
             )
         } catch (e: unknown) {
@@ -98,6 +116,41 @@ export default function AdminStudentsPage() {
             await load()
         } finally {
             setBusyEmail(null)
+        }
+    }
+
+    const openRefundPreview = async (row: TradingStudentListRow) => {
+        if (!row.id) return
+        setBusyRefundUserId(row.id)
+        setError(null)
+        try {
+            const res = await fetch(
+                `/api/admin/refund-preview?userId=${encodeURIComponent(row.id)}`,
+                { cache: "no-store" }
+            )
+            const data = (await res.json().catch(() => ({}))) as {
+                ok?: unknown
+                refund_display?: string
+                error?: string
+            }
+            if (!res.ok || data.ok !== true) {
+                const msg =
+                    typeof data.error === "string" && data.error.trim()
+                        ? data.error
+                        : "Could not load refund preview"
+                throw new Error(msg)
+            }
+            const refundDisplay =
+                typeof data.refund_display === "string" && data.refund_display.trim()
+                    ? data.refund_display.trim()
+                    : "$0.00"
+            setRefundModal({ userId: row.id, refundDisplay })
+        } catch (e: unknown) {
+            const msg = e instanceof Error ? e.message : "Could not load refund preview"
+            setError(msg)
+            alert(msg)
+        } finally {
+            setBusyRefundUserId(null)
         }
     }
 
@@ -162,6 +215,41 @@ export default function AdminStudentsPage() {
                         <p style={{ margin: 0, padding: "16px", color: "#9ca3af" }}>No students found.</p>
                     ) : (
                         <div style={{ overflowX: "auto" }}>
+                            <CancelSessionConfirmModal
+                                open={refundModal !== null}
+                                title="Cancel subscription?"
+                                description={
+                                    refundModal
+                                        ? `User will be removed immediately. Refund amount: ${refundModal.refundDisplay}`
+                                        : ""
+                                }
+                                confirmText="Yes, cancel subscription"
+                                onClose={() => setRefundModal(null)}
+                                onConfirm={async () => {
+                                    if (!refundModal) return
+                                    const res = await fetch("/api/admin/cancel-subscription", {
+                                        method: "POST",
+                                        headers: { "Content-Type": "application/json" },
+                                        cache: "no-store",
+                                        body: JSON.stringify({ userId: refundModal.userId }),
+                                    })
+                                    const data = (await res.json().catch(() => ({}))) as {
+                                        ok?: unknown
+                                        error?: string
+                                    }
+                                    if (!res.ok || data.ok !== true) {
+                                        const msg =
+                                            typeof data.error === "string" && data.error.trim()
+                                                ? data.error
+                                                : "Cancel failed"
+                                        throw new Error(msg)
+                                    }
+                                }}
+                                onAfterConfirm={async () => {
+                                    alert("Subscription cancelled successfully")
+                                    await load()
+                                }}
+                            />
                             <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 640 }}>
                                 <thead>
                                     <tr style={{ background: "rgba(15,23,42,0.7)" }}>
@@ -187,8 +275,11 @@ export default function AdminStudentsPage() {
                                     {rows.map((r) => {
                                         const key = r.email.trim().toLowerCase()
                                         const busy = busyEmail === key
+                                        const refundBusy = busyRefundUserId === r.id
                                         const active = r.is_active !== false
                                         const currentType = (r.access_type ?? "paid").toLowerCase()
+                                        const showCancelRefund =
+                                            Boolean(r.subscription_id) && r.subscription_status === "active"
                                         const baseOpts = [...ACCESS_TYPE_OPTIONS] as string[]
                                         const typeOptions = baseOpts.includes(currentType)
                                             ? baseOpts
@@ -208,7 +299,7 @@ export default function AdminStudentsPage() {
                                                 <td style={{ padding: "10px 14px" }}>
                                                     <select
                                                         value={currentType}
-                                                        disabled={busy}
+                                                        disabled={busy || refundBusy}
                                                         onChange={(e) => {
                                                             const next = e.target.value
                                                             void patchStudent(r.email, { access_type: next })
@@ -235,64 +326,96 @@ export default function AdminStudentsPage() {
                                                     {active ? "Yes" : "No"}
                                                 </td>
                                                 <td style={{ padding: "10px 14px", textAlign: "right" }}>
-                                                    <label
+                                                    <div
                                                         style={{
                                                             display: "inline-flex",
-                                                            alignItems: "center",
+                                                            flexDirection: "column",
+                                                            alignItems: "flex-end",
                                                             gap: 10,
-                                                            cursor: busy ? "wait" : "pointer",
-                                                            userSelect: "none",
                                                         }}
                                                     >
-                                                        <span style={{ fontSize: "0.75rem", color: "#64748b" }}>
-                                                            {active ? "Active" : "Inactive"}
-                                                        </span>
-                                                        <span
+                                                        <label
                                                             style={{
-                                                                position: "relative",
-                                                                width: 44,
-                                                                height: 24,
-                                                                borderRadius: 9999,
-                                                                background: active
-                                                                    ? "linear-gradient(180deg, #22c55e 0%, #15803d 100%)"
-                                                                    : "rgba(51,65,85,0.95)",
-                                                                boxShadow: "inset 0 1px 2px rgba(0,0,0,0.25)",
-                                                                transition: "background 0.2s ease",
+                                                                display: "inline-flex",
+                                                                alignItems: "center",
+                                                                gap: 10,
+                                                                cursor: busy || refundBusy ? "wait" : "pointer",
+                                                                userSelect: "none",
                                                             }}
                                                         >
-                                                            <input
-                                                                type="checkbox"
-                                                                checked={active}
-                                                                disabled={busy}
-                                                                onChange={() => {
-                                                                    void patchStudent(r.email, { is_active: !active })
-                                                                }}
-                                                                style={{
-                                                                    position: "absolute",
-                                                                    inset: 0,
-                                                                    opacity: 0,
-                                                                    width: "100%",
-                                                                    height: "100%",
-                                                                    cursor: busy ? "wait" : "pointer",
-                                                                    margin: 0,
-                                                                }}
-                                                            />
+                                                            <span style={{ fontSize: "0.75rem", color: "#64748b" }}>
+                                                                {active ? "Active" : "Inactive"}
+                                                            </span>
                                                             <span
-                                                                aria-hidden
                                                                 style={{
-                                                                    position: "absolute",
-                                                                    top: 3,
-                                                                    left: active ? 22 : 3,
-                                                                    width: 18,
-                                                                    height: 18,
-                                                                    borderRadius: "50%",
-                                                                    background: "#f8fafc",
-                                                                    boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
-                                                                    transition: "left 0.2s ease",
+                                                                    position: "relative",
+                                                                    width: 44,
+                                                                    height: 24,
+                                                                    borderRadius: 9999,
+                                                                    background: active
+                                                                        ? "linear-gradient(180deg, #22c55e 0%, #15803d 100%)"
+                                                                        : "rgba(51,65,85,0.95)",
+                                                                    boxShadow: "inset 0 1px 2px rgba(0,0,0,0.25)",
+                                                                    transition: "background 0.2s ease",
                                                                 }}
-                                                            />
-                                                        </span>
-                                                    </label>
+                                                            >
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={active}
+                                                                    disabled={busy || refundBusy}
+                                                                    onChange={() => {
+                                                                        void patchStudent(r.email, {
+                                                                            is_active: !active,
+                                                                        })
+                                                                    }}
+                                                                    style={{
+                                                                        position: "absolute",
+                                                                        inset: 0,
+                                                                        opacity: 0,
+                                                                        width: "100%",
+                                                                        height: "100%",
+                                                                        cursor: busy || refundBusy ? "wait" : "pointer",
+                                                                        margin: 0,
+                                                                    }}
+                                                                />
+                                                                <span
+                                                                    aria-hidden
+                                                                    style={{
+                                                                        position: "absolute",
+                                                                        top: 3,
+                                                                        left: active ? 22 : 3,
+                                                                        width: 18,
+                                                                        height: 18,
+                                                                        borderRadius: "50%",
+                                                                        background: "#f8fafc",
+                                                                        boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
+                                                                        transition: "left 0.2s ease",
+                                                                    }}
+                                                                />
+                                                            </span>
+                                                        </label>
+                                                        {showCancelRefund ? (
+                                                            <button
+                                                                type="button"
+                                                                disabled={busy || refundBusy}
+                                                                onClick={() => void openRefundPreview(r)}
+                                                                style={{
+                                                                    padding: "8px 12px",
+                                                                    borderRadius: 10,
+                                                                    border: "1px solid rgba(248,113,113,0.45)",
+                                                                    background: refundBusy
+                                                                        ? "rgba(100,100,100,0.35)"
+                                                                        : "#b91c1c",
+                                                                    color: "#fff",
+                                                                    fontWeight: 700,
+                                                                    fontSize: "0.75rem",
+                                                                    cursor: busy || refundBusy ? "wait" : "pointer",
+                                                                }}
+                                                            >
+                                                                {refundBusy ? "Loading…" : "Cancel + Refund"}
+                                                            </button>
+                                                        ) : null}
+                                                    </div>
                                                 </td>
                                             </tr>
                                         )

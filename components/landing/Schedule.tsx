@@ -5,18 +5,18 @@ import { motion } from "framer-motion"
 const sessions = [
   {
     day: "Lunes",
-    title: "Análisis del mercado",
-    time: "7:00 PM (EST)",
-  },
-  {
-    day: "Miércoles",
     title: "Trading en vivo",
-    time: "7:00 PM (EST)",
+    time: "9:30 AM (EST)",
   },
   {
-    day: "Viernes",
-    title: "Revisión de operaciones",
-    time: "7:00 PM (EST)",
+    day: "Martes",
+    title: "Trading en vivo",
+    time: "9:30 AM (EST)",
+  },
+  {
+    day: "Miercoles",
+    title: "Trading en vivo",
+    time: "9:30 AM (EST)",
   },
 ]
 
@@ -32,7 +32,7 @@ export default function Schedule() {
       <div className="max-w-5xl mx-auto px-8 text-center">
 
         {/* 🔥 URGENCIA */}
-        <p className="text-red-500 font-semibold mb-4">
+        <p className="mb-4 font-semibold text-red-400">
           ⚠️ Cupos limitados en cada sesión en vivo
         </p>
 
@@ -42,7 +42,7 @@ export default function Schedule() {
         </h2>
 
         {/* 💬 SUBTEXTO */}
-        <p className="text-gray-400 mb-12">
+        <p className="mb-12 text-slate-300">
           Conéctate varias veces por semana y aprende directamente en el mercado real
         </p>
 
@@ -52,17 +52,17 @@ export default function Schedule() {
           {sessions.map((s, i) => (
             <div
               key={i}
-              className="bg-white/5 p-6 rounded-xl border border-white/10"
+              className="rounded-xl border border-blue-400/20 bg-[#0B1220]/90 p-6 shadow-[0_16px_34px_rgba(2,6,23,0.45)]"
             >
-              <h3 className="text-xl font-semibold mb-2 text-green-400">
+              <h3 className="mb-2 text-xl font-semibold text-blue-300">
                 {s.day}
               </h3>
 
-              <p className="text-gray-300">
+              <p className="text-slate-300">
                 {s.title}
               </p>
 
-              <p className="text-sm text-gray-400 mt-2">
+              <p className="mt-2 text-sm text-slate-400">
                 {s.time}
               </p>
             </div>
@@ -73,13 +73,13 @@ export default function Schedule() {
         {/* 💰 CTA */}
         <a
           href="/login"
-          className="inline-block mt-12 bg-green-500 text-black px-8 py-4 rounded-xl text-lg font-bold hover:bg-green-400 transition transform hover:scale-105"
+          className="mt-12 inline-block rounded-xl border border-blue-300/25 bg-gradient-to-r from-blue-500 to-blue-700 px-8 py-4 text-lg font-bold text-white shadow-[0_14px_34px_rgba(37,99,235,0.35)] transition hover:scale-105 hover:brightness-110"
         >
           🚀 Empezar ahora
         </a>
 
         {/* 🕒 NOTA */}
-        <p className="mt-6 text-sm text-gray-500">
+        <p className="mt-6 text-sm text-slate-500">
           *Todos los horarios en hora de Nueva York (EST)
         </p>
 

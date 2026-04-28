@@ -40,3 +40,4 @@ AS $$
         COALESCE(s.session_date, s.date) ASC,
         COALESCE(s.session_hour, s.time) ASC;
 $$;
+

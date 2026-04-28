@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server"
 import { createSupabaseServiceRoleClient } from "@/lib/access"
+import {
+    evaluateAcademyAccess,
+    type TradingStudentAccessRow,
+} from "@/lib/studentAcademyAccess"
 
 export const runtime = "nodejs"
 
@@ -24,6 +28,24 @@ export async function GET(req: Request) {
         }
 
         const supabase = createSupabaseServiceRoleClient()
+
+        const { data: accessRow, error: accessErr } = await supabase
+            .from("trading_students")
+            .select("access_code, access_type, is_active, access_expires_at")
+            .eq("email", userEmail)
+            .maybeSingle()
+        if (accessErr) {
+            console.error("[api/bookings] GET access check", accessErr)
+            return NextResponse.json({ error: "Access check failed" }, { status: 500 })
+        }
+        const accessEv = evaluateAcademyAccess(accessRow as TradingStudentAccessRow | null)
+        if (!accessEv.ok) {
+            return NextResponse.json(
+                { error: "Access denied", reason: accessEv.reason ?? "not_found" },
+                { status: 403 }
+            )
+        }
+
         const { data, error } = await supabase
             .from("bookings")
             .select("id, session_id, user_email, status, created_at")
@@ -70,6 +92,23 @@ export async function POST(req: Request) {
 
         const supabase = createSupabaseServiceRoleClient()
 
+        const { data: accessRow, error: accessErr } = await supabase
+            .from("trading_students")
+            .select("access_code, access_type, is_active, access_expires_at")
+            .eq("email", user_email)
+            .maybeSingle()
+        if (accessErr) {
+            console.error("[api/bookings] POST access check", accessErr)
+            return NextResponse.json({ error: "Access check failed" }, { status: 500 })
+        }
+        const accessEv = evaluateAcademyAccess(accessRow as TradingStudentAccessRow | null)
+        if (!accessEv.ok) {
+            return NextResponse.json(
+                { error: accessEv.reason === "inactive" ? "Access revoked" : "Access denied" },
+                { status: 403 }
+            )
+        }
+
         const nowIso = new Date().toISOString()
         const { data: reservation, error: reservationErr } = await supabase
             .from("reservations")
@@ -97,10 +136,67 @@ export async function POST(req: Request) {
             )
         }
 
+        const sessionId = reservation.session_id
+
+        const { data: existingBooking, error: existingErr } = await supabase
+            .from("bookings")
+            .select("id")
+            .eq("session_id", sessionId)
+            .eq("user_email", user_email)
+            .maybeSingle()
+
+        if (existingErr) {
+            console.error("[api/bookings] POST duplicate booking check", existingErr)
+            return NextResponse.json({ error: "Failed to validate booking" }, { status: 500 })
+        }
+        if (existingBooking?.id) {
+            return NextResponse.json({ error: "Already reserved" }, { status: 409 })
+        }
+
+        const { data: sessionRow, error: sessionErr } = await supabase
+            .from("sessions")
+            .select("id, capacity, booked_slots, status")
+            .eq("id", sessionId)
+            .maybeSingle()
+
+        if (sessionErr) {
+            console.error("[api/bookings] POST session lookup", sessionErr)
+            return NextResponse.json({ error: "Failed to load session" }, { status: 500 })
+        }
+        const sessionStatus = (sessionRow as { status?: unknown }).status
+        if (
+            !sessionRow ||
+            (typeof sessionStatus === "string" && sessionStatus.length > 0 && sessionStatus !== "active")
+        ) {
+            return NextResponse.json({ error: "Session not found" }, { status: 404 })
+        }
+
+        const capacity =
+            typeof (sessionRow as { capacity?: unknown }).capacity === "number" &&
+            Number.isFinite((sessionRow as { capacity: number }).capacity)
+                ? Math.max(0, (sessionRow as { capacity: number }).capacity)
+                : 0
+        if (capacity <= 0) {
+            return NextResponse.json({ error: "Session has no capacity" }, { status: 400 })
+        }
+
+        const { count: bookingsBefore, error: countBeforeErr } = await supabase
+            .from("bookings")
+            .select("id", { count: "exact", head: true })
+            .eq("session_id", sessionId)
+
+        if (countBeforeErr) {
+            console.error("[api/bookings] POST bookings count", countBeforeErr)
+            return NextResponse.json({ error: "Failed to validate capacity" }, { status: 500 })
+        }
+        if ((bookingsBefore ?? 0) >= capacity) {
+            return NextResponse.json({ error: "Session full" }, { status: 400 })
+        }
+
         const { data: booking, error: insertErr } = await supabase
             .from("bookings")
             .insert({
-                session_id: reservation.session_id,
+                session_id: sessionId,
                 user_email,
                 status: "confirmed",
             })
@@ -111,21 +207,70 @@ export async function POST(req: Request) {
             const code = insertErr.code
             const msg = insertErr.message ?? ""
             if (code === "23505" || /duplicate|unique/i.test(msg)) {
-                return NextResponse.json({ error: "Already booked" }, { status: 409 })
+                return NextResponse.json({ error: "Already reserved" }, { status: 409 })
             }
             console.error("[api/bookings] POST booking insert", insertErr)
             return NextResponse.json({ error: "Failed to create booking" }, { status: 500 })
+        }
+
+        const { count: bookingsAfter, error: countAfterErr } = await supabase
+            .from("bookings")
+            .select("id", { count: "exact", head: true })
+            .eq("session_id", sessionId)
+
+        if (countAfterErr) {
+            console.error("[api/bookings] POST bookings recount", countAfterErr)
+            if (booking?.id) {
+                await supabase.from("bookings").delete().eq("id", booking.id)
+            }
+            return NextResponse.json({ error: "Failed to finalize booking" }, { status: 500 })
+        }
+
+        if ((bookingsAfter ?? 0) > capacity) {
+            if (booking?.id) {
+                const { error: rollbackDel } = await supabase.from("bookings").delete().eq("id", booking.id)
+                if (rollbackDel) {
+                    console.error("[api/bookings] POST over-capacity rollback", rollbackDel)
+                }
+            }
+            return NextResponse.json({ error: "Session full" }, { status: 400 })
+        }
+
+        const { error: syncSlotsErr } = await supabase
+            .from("sessions")
+            .update({ booked_slots: bookingsAfter ?? 0 })
+            .eq("id", sessionId)
+
+        if (syncSlotsErr) {
+            console.error("[api/bookings] POST booked_slots sync", syncSlotsErr)
+            if (booking?.id) {
+                await supabase.from("bookings").delete().eq("id", booking.id)
+            }
+            const { count: resync } = await supabase
+                .from("bookings")
+                .select("id", { count: "exact", head: true })
+                .eq("session_id", sessionId)
+            await supabase.from("sessions").update({ booked_slots: resync ?? 0 }).eq("id", sessionId)
+            return NextResponse.json({ error: "Failed to update session capacity" }, { status: 500 })
         }
 
         const { error: deleteErr } = await supabase.from("reservations").delete().eq("id", reservation.id)
         if (deleteErr) {
             console.error("[api/bookings] POST reservation delete", deleteErr)
             if (booking?.id) {
-                const { error: rollbackErr } = await supabase.from("bookings").delete().eq("id", booking.id)
-                if (rollbackErr) {
-                    console.error("[api/bookings] POST rollback failed", rollbackErr)
+                const { error: rollbackBookingErr } = await supabase.from("bookings").delete().eq("id", booking.id)
+                if (rollbackBookingErr) {
+                    console.error("[api/bookings] POST rollback booking failed", rollbackBookingErr)
                 }
             }
+            const { count: bookingsRollback } = await supabase
+                .from("bookings")
+                .select("id", { count: "exact", head: true })
+                .eq("session_id", sessionId)
+            await supabase
+                .from("sessions")
+                .update({ booked_slots: bookingsRollback ?? 0 })
+                .eq("id", sessionId)
             return NextResponse.json({ error: "Failed to finalize booking" }, { status: 500 })
         }
 

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { createSupabaseServiceRoleClient } from "@/lib/access"
+import { canJoinLiveSessionNow, startAt, type DbSession } from "@/lib/sessions"
 
 export const runtime = "nodejs"
 
@@ -43,34 +44,57 @@ export async function GET() {
             bookedCountBySession.set(sessionId, (bookedCountBySession.get(sessionId) ?? 0) + 1)
         }
 
+        const now = new Date()
         const payload = (sessions ?? []).map((row) => {
             const r = row as Record<string, unknown>
             const id = typeof r.id === "string" ? r.id : ""
+            const linkCol = typeof r.link === "string" ? r.link.trim() : ""
+            const resolvedUrl = linkCol || null
+            const date =
+                typeof r.date === "string"
+                    ? r.date
+                    : typeof r.session_date === "string"
+                      ? r.session_date
+                      : null
+            const time =
+                typeof r.time === "string"
+                    ? r.time
+                    : typeof r.session_hour === "string"
+                      ? r.session_hour
+                      : null
+            const dbSession: DbSession = {
+                id,
+                day: null,
+                date,
+                time,
+                max_slots: 0,
+                booked_slots: 0,
+                link: resolvedUrl,
+                is_live: r.is_live === true,
+            }
+            const nearStart = canJoinLiveSessionNow(dbSession, now)
+            const startsAt = startAt(dbSession)
+            const started = startsAt ? now.getTime() >= startsAt.getTime() : false
             return {
                 id,
-                date:
-                    typeof r.date === "string"
-                        ? r.date
-                        : typeof r.session_date === "string"
-                          ? r.session_date
-                          : null,
-                time:
-                    typeof r.time === "string"
-                        ? r.time
-                        : typeof r.session_hour === "string"
-                          ? r.session_hour
-                          : null,
+                title: typeof r.title === "string" ? r.title : null,
+                date,
+                time,
+                link: resolvedUrl,
                 capacity: typeof r.capacity === "number" ? r.capacity : 0,
                 booked: bookedCountBySession.get(id) ?? 0,
                 status: typeof r.status === "string" ? r.status : "active",
+                is_live: started || r.is_live === true,
+                starts_at: startsAt ? startsAt.toISOString() : null,
+                starts_soon: nearStart,
             }
         })
 
         return NextResponse.json(payload)
-    } catch (err: any) {
+    } catch (err: unknown) {
         console.error("[api/admin/sessions] GET", err)
         return NextResponse.json(
-            { error: "Internal error", details: err?.message ?? "Unknown error" },
+            { error: "Internal error", details: err instanceof Error ? err.message : "Unknown error" },
             { status: 500 }
         )
     }

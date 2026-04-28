@@ -9,11 +9,15 @@ import SessionBookingsModal from "@/app/admin/SessionBookingsModal"
 
 type AdminSessionRow = {
     id: string
+    title?: string | null
     date: string | null
     time: string | null
+    link?: string | null
     capacity: number | null
     booked: number | null
     status?: string
+    starts_soon?: boolean
+    is_live?: boolean
 }
 
 function startOfLocalDay(d: Date): Date {
@@ -47,6 +51,15 @@ function addDays(d: Date, n: number): Date {
     const out = new Date(d.getTime())
     out.setDate(out.getDate() + n)
     return startOfLocalDay(out)
+}
+
+function parseSessionDateTime(dateRaw: string | null, timeRaw: string | null): Date | null {
+    if (!dateRaw || !timeRaw) return null
+    const d = dateRaw.trim()
+    const t = timeRaw.trim()
+    if (!d || !t) return null
+    const dt = new Date(`${d}T${t}`)
+    return Number.isNaN(dt.getTime()) ? null : dt
 }
 
 /**
@@ -119,11 +132,13 @@ function clampFillWidthPercent(percent: number): number {
 
 function AdminSessionsTable({
     rows,
+    highlightedIds,
     onOpenBookings,
     onEditSession,
     onRequestCancelSession,
 }: {
     rows: AdminSessionRow[]
+    highlightedIds: Set<string>
     onOpenBookings: (sessionId: string) => void
     onEditSession: (row: AdminSessionRow) => void
     onRequestCancelSession: (row: AdminSessionRow) => void
@@ -174,7 +189,15 @@ function AdminSessionsTable({
                         const pct = occupancyPercentRounded(booked, capacity)
                         const availLabel = availabilityLabel(available)
                         return (
-                            <tr key={r.id} style={{ borderBottom: "1px solid rgba(148,163,184,0.12)" }}>
+                            <tr
+                                key={r.id}
+                                style={{
+                                    borderBottom: "1px solid rgba(148,163,184,0.12)",
+                                    background: highlightedIds.has(r.id)
+                                        ? "rgba(234,179,8,0.08)"
+                                        : "transparent",
+                                }}
+                            >
                                 <td style={{ padding: "12px 14px", color: "#e5e7eb" }}>{r.date ?? "—"}</td>
                                 <td style={{ padding: "12px 14px", color: "#e5e7eb" }}>{r.time ?? "—"}</td>
                                 <td style={{ padding: "12px 14px", color: "#e5e7eb" }}>{capacity}</td>
@@ -307,6 +330,28 @@ function AdminSessionsTable({
                                         </button>
                                         <button
                                             type="button"
+                                            disabled={!r.link}
+                                            onClick={() => {
+                                                if (!r.link) return
+                                                window.open(r.link, "_blank", "noopener,noreferrer")
+                                            }}
+                                            style={{
+                                                padding: "8px 14px",
+                                                borderRadius: 10,
+                                                border: "1px solid rgba(59,130,246,0.45)",
+                                                background: "rgba(30,64,175,0.35)",
+                                                color: "#bfdbfe",
+                                                fontWeight: 700,
+                                                fontSize: "0.8125rem",
+                                                cursor: r.link ? "pointer" : "not-allowed",
+                                                opacity: r.link ? 1 : 0.55,
+                                                transition: "all 0.2s ease",
+                                            }}
+                                        >
+                                            Entrar a la sesión
+                                        </button>
+                                        <button
+                                            type="button"
                                             onClick={() => onOpenBookings(r.id)}
                                             style={{
                                                 padding: "8px 14px",
@@ -344,6 +389,7 @@ export default function AdminSessionsPage() {
     const [createModalOpen, setCreateModalOpen] = useState(false)
     const [editSession, setEditSession] = useState<AdminSessionRow | null>(null)
     const [cancelTarget, setCancelTarget] = useState<AdminSessionRow | null>(null)
+    const [now, setNow] = useState(() => new Date())
 
     const loadSessions = useCallback(async (opts?: { silent?: boolean; signal?: AbortSignal }) => {
         const silent = opts?.silent === true
@@ -383,12 +429,35 @@ export default function AdminSessionsPage() {
         return () => ac.abort()
     }, [loadSessions])
 
+    useEffect(() => {
+        const t = window.setInterval(() => setNow(new Date()), 30_000)
+        return () => window.clearInterval(t)
+    }, [])
+
     const totalBooked = useMemo(
         () => rows.reduce((acc, r) => acc + (typeof r.booked === "number" ? r.booked : 0), 0),
         [rows]
     )
 
     const { currentWeekSessions, nextWeekSessions } = useMemo(() => splitSessionsByWeek(rows), [rows])
+    const soonSessions = useMemo(() => {
+        return rows.filter((r) => {
+            const at = parseSessionDateTime(r.date, r.time)
+            if (!at) return false
+            const diffInMinutes = (at.getTime() - now.getTime()) / (1000 * 60)
+            return diffInMinutes <= 10 && diffInMinutes > 0
+        })
+    }, [rows, now])
+
+    const highlightedSessionIds = useMemo(
+        () => new Set(soonSessions.map((s) => s.id)),
+        [soonSessions]
+    )
+
+    const upcomingSoonSession = useMemo(
+        () => soonSessions.find((r) => typeof r.link === "string" && r.link.trim()),
+        [soonSessions]
+    )
 
     const handleBookingCancelled = (sessionId: string) => {
         setRows((prev) =>
@@ -418,6 +487,45 @@ export default function AdminSessionsPage() {
                         Real-time capacity overview
                     </p>
                 </header>
+                {upcomingSoonSession ? (
+                    <div
+                        style={{
+                            marginBottom: 14,
+                            borderRadius: 12,
+                            border: "1px solid rgba(250,204,21,0.45)",
+                            background: "rgba(120,53,15,0.25)",
+                            color: "#fde68a",
+                            padding: "10px 12px",
+                            display: "flex",
+                            justifyContent: "space-between",
+                            gap: 12,
+                            alignItems: "center",
+                            flexWrap: "wrap",
+                        }}
+                    >
+                        <span style={{ fontWeight: 700 }}>
+                            ⚠️ Tu sesión comienza en menos de 10 minutos
+                        </span>
+                        <button
+                            type="button"
+                            onClick={() =>
+                                window.open(upcomingSoonSession.link ?? "", "_blank", "noopener,noreferrer")
+                            }
+                            style={{
+                                borderRadius: 10,
+                                border: "1px solid rgba(250,204,21,0.55)",
+                                background: "rgba(250,204,21,0.18)",
+                                color: "#fde68a",
+                                fontWeight: 700,
+                                fontSize: "0.8rem",
+                                padding: "8px 12px",
+                                cursor: "pointer",
+                            }}
+                        >
+                            Entrar a la sesión
+                        </button>
+                    </div>
+                ) : null}
 
                 <section
                     style={{
@@ -536,6 +644,7 @@ export default function AdminSessionsPage() {
                             {isThisWeekOpen ? (
                                 <AdminSessionsTable
                                     rows={currentWeekSessions}
+                                    highlightedIds={highlightedSessionIds}
                                     onOpenBookings={setSelectedSession}
                                     onEditSession={setEditSession}
                                     onRequestCancelSession={setCancelTarget}
@@ -591,6 +700,7 @@ export default function AdminSessionsPage() {
                             {isNextWeekOpen ? (
                                 <AdminSessionsTable
                                     rows={nextWeekSessions}
+                                    highlightedIds={highlightedSessionIds}
                                     onOpenBookings={setSelectedSession}
                                     onEditSession={setEditSession}
                                     onRequestCancelSession={setCancelTarget}

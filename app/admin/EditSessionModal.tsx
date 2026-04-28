@@ -40,6 +40,7 @@ export type EditSessionTarget = {
     id: string
     time: string | null
     capacity: number | null
+    link?: string | null
     /** Current confirmed bookings; used to block capacity below booked. */
     booked?: number | null
     date?: string | null
@@ -60,6 +61,7 @@ export default function EditSessionModal({ open, session, onClose, onSuccess }: 
             : ""
     )
     const [submitError, setSubmitError] = useState<string | null>(null)
+    const [link, setLink] = useState(session?.link?.trim() ?? "")
     const [submitting, setSubmitting] = useState(false)
 
     useEffect(() => {
@@ -71,8 +73,9 @@ export default function EditSessionModal({ open, session, onClose, onSuccess }: 
                 : ""
         )
         setSubmitError(null)
+        setLink(session.link?.trim() ?? "")
         setSubmitting(false)
-    }, [open, session?.id, session?.time, session?.capacity, session?.booked])
+    }, [open, session])
 
     if (!open || !session) return null
 
@@ -112,6 +115,7 @@ export default function EditSessionModal({ open, session, onClose, onSuccess }: 
                 body: JSON.stringify({
                     time: time.trim(),
                     capacity: cap,
+                    link: link.trim(),
                 }),
                 cache: "no-store",
             })
@@ -214,6 +218,20 @@ export default function EditSessionModal({ open, session, onClose, onSuccess }: 
                             value={time}
                             onChange={(e) => setTime(e.target.value)}
                             disabled={submitting}
+                            style={inputStyle}
+                        />
+                    </div>
+                    <div style={{ marginBottom: 18 }}>
+                        <label htmlFor="edit-session-link" style={labelStyle}>
+                            Link de la sesión (Meet / Zoom)
+                        </label>
+                        <input
+                            id="edit-session-link"
+                            type="text"
+                            value={link}
+                            onChange={(e) => setLink(e.target.value)}
+                            disabled={submitting}
+                            placeholder="https://meet.google.com/xxx-xxx"
                             style={inputStyle}
                         />
                     </div>

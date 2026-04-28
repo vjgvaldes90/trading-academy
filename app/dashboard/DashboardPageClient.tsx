@@ -6,9 +6,10 @@ import StudentNotificationsSection from "@/components/dashboard/focused/StudentN
 import NextSessionCard from "@/components/dashboard/focused/NextSessionCard"
 import ResourcesSection from "@/components/dashboard/focused/ResourcesSection"
 import DashboardHeader from "@/components/dashboard/DashboardHeader"
+import CancelSessionConfirmModal from "@/app/admin/CancelSessionConfirmModal"
 import dashboardTheme from "@/components/dashboard/dashboardTheme.module.css"
-import { LearningAssistProvider } from "@/context/LearningAssistContext"
 import { SessionProvider, useSession } from "@/context/SessionContext"
+import { supabase } from "@/lib/supabase"
 import {
     clearStoredStudent,
     persistStudent,
@@ -18,8 +19,22 @@ import {
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 
-function DashboardShell({ welcomeName }: { welcomeName: string }) {
+type DashboardUserSubscription = {
+    email: string
+    subscription_id: string | null
+    subscription_status: string | null
+}
+
+function DashboardShell({
+    welcomeName,
+    user,
+}: {
+    welcomeName: string
+    user: DashboardUserSubscription | null
+}) {
     const { dashboardDataReady } = useSession()
+    const [isCancelling, setIsCancelling] = useState(false)
+    const [cancelModalOpen, setCancelModalOpen] = useState(false)
 
     if (!dashboardDataReady) {
         return (
@@ -31,10 +46,46 @@ function DashboardShell({ welcomeName }: { welcomeName: string }) {
         )
     }
 
+    const showCancelButton = Boolean(user?.subscription_id && user.subscription_status === "active")
+
+    const handleCancelSubscription = async () => {
+        if (!user?.email || isCancelling) return
+
+        setIsCancelling(true)
+        try {
+            const res = await fetch("/api/cancel-subscription", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify({ email: user.email }),
+            })
+            if (!res.ok) {
+                alert("Error cancelling subscription")
+                return
+            }
+            const data = (await res.json().catch(() => ({}))) as { ok?: unknown }
+            if (data.ok !== true) {
+                alert("Error cancelling subscription")
+                return
+            }
+            alert("Subscription cancelled successfully")
+            window.location.reload()
+        } catch {
+            alert("Error cancelling subscription")
+        } finally {
+            setIsCancelling(false)
+        }
+    }
+
     return (
         <div className={`${dashboardTheme.shell} ${dashboardTheme.layoutColumn}`}>
             <header style={{ flexShrink: 0 }}>
-                <DashboardHeader welcomeName={welcomeName} />
+                <DashboardHeader
+                    welcomeName={welcomeName}
+                    showCancelSubscription={showCancelButton}
+                    onCancelSubscription={() => setCancelModalOpen(true)}
+                    isCancellingSubscription={isCancelling}
+                />
             </header>
 
             <main
@@ -62,6 +113,14 @@ function DashboardShell({ welcomeName }: { welcomeName: string }) {
                     <ResourcesSection />
                 </div>
             </main>
+            <CancelSessionConfirmModal
+                open={cancelModalOpen}
+                onClose={() => setCancelModalOpen(false)}
+                onConfirm={handleCancelSubscription}
+                title="Cancel subscription?"
+                description="Are you sure? You will lose access to the academy."
+                confirmText="Yes, cancel subscription"
+            />
         </div>
     )
 }
@@ -74,6 +133,7 @@ export default function DashboardPageClient() {
     const [ready, setReady] = useState(false)
     const [welcomeName, setWelcomeName] = useState("")
     const [userEmail, setUserEmail] = useState<string | null>(null)
+    const [user, setUser] = useState<DashboardUserSubscription | null>(null)
 
     useEffect(() => {
         const student = resolveDashboardStudent()
@@ -105,12 +165,39 @@ export default function DashboardPageClient() {
                         router.replace("/expired")
                         return
                     }
+                    if (data.reason === "inactive") {
+                        clearStoredStudent()
+                        router.replace("/blocked")
+                        return
+                    }
                     clearStoredStudent()
                     router.replace("/login?redirect=/dashboard&error=access_denied")
                     return
                 }
                 setWelcomeName(student.name)
                 setUserEmail(email)
+                const { data: row, error: studentErr } = await supabase
+                    .from("trading_students")
+                    .select("email, subscription_id, subscription_status")
+                    .eq("email", email)
+                    .maybeSingle()
+                if (studentErr) {
+                    console.error("[dashboard] failed to load subscription info", studentErr)
+                    setUser({ email, subscription_id: null, subscription_status: null })
+                } else {
+                    const rec = (row ?? {}) as Record<string, unknown>
+                    setUser({
+                        email,
+                        subscription_id:
+                            typeof rec.subscription_id === "string" && rec.subscription_id.trim()
+                                ? rec.subscription_id
+                                : null,
+                        subscription_status:
+                            typeof rec.subscription_status === "string" && rec.subscription_status.trim()
+                                ? rec.subscription_status
+                                : null,
+                    })
+                }
                 setReady(true)
             } catch {
                 if (!cancelled) {
@@ -146,9 +233,7 @@ export default function DashboardPageClient() {
             initialUserEmail={userEmail}
             initialMyBookings={[]}
         >
-            <LearningAssistProvider>
-                <DashboardShell welcomeName={welcomeName} />
-            </LearningAssistProvider>
+            <DashboardShell welcomeName={welcomeName} user={user} />
         </SessionProvider>
     )
 }

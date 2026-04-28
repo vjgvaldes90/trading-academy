@@ -1,17 +1,14 @@
 import { NextResponse } from "next/server"
 import { createSupabaseServiceRoleClient } from "@/lib/access"
 import { setAuthCookiesForPaidUser } from "@/lib/authCookies"
+import { attachSingleDeviceSessionCookies } from "@/lib/studentSingleSession"
 import { buildStudentDisplayName } from "@/lib/studentLocalStorage"
 import {
     academyAccessDeniedMessageEs,
     evaluateAcademyAccess,
     type TradingStudentAccessRow,
 } from "@/lib/studentAcademyAccess"
-import {
-    dashboardPostLoginRedirect,
-    ensureTradingStudentByEmail,
-    type TradingStudentRow,
-} from "@/lib/tradingStudents"
+import { dashboardPostLoginRedirect, type TradingStudentRow } from "@/lib/tradingStudents"
 
 export const runtime = "nodejs"
 
@@ -70,6 +67,7 @@ export async function POST(req: Request) {
                 },
             })
             setAuthCookiesForPaidUser(response, email)
+            await attachSingleDeviceSessionCookies(response, email)
             console.log("[login] user logged in (trading_students)", { email })
             return response
         }

@@ -25,7 +25,7 @@ export default function Navbar() {
 
                 {/* 🔥 LOGO */}
                 <div className="text-white font-bold text-lg tracking-wide">
-                    Smart Option <span className="text-green-400">Academy</span>
+                    Smart Option <span className="text-blue-400">Academy</span>
                 </div>
 
                 {/* 🧭 LINKS */}
@@ -50,7 +50,7 @@ export default function Navbar() {
                 {/* 💰 CTA */}
                 <a
                     href="/login"
-                    className="bg-green-500 text-black px-5 py-2 rounded-lg font-semibold hover:bg-green-400 transition transform hover:scale-105"
+                    className="rounded-lg border border-blue-300/30 bg-gradient-to-r from-blue-500 to-blue-700 px-5 py-2 font-semibold text-white shadow-[0_10px_24px_rgba(37,99,235,0.35)] transition hover:brightness-110 hover:scale-105"
                 >
                     Empezar
                 </a>

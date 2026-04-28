@@ -5,6 +5,7 @@ import {
     buildNextSessionTicker,
     getNextSessionFromDB,
     isSessionLiveNow,
+    shouldHideStudentDashboardSession,
 } from "@/lib/sessions"
 import {
     filterBookableSessionsFromToday,
@@ -13,7 +14,11 @@ import {
     getWeekSessions,
 } from "@/lib/sessionFiltering"
 import type { BookingAccessState } from "@/lib/bookingAccess"
-import { loadDashboardFromClient } from "@/lib/loadDashboardFromClient"
+import {
+    ACCESS_REVOKED_ERROR,
+    loadDashboardFromClient,
+} from "@/lib/loadDashboardFromClient"
+import { clearStoredStudent } from "@/lib/studentLocalStorage"
 import { supabase } from "@/lib/supabase"
 import { useRealtimeSessions, type RealtimeEvent } from "@/hooks/useRealtimeSessions"
 import {
@@ -152,6 +157,11 @@ export function SessionProvider({
                 setMyBookings([...nextMine].sort(sortMyBookings))
             } catch (e) {
                 console.error("[SessionProvider] client dashboard load failed", e)
+                if (!cancelled && e instanceof Error && e.message === ACCESS_REVOKED_ERROR) {
+                    clearStoredStudent()
+                    window.location.replace("/blocked")
+                    return
+                }
                 if (!cancelled) {
                     setBookingAccess({
                         canBook: false,
@@ -184,6 +194,10 @@ export function SessionProvider({
             setMyBookings([...nextMine].sort(sortMyBookings))
         } catch (e) {
             console.error("[SessionProvider] refreshDashboardSessions failed", e)
+            if (e instanceof Error && e.message === ACCESS_REVOKED_ERROR) {
+                clearStoredStudent()
+                window.location.replace("/blocked")
+            }
         }
     }, [initialUserEmail])
 
@@ -224,7 +238,8 @@ export function SessionProvider({
     )
 
     const cancelMyBooking = useCallback(
-        async (bookingId: string, _sessionId: string) => {
+        async (bookingId: string, sessionId: string) => {
+            void sessionId
             const email = initialUserEmail?.trim().toLowerCase() ?? ""
             if (!email) {
                 return { ok: false as const, error: "Sesión no disponible" }
@@ -351,7 +366,10 @@ export function SessionProvider({
     useRealtimeSessions({ onEvent: handleRealtimeEvent })
 
     const bookableSessions = useMemo(
-        () => filterBookableSessionsFromToday(sessions, now),
+        () =>
+            filterBookableSessionsFromToday(sessions, now).filter(
+                (s) => !shouldHideStudentDashboardSession(s, now)
+            ),
         [sessions, now]
     )
 
@@ -362,7 +380,24 @@ export function SessionProvider({
     }, [activeTab, bookableSessions, now])
 
     const sessionState = useMemo(() => getNextSessionFromDB(bookableSessions, now), [bookableSessions, now])
-    const ticker = useMemo(() => buildNextSessionTicker(sessionState, now), [sessionState, now])
+
+    const tickerHasReservation = useMemo(() => {
+        if (!sessionState) return false
+        const email = initialUserEmail?.trim().toLowerCase() ?? ""
+        if (!email) return false
+        return myBookings.some(
+            (b) => b.session_id === sessionState.session.id && b.email.trim().toLowerCase() === email
+        )
+    }, [sessionState, myBookings, initialUserEmail])
+
+    const ticker = useMemo(
+        () =>
+            buildNextSessionTicker(sessionState, now, {
+                hasPaid: bookingAccess.canBook,
+                hasReservation: tickerHasReservation,
+            }),
+        [sessionState, now, bookingAccess.canBook, tickerHasReservation]
+    )
     const tickerIsLive = useMemo(() => {
         if (!sessionState) return false
         return sessionState.status === "live" || isSessionLiveNow(sessionState.session, now)

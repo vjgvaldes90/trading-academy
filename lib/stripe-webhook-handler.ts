@@ -1,7 +1,11 @@
 import Stripe from "stripe"
-import { Resend } from "resend"
 import { createSupabaseServiceRoleClient } from "@/lib/access"
+import { sendEmail } from "@/lib/sendEmail"
 import { computeRenewalAccessExpiresAtIso } from "@/lib/studentSubscriptionRenewal"
+
+function generateAccessCode(): string {
+    return Math.random().toString(36).substring(2, 8).toUpperCase()
+}
 
 async function resolveInvoiceCustomerEmail(
     stripe: Stripe,
@@ -28,12 +32,101 @@ async function resolveInvoiceCustomerEmail(
     return em || null
 }
 
-function escapeHtml(text: string): string {
-    return text
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
+/** Email on PaymentIntent: receipt_email, metadata.email, charge billing, or Customer. */
+async function resolvePaymentIntentCustomerEmail(
+    stripe: Stripe,
+    pi: Stripe.PaymentIntent
+): Promise<string | null> {
+    const receipt = pi.receipt_email?.trim().toLowerCase()
+    if (receipt) return receipt
+
+    const meta = typeof pi.metadata?.email === "string" ? pi.metadata.email.trim().toLowerCase() : ""
+    if (meta && meta.includes("@")) return meta
+
+    if (typeof pi.latest_charge === "string" && pi.latest_charge) {
+        const ch = await stripe.charges.retrieve(pi.latest_charge)
+        const em = ch.billing_details?.email?.trim().toLowerCase()
+        if (em) return em
+    }
+
+    if (typeof pi.customer === "string" && pi.customer) {
+        const cu = await stripe.customers.retrieve(pi.customer)
+        if (!cu.deleted && "email" in cu && cu.email?.trim()) {
+            return cu.email.trim().toLowerCase()
+        }
+    }
+
+    return null
+}
+
+async function resolveSubscriptionIdFromPaymentIntent(
+    stripe: Stripe,
+    pi: Stripe.PaymentIntent
+): Promise<string | null> {
+    const invoiceRef = (pi as Stripe.PaymentIntent & { invoice?: string | null }).invoice
+    if (typeof invoiceRef !== "string" || !invoiceRef) return null
+    const inv = await stripe.invoices.retrieve(invoiceRef)
+    const sub = (inv as unknown as { subscription?: string | Stripe.Subscription | null }).subscription
+    if (typeof sub === "string" && sub.trim()) return sub
+    if (sub && typeof sub === "object" && "id" in sub && typeof (sub as { id: string }).id === "string") {
+        return (sub as { id: string }).id
+    }
+    return null
+}
+
+/**
+ * Persists paid student row and sends welcome email (access code + magic link). Server-only.
+ */
+async function fulfillPaidAccessAndSendWelcomeEmail(args: {
+    emailForDb: string
+    emailForDelivery: string
+    accessCode: string
+    rawName?: string | null
+    subscriptionId: string | null
+    resendApiKey: string | undefined
+}): Promise<void> {
+    const { emailForDb, emailForDelivery, accessCode, rawName, subscriptionId, resendApiKey } = args
+
+    if (!resendApiKey) {
+        throw new Error("Missing RESEND_API_KEY")
+    }
+
+    const supabase = createSupabaseServiceRoleClient()
+
+    const { data: savedRow, error: dbErr } = await supabase
+        .from("trading_students")
+        .upsert(
+            {
+                email: emailForDb,
+                access_code: accessCode,
+                access_type: "paid",
+                is_active: true,
+                subscription_id: subscriptionId,
+                subscription_status: "active",
+            },
+            { onConflict: "email" }
+        )
+        .select("email, access_code")
+        .single()
+
+    if (dbErr) {
+        console.error("❌ trading_students upsert:", dbErr.message, dbErr.code, dbErr.details)
+        throw new Error("Failed to save access code")
+    }
+    if (!savedRow?.access_code || savedRow.access_code !== accessCode) {
+        console.error("❌ trading_students upsert: row mismatch", { savedRow, accessCode })
+        throw new Error("Failed to save access code")
+    }
+    console.log("💾 Saved code:", accessCode)
+
+    console.log("💰 PAYMENT SUCCESS:", emailForDelivery)
+    console.log("📧 SENDING EMAIL AFTER PAYMENT")
+    const sendResult = await sendEmail(emailForDelivery, accessCode, rawName || undefined)
+    if (!sendResult.ok) {
+        throw new Error(sendResult.error)
+    }
+
+    console.log("✅ Email enviado (Resend)")
 }
 
 export async function handleStripeWebhook(req: Request): Promise<Response> {
@@ -73,6 +166,8 @@ export async function handleStripeWebhook(req: Request): Promise<Response> {
         return new Response("Webhook error", { status: 400 })
     }
 
+    console.log("🔥 WEBHOOK TRIGGERED:", event.type)
+
     try {
         console.log("STRIPE EVENT:", JSON.stringify(event, null, 2))
     } catch (stringifyErr) {
@@ -82,6 +177,7 @@ export async function handleStripeWebhook(req: Request): Promise<Response> {
 
     if (event.type === "checkout.session.completed") {
         const session = event.data.object as Stripe.Checkout.Session
+        const subscriptionId = session.subscription as string | null
 
         try {
             console.log("STRIPE SESSION:", JSON.stringify(session, null, 2))
@@ -90,99 +186,108 @@ export async function handleStripeWebhook(req: Request): Promise<Response> {
             console.log("STRIPE SESSION id:", session.id, "customer_email:", session.customer_email)
         }
 
-        const customerEmail = session.customer_email
+        const customerEmail =
+            (typeof session.customer_email === "string" && session.customer_email.trim()
+                ? session.customer_email.trim()
+                : null) ||
+            (typeof session.customer_details?.email === "string" && session.customer_details.email.trim()
+                ? session.customer_details.email.trim()
+                : null)
 
-        console.log("📧 Email:", customerEmail)
+        console.log("📧 Email (checkout):", customerEmail)
 
         const rawName = session.customer_details?.name?.trim()
-        const displayName = rawName ? escapeHtml(rawName) : ""
-        const greetingBlock = displayName
-            ? `<p style="margin:0 0 8px 0; color:#374151; font-size:15px;">Hola, <strong style="color:#111827;">${displayName}</strong></p>`
-            : `<p style="margin:0 0 8px 0; color:#374151; font-size:15px;">Hola,</p>`
-
-        const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000").replace(/\/$/, "")
-        const loginUrl = `${appUrl}/login`
 
         try {
-            if (!customerEmail || typeof customerEmail !== "string" || !customerEmail.trim()) {
-                throw new Error("Missing customer_email on session")
+            if (!customerEmail) {
+                throw new Error("Missing customer_email / customer_details.email on session")
             }
 
-            const email = customerEmail.trim().toLowerCase()
-            const accessCode = Math.random().toString(36).substring(2, 8).toUpperCase()
+            const emailForDb = customerEmail.toLowerCase()
+            const accessCode = generateAccessCode()
 
-            const supabase = createSupabaseServiceRoleClient()
-
-            const { data: savedRow, error: dbErr } = await supabase
-                .from("trading_students")
-                .upsert(
-                    {
-                        email,
-                        access_code: accessCode,
-                        access_type: "paid",
-                        is_active: true,
-                    },
-                    { onConflict: "email" }
-                )
-                .select("email, access_code")
-                .single()
-
-            if (dbErr) {
-                console.error("❌ trading_students upsert:", dbErr.message, dbErr.code, dbErr.details)
-                throw new Error("Failed to save access code")
-            }
-            if (!savedRow?.access_code || savedRow.access_code !== accessCode) {
-                console.error("❌ trading_students upsert: row mismatch", { savedRow, accessCode })
-                throw new Error("Failed to save access code")
-            }
-            console.log("💾 Saved code:", accessCode)
-
-            if (!resendApiKey) {
-                throw new Error("Missing RESEND_API_KEY")
-            }
-            const resend = new Resend(resendApiKey)
-            await resend.emails.send({
-                from: "onboarding@resend.dev",
-                to: customerEmail.trim(),
-                subject: "Bienvenido a Smart Option Academy",
-                html: `
-<div style="font-family: Arial, Helvetica, sans-serif; background:#f3f4f6; padding:40px 16px; margin:0;">
-  <div style="max-width:520px; margin:0 auto; background:#ffffff; padding:32px 28px; border-radius:12px; text-align:center; box-shadow:0 1px 3px rgba(0,0,0,0.06);">
-
-    <p style="color:#6b7280; font-size:13px; letter-spacing:0.04em; text-transform:uppercase; margin:0 0 4px 0;">Smart Option Academy</p>
-
-    <h2 style="margin:8px 0 18px 0; color:#111827; font-size:22px; font-weight:700; line-height:1.3;">
-      Bienvenido a Smart Option Academy 🚀
-    </h2>
-
-    ${greetingBlock}
-
-    <p style="margin:0; color:#4b5563; font-size:15px; line-height:1.5;">Tu acceso ya está listo.</p>
-
-    <p style="margin:22px 0 8px 0; color:#374151; font-size:15px;">
-      Usa el siguiente código para entrar:
-    </p>
-
-    <div style="margin-top:12px; padding:22px 16px; border:2px dashed #d1d5db; border-radius:10px; background:#fafafa; font-size:30px; letter-spacing:10px; font-weight:700; color:#111827; font-family:ui-monospace,Consolas,monospace;">
-      <h1 style="margin:0; font-size:inherit; font-weight:inherit; letter-spacing:inherit;">${accessCode}</h1>
-    </div>
-
-    <p style="margin-top:26px; font-size:12px; color:#6b7280; line-height:1.5;">
-      Este código te permitirá acceder a tu dashboard.
-    </p>
-
-    <a href="${loginUrl}" style="display:inline-block; margin-top:26px; padding:12px 32px; background:#111827; color:#ffffff !important; text-decoration:none; border-radius:8px; font-size:14px; font-weight:600;">Ir al login</a>
-
-    <p style="margin-top:20px; font-size:11px; color:#9ca3af;">Si no solicitaste este acceso, puedes ignorar este correo.</p>
-
-  </div>
-</div>
-`,
+            await fulfillPaidAccessAndSendWelcomeEmail({
+                emailForDb,
+                emailForDelivery: customerEmail,
+                accessCode,
+                rawName,
+                subscriptionId,
+                resendApiKey,
             })
-
-            console.log("✅ Email enviado")
         } catch (error) {
             console.error("❌ Error enviando email:", error)
+        }
+    }
+
+    if (event.type === "payment_intent.succeeded") {
+        const paymentIntent = event.data.object as Stripe.PaymentIntent
+        try {
+            console.log("💰 PAYMENT OBJECT:", paymentIntent)
+
+            const piFull = await stripe.paymentIntents.retrieve(paymentIntent.id, {
+                expand: ["latest_charge"],
+            })
+
+            const linkedCheckout = await stripe.checkout.sessions.list({
+                payment_intent: paymentIntent.id,
+                limit: 1,
+            })
+
+            let email: string | null | undefined =
+                piFull.receipt_email?.trim() ||
+                (piFull as unknown as { customer_details?: { email?: string | null } }).customer_details?.email?.trim()
+
+            const chargesData = (piFull as unknown as { charges?: { data?: Stripe.Charge[] } }).charges?.data
+            if (!email && chargesData?.[0]?.billing_details?.email) {
+                email = chargesData[0].billing_details.email.trim()
+            }
+
+            if (!email && typeof piFull.latest_charge === "object" && piFull.latest_charge) {
+                const ch = piFull.latest_charge as Stripe.Charge
+                email = ch.billing_details?.email?.trim() || null
+            }
+
+            if (!email && linkedCheckout.data[0]) {
+                const sess = await stripe.checkout.sessions.retrieve(linkedCheckout.data[0].id)
+                const fromSession =
+                    (typeof sess.customer_email === "string" && sess.customer_email.trim()
+                        ? sess.customer_email.trim()
+                        : null) ||
+                    (typeof sess.customer_details?.email === "string" && sess.customer_details.email.trim()
+                        ? sess.customer_details.email.trim()
+                        : null)
+                email = fromSession
+            }
+
+            if (!email) {
+                email = await resolvePaymentIntentCustomerEmail(stripe, piFull)
+            }
+
+            console.log("📧 EXTRACTED EMAIL:", email)
+
+            if (!email) {
+                console.error("❌ NO EMAIL FOUND IN PAYMENT")
+            } else if (linkedCheckout.data.length > 0) {
+                console.log(
+                    "[stripe-webhook] payment_intent.succeeded: Checkout linked — DB + sendEmail run from checkout.session.completed (enable that event to avoid missing email)"
+                )
+            } else {
+                const subscriptionId: string | null = await resolveSubscriptionIdFromPaymentIntent(stripe, piFull)
+
+                console.log("📨 CALLING sendEmail...")
+                const accessCode = generateAccessCode()
+                await fulfillPaidAccessAndSendWelcomeEmail({
+                    emailForDb: email.trim().toLowerCase(),
+                    emailForDelivery: email.trim(),
+                    accessCode,
+                    rawName: null,
+                    subscriptionId,
+                    resendApiKey,
+                })
+                console.log("✅ sendEmail CALLED SUCCESSFULLY")
+            }
+        } catch (error) {
+            console.error("[stripe-webhook] payment_intent.succeeded handler:", error)
         }
     }
 
@@ -256,5 +361,8 @@ export async function handleStripeWebhook(req: Request): Promise<Response> {
         }
     }
 
-    return new Response("OK", { status: 200 })
+    return new Response(JSON.stringify({ received: true }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+    })
 }

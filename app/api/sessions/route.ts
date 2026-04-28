@@ -1,70 +1,43 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 
+/**
+ * TEMPORARY DEBUG: returns all `sessions` rows with `select("*")` and no filters.
+ * TODO: restore access check + `status = active` + availability mapping after confirming visibility.
+ */
 const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-export async function GET() {
-    try {
-        const { data, error } = await supabase
-            .from("sessions")
-            .select("id, date, time, capacity")
-            .eq("status", "active")
-            .order("date", { ascending: true })
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
-        if (error) {
-            console.error("Supabase error:", error)
-            return NextResponse.json(
-                { error: "Database error", details: error.message },
-                { status: 500 }
-            )
+export async function GET(req: Request) {
+    try {
+        const { searchParams } = new URL(req.url)
+        const userEmailRaw =
+            searchParams.get("user_email") ?? searchParams.get("userEmail") ?? searchParams.get("email")
+        const userEmail = typeof userEmailRaw === "string" ? userEmailRaw.trim().toLowerCase() : ""
+
+        if (!userEmail) {
+            return NextResponse.json({ error: "user_email is required" }, { status: 401 })
+        }
+        if (!EMAIL_RE.test(userEmail)) {
+            return NextResponse.json({ error: "Invalid user_email" }, { status: 400 })
         }
 
-        const sessions = Array.isArray(data) ? data : []
-        const nowIso = new Date().toISOString()
+        const { data, error } = await supabase.from("sessions").select("*")
 
-        const withAvailability = await Promise.all(
-            sessions.map(async (session) => {
-                const { count: bookingsCount, error: bookingsErr } = await supabase
-                    .from("bookings")
-                    .select("id", { count: "exact", head: true })
-                    .eq("session_id", session.id)
-                    .eq("status", "confirmed")
-                if (bookingsErr) {
-                    throw new Error(bookingsErr.message)
-                }
+        if (error) {
+            console.error("[api/sessions] debug query error", error)
+            return NextResponse.json([], { status: 200 })
+        }
 
-                const { count: reservationsCount, error: reservationsErr } = await supabase
-                    .from("reservations")
-                    .select("id", { count: "exact", head: true })
-                    .eq("session_id", session.id)
-                    .gt("expires_at", nowIso)
-                if (reservationsErr) {
-                    throw new Error(reservationsErr.message)
-                }
+        console.log("SESSIONS RAW:", data)
 
-                const capacity = typeof session.capacity === "number" ? session.capacity : 0
-                const available_spots =
-                    capacity - (bookingsCount ?? 0) - (reservationsCount ?? 0)
-
-                return {
-                    id: session.id,
-                    date: session.date,
-                    time: session.time,
-                    capacity,
-                    available_spots,
-                }
-            })
-        )
-
-        return NextResponse.json(withAvailability)
-    } catch (err: any) {
-        console.error("Server error:", err)
-        return NextResponse.json(
-            { error: "Server error", details: err.message },
-            { status: 500 }
-        )
+        return NextResponse.json(data ?? [])
+    } catch (err) {
+        console.error("API crash:", err)
+        return NextResponse.json([], { status: 200 })
     }
 }

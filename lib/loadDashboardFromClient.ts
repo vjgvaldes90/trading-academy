@@ -43,6 +43,9 @@ export type LoadDashboardResult = {
     canBook: boolean
 }
 
+/** Thrown when `/api/sessions` or `/api/my-bookings` returns 403 (e.g. revoked / inactive). */
+export const ACCESS_REVOKED_ERROR = "ACCESS_REVOKED"
+
 export async function loadDashboardFromClient(
     client: SupabaseClient,
     userEmail: string
@@ -53,13 +56,19 @@ export async function loadDashboardFromClient(
     }
     const canBook = await fetchClientAcademyAccessOk(email)
 
-    const sessionsRes = await fetch("/api/sessions", {
-        cache: "no-store",
-        credentials: "include",
-    })
+    const sessionsRes = await fetch(
+        `/api/sessions?user_email=${encodeURIComponent(email)}`,
+        {
+            cache: "no-store",
+            credentials: "include",
+        }
+    )
     if (!sessionsRes.ok) {
         const errBody = await sessionsRes.json().catch(() => ({}))
         console.error("[loadDashboardFromClient] /api/sessions", sessionsRes.status, errBody)
+        if (sessionsRes.status === 403) {
+            throw new Error(ACCESS_REVOKED_ERROR)
+        }
         return { sessions: [], myBookings: [], canBook }
     }
 
@@ -76,6 +85,9 @@ export async function loadDashboardFromClient(
     if (!bookingsRes.ok) {
         const errBody = await bookingsRes.json().catch(() => ({}))
         console.error("[loadDashboardFromClient] /api/my-bookings", bookingsRes.status, errBody)
+        if (bookingsRes.status === 403) {
+            throw new Error(ACCESS_REVOKED_ERROR)
+        }
         const sessionsNoBookings: DbSession[] = rows
             .map((row) => mapSupabaseSessionRow(row as Record<string, unknown>))
             .filter((s): s is DbSession => s != null)

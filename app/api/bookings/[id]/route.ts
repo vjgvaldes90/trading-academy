@@ -30,10 +30,28 @@ export async function DELETE(_req: Request, context: RouteCtx) {
             return NextResponse.json({ error: "Booking not found" }, { status: 404 })
         }
 
+        const sessionId = booking.session_id
+
         const { error: delErr } = await supabase.from("bookings").delete().eq("id", id)
         if (delErr) {
             console.error("[api/bookings/[id]] delete", delErr)
             return NextResponse.json({ error: "Failed to delete booking" }, { status: 500 })
+        }
+
+        const { count: remaining, error: cntErr } = await supabase
+            .from("bookings")
+            .select("id", { count: "exact", head: true })
+            .eq("session_id", sessionId)
+        if (cntErr) {
+            console.error("[api/bookings/[id]] recount bookings", cntErr)
+        } else {
+            const { error: syncErr } = await supabase
+                .from("sessions")
+                .update({ booked_slots: remaining ?? 0 })
+                .eq("id", sessionId)
+            if (syncErr) {
+                console.error("[api/bookings/[id]] sync booked_slots", syncErr)
+            }
         }
 
         return NextResponse.json({ success: true })

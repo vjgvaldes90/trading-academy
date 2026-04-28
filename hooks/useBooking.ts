@@ -89,10 +89,10 @@ export function useBooking(): UseBookingResult {
                 await refreshDashboardSessions()
                 setStatus("success")
                 setSessionBookingSuccess("Reserva confirmada")
-            } catch (err: any) {
-                console.error("BOOK ERROR:", err.message)
+            } catch (err: unknown) {
+                console.error("BOOK ERROR:", err)
                 setStatus("error")
-                setSessionBookingError(err?.message ?? "No se pudo reservar")
+                setSessionBookingError(err instanceof Error ? err.message : "No se pudo reservar")
                 throw err
             } finally {
                 setIsLoading(false)

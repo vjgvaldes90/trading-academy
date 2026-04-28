@@ -1,5 +1,9 @@
 import { Resend } from "resend"
+import { getSiteBaseUrl } from "@/lib/supabaseMagicLink"
 import { createWelcomeEmail } from "@/lib/welcomeEmail"
+
+/** Must match a verified domain in Resend (server-only; never import this module from client code). */
+const RESEND_FROM = "Smart Option Academy <tony@smartoptionacademy.com>"
 
 type SendEmailResult =
     | { ok: true; id: string | null }
@@ -9,7 +13,7 @@ type SendEmailResult =
  * @param to - recipient email
  * @param code - access code (also accessCode in template)
  * @param name - optional display name for greeting
- * @param magicLoginLink - full magic-login URL with token
+ * @param magicLoginLink - optional; Supabase magic link, or omitted to use app `/login` (Resend-only flow)
  */
 export async function sendEmail(
     to: string,
@@ -17,7 +21,6 @@ export async function sendEmail(
     name?: string,
     magicLoginLink?: string
 ): Promise<SendEmailResult> {
-
     const apiKey = process.env.RESEND_API_KEY
     if (!apiKey) {
         const message = "Missing RESEND_API_KEY"
@@ -25,7 +28,7 @@ export async function sendEmail(
         return { ok: false, error: message }
     }
 
-    const resend = new Resend(apiKey)
+    const resend = new Resend(apiKey.trim())
 
     if (typeof to !== "string" || to.trim().length === 0) {
         const message = "sendEmail requires a non-empty string `to`"
@@ -36,9 +39,10 @@ export async function sendEmail(
     const trimmedTo = to.trim()
     const deliveryTo = trimmedTo
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"
-    const defaultLoginLink = `${appUrl.replace(/\/$/, "")}/login?redirect=/dashboard`
-    const magicLink = (magicLoginLink ?? defaultLoginLink).replace(/\/$/, "")
+    const magicLink =
+        typeof magicLoginLink === "string" && magicLoginLink.trim().length > 0
+            ? magicLoginLink.trim().replace(/\/$/, "")
+            : `${getSiteBaseUrl()}/login`
 
     const displayName =
         typeof name === "string" && name.trim().length > 0 ? name.trim() : "estudiante"
@@ -50,41 +54,33 @@ export async function sendEmail(
         accessCode: code,
     })
 
-    console.log("📧 Sending styled email to:", deliveryTo)
-
     try {
         const { data, error } = await resend.emails.send({
-            from: "Smart Option Academy <onboarding@resend.dev>",
+            from: RESEND_FROM,
             to: deliveryTo,
             subject: "Accede a Smart Option Academy 🚀",
             html,
         })
 
         if (error) {
+            console.error("[resend] FULL ERROR:", JSON.stringify(error, null, 2))
             const message = typeof error.message === "string" ? error.message : "Resend send failed"
-            console.error("[resend] Email send failed", {
-                requestedTo: trimmedTo,
-                deliveryTo,
-                error,
-            })
             return { ok: false, error: message }
         }
 
         console.log("[resend] Email sent successfully", {
-            requestedTo: trimmedTo,
-            deliveryTo,
+            to: deliveryTo,
             id: data?.id ?? null,
         })
 
         return { ok: true, id: data?.id ?? null }
-
     } catch (err) {
+        const forLog =
+            err instanceof Error
+                ? { message: err.message, name: err.name, stack: err.stack }
+                : err
+        console.error("[resend] FULL ERROR:", JSON.stringify(forLog, null, 2))
         const message = err instanceof Error ? err.message : "Unknown Resend error"
-        console.error("[resend] Email send threw exception", {
-            requestedTo: trimmedTo,
-            deliveryTo,
-            err,
-        })
         return { ok: false, error: message }
     }
 }

@@ -37,9 +37,7 @@ export default function AccessForm({
                     onClearError?.()
                     setCode(e.target.value.toUpperCase())
                 }}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg uppercase tracking-widest
-          placeholder-gray-500 text-gray-900 placeholder:normal-case placeholder:tracking-normal
-          focus:outline-none focus:ring-2 focus:ring-green-500"
+                className="w-full rounded-lg border border-blue-400/30 bg-[#040B18] px-4 py-3 uppercase tracking-widest text-slate-100 placeholder:normal-case placeholder:tracking-normal placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 aria-invalid={Boolean(error)}
                 aria-describedby={error ? "access-code-error" : undefined}
             />
@@ -51,7 +49,7 @@ export default function AccessForm({
 
             <button
                 type="submit"
-                className="w-full mt-4 bg-[#020617] text-white py-3 rounded-lg font-bold hover:bg-black transition"
+                className="mt-4 w-full rounded-lg border border-blue-300/30 bg-gradient-to-r from-blue-500 to-blue-700 py-3 font-bold text-white shadow-[0_12px_26px_rgba(37,99,235,0.32)] transition hover:brightness-110"
             >
                 Entrar al dashboard
             </button>

@@ -3,4 +3,9 @@ import { requireBrowserSupabaseEnv } from "@/lib/supabase/publicEnv"
 
 const { url: supabaseUrl, anonKey: supabaseAnonKey } = requireBrowserSupabaseEnv()
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+        detectSessionInUrl: true,
+        flowType: "pkce",
+    },
+})

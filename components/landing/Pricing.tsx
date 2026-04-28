@@ -20,12 +20,12 @@ export default function Pricing() {
                         De principiante a trader rentable con sesiones en vivo
                     </h2>
 
-                    <p className="text-gray-400 mb-10 text-lg">
+                    <p className="mb-10 text-lg text-slate-300">
                         Aprende viendo operaciones reales, toma decisiones con confianza
                         y mejora tu rendimiento con mentoría directa.
                     </p>
 
-                    <div className="space-y-4 text-gray-300">
+                    <div className="space-y-4 text-slate-300">
 
                         <p>✔ Sesiones en vivo 3 veces por semana</p>
                         <p>✔ Análisis en tiempo real</p>
@@ -40,13 +40,13 @@ export default function Pricing() {
                 <div className="relative">
 
                     {/* GLOW */}
-                    <div className="absolute inset-0 bg-green-500 blur-3xl opacity-20"></div>
+                    <div className="absolute inset-0 bg-blue-500 blur-3xl opacity-20"></div>
 
-                    <div className="relative bg-[#0f172a] border border-white/10 rounded-2xl p-10 text-center">
+                    <div className="relative rounded-2xl border border-blue-400/20 bg-[#0B1220]/95 p-10 text-center shadow-[0_24px_52px_rgba(2,6,23,0.55)]">
 
                         {/* BADGE */}
                         <div className="mb-4">
-                            <span className="bg-green-500/20 text-green-400 px-4 py-1 rounded-full text-sm">
+                            <span className="rounded-full bg-blue-500/20 px-4 py-1 text-sm text-blue-300">
                                 🔥 Acceso limitado
                             </span>
                         </div>
@@ -75,13 +75,13 @@ export default function Pricing() {
                         {/* CTA */}
                         <a
                             href="/login"
-                            className="block w-full bg-green-500 text-black py-4 rounded-xl text-lg font-bold hover:bg-green-400 transition transform hover:scale-105"
+                            className="block w-full rounded-xl border border-blue-300/25 bg-gradient-to-r from-blue-500 to-blue-700 py-4 text-lg font-bold text-white shadow-[0_14px_34px_rgba(37,99,235,0.35)] transition hover:scale-105 hover:brightness-110"
                         >
                             🚀 Empezar ahora
                         </a>
 
                         {/* MICRO COPY */}
-                        <p className="text-sm text-gray-500 mt-6">
+                        <p className="mt-6 text-sm text-slate-500">
                             Sin contratos • Cancela cuando quieras
                         </p>
 

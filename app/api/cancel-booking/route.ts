@@ -18,7 +18,7 @@ export async function POST(req: Request) {
 
         const { data: booking, error: lookupErr } = await supabase
             .from("bookings")
-            .select("id")
+            .select("id, session_id")
             .eq("id", bookingId)
             .maybeSingle()
 
@@ -31,10 +31,33 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: "Booking not found" }, { status: 404 })
         }
 
+        const sessionId =
+            typeof (booking as { session_id?: unknown }).session_id === "string"
+                ? (booking as { session_id: string }).session_id
+                : ""
+
         const { error: deleteErr } = await supabase.from("bookings").delete().eq("id", bookingId)
         if (deleteErr) {
             console.error("[api/cancel-booking] delete", deleteErr)
             return NextResponse.json({ error: "Failed to cancel booking" }, { status: 500 })
+        }
+
+        if (sessionId) {
+            const { count: remaining, error: cntErr } = await supabase
+                .from("bookings")
+                .select("id", { count: "exact", head: true })
+                .eq("session_id", sessionId)
+            if (cntErr) {
+                console.error("[api/cancel-booking] recount bookings", cntErr)
+            } else {
+                const { error: syncErr } = await supabase
+                    .from("sessions")
+                    .update({ booked_slots: remaining ?? 0 })
+                    .eq("id", sessionId)
+                if (syncErr) {
+                    console.error("[api/cancel-booking] sync booked_slots", syncErr)
+                }
+            }
         }
 
         return NextResponse.json({ success: true })

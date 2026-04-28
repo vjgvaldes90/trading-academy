@@ -15,7 +15,7 @@ export async function GET() {
         const { data, error } = await supabase
             .from("trading_students")
             .select(
-                "id, email, first_name, last_name, phone, profile_completed, access_type, is_active, access_expires_at, access_code, created_at"
+                "id, email, first_name, last_name, phone, profile_completed, access_type, is_active, access_expires_at, access_code, created_at, subscription_id, subscription_status"
             )
             .order("created_at", { ascending: false })
             .limit(500)

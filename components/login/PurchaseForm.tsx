@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { supabase } from "@/lib/supabase"
 
 // IMPORTANT:
 // Do NOT reserve seats here.
@@ -24,12 +25,15 @@ export default function PurchaseForm({ email, setEmail }: PurchaseFormProps) {
         }
         setLoading(true)
         try {
+            const {
+                data: { user },
+            } = await supabase.auth.getUser()
             const resCheckout = await fetch("/api/create-checkout", {
                 method: "POST",
                 cache: "no-store",
                 credentials: "include",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ email: em }),
+                body: JSON.stringify({ email: em, userId: user?.id ?? null }),
             })
 
             if (!resCheckout.ok) {
@@ -48,7 +52,7 @@ export default function PurchaseForm({ email, setEmail }: PurchaseFormProps) {
             } else {
                 setPayError("No se recibió la URL de pago")
             }
-        } catch (e) {
+        } catch {
             setPayError("Error de conexión")
         } finally {
             setLoading(false)
@@ -62,9 +66,7 @@ export default function PurchaseForm({ email, setEmail }: PurchaseFormProps) {
                 placeholder="Ingresa tu email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-3 mb-2 border border-gray-300 rounded-lg 
-          placeholder-gray-500 text-gray-900 
-          focus:outline-none focus:ring-2 focus:ring-green-500"
+                className="mb-2 w-full rounded-lg border border-blue-400/30 bg-[#040B18] px-4 py-3 text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
 
             {payError ? <p className="text-sm text-red-600 mb-2">{payError}</p> : null}
@@ -73,12 +75,12 @@ export default function PurchaseForm({ email, setEmail }: PurchaseFormProps) {
                 type="button"
                 onClick={() => void handlePay()}
                 disabled={loading}
-                className="w-full bg-green-500 text-black py-3 rounded-lg font-bold hover:bg-green-400 transition disabled:opacity-60"
+                className="w-full rounded-lg border border-blue-300/30 bg-gradient-to-r from-blue-500 to-blue-700 py-3 font-bold text-white shadow-[0_12px_26px_rgba(37,99,235,0.32)] transition hover:brightness-110 disabled:opacity-60"
             >
                 {loading ? "Procesando…" : "🚀 Comprar acceso ($150)"}
             </button>
 
-            <p className="text-xs text-gray-500 mt-3 text-center">
+            <p className="mt-3 text-center text-xs text-slate-400">
                 Pago seguro • Acceso inmediato
             </p>
         </>

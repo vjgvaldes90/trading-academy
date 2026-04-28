@@ -10,11 +10,11 @@ type LoginTabsProps = {
 
 export default function LoginTabs({ mode, setMode }: LoginTabsProps) {
     return (
-        <div className="relative grid grid-cols-2 w-full bg-gray-100 rounded-lg p-1">
+        <div className="relative grid w-full grid-cols-2 rounded-xl border border-blue-400/20 bg-[#0A1222] p-1">
 
             {/* 🔥 FONDO ANIMADO (estable) */}
             <motion.div
-                className="absolute top-1 bottom-1 left-1 w-[calc(50%-4px)] bg-green-500 rounded-md pointer-events-none"
+                className="pointer-events-none absolute bottom-1 left-1 top-1 w-[calc(50%-4px)] rounded-lg bg-gradient-to-r from-blue-500 to-blue-700 shadow-[0_8px_20px_rgba(37,99,235,0.35)]"
                 animate={{
                     x: mode === "buy" ? 0 : "100%",
                 }}
@@ -24,7 +24,7 @@ export default function LoginTabs({ mode, setMode }: LoginTabsProps) {
             {/* BOTÓN BUY */}
             <button
                 onClick={() => setMode("buy")}
-                className={`py-2 text-sm font-semibold z-10 transition ${mode === "buy" ? "text-black" : "text-gray-600"
+                className={`z-10 py-2 text-sm font-semibold transition ${mode === "buy" ? "text-white" : "text-slate-400"
                     }`}
             >
                 Comprar acceso
@@ -33,7 +33,7 @@ export default function LoginTabs({ mode, setMode }: LoginTabsProps) {
             {/* BOTÓN ACCESS */}
             <button
                 onClick={() => setMode("access")}
-                className={`py-2 text-sm font-semibold z-10 transition ${mode === "access" ? "text-black" : "text-gray-600"
+                className={`z-10 py-2 text-sm font-semibold transition ${mode === "access" ? "text-white" : "text-slate-400"
                     }`}
             >
                 Ya tengo código

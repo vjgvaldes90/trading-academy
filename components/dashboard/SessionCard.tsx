@@ -4,11 +4,12 @@ import Link from "next/link"
 import { motion } from "framer-motion"
 import { useSession } from "@/context/SessionContext"
 import { useBooking } from "@/hooks/useBooking"
-import { getAvailabilityTone } from "@/lib/sessionAvailability"
+import { hasReservationForSession } from "@/lib/studentReservations"
 import {
+    canShowStudentLiveJoinButton,
     DbSession,
     getSessionAvailableSeats,
-    getSessionMeta,
+    isStudentJoinTooEarly,
     sessionDisplayDay,
     sessionDisplayHour,
 } from "@/lib/sessions"
@@ -27,7 +28,7 @@ function reserveLabel(
 ): string {
     if (isBookedByUser) return "Reservado ✅"
     if (loading) return "Reservando..."
-    if (blocked) return "Sin acceso"
+    if (blocked) return "Acceso no disponible"
     if (slotFull) return "Full"
     if (status === "success") return "Reservado ✅"
     if (status === "error") return "Reintentar"
@@ -35,14 +36,22 @@ function reserveLabel(
 }
 
 export default function SessionCard({ session, isUpdated = false }: SessionCardProps) {
-    const { bookingAccess, userEmail } = useSession()
+    const { bookingAccess, userEmail, myBookings } = useSession()
+    const now = new Date()
+    const joinLink = session.link?.trim() ?? ""
     const canBook = bookingAccess.canBook
     const bookedByUser = Boolean(session.isBookedByUser)
     const isBooked = Boolean(session.is_booked)
-    const available = getSessionAvailableSeats(session)
-    const meta = getSessionMeta(session)
-    const tone = getAvailabilityTone(meta.available)
-    const slotFullByCapacity = available === 0 && !bookedByUser
+    const availableSlots = getSessionAvailableSeats(session)
+    const hasReserved =
+        bookedByUser || hasReservationForSession(myBookings, session.id, userEmail)
+    const sessionFullForJoin = availableSlots <= 0 && !hasReserved
+    const mayOpenLiveJoin =
+        canShowStudentLiveJoinButton(session, now, {
+            hasPaid: canBook,
+            hasReservation: hasReserved,
+        }) && Boolean(joinLink)
+    const slotFullByCapacity = availableSlots === 0 && !bookedByUser
     const lockedOut =
         isBooked || !canBook || bookedByUser || slotFullByCapacity || !userEmail
 
@@ -88,7 +97,7 @@ export default function SessionCard({ session, isUpdated = false }: SessionCardP
         ? "border border-blue-500/30 bg-gradient-to-br from-[#111827] to-[#0B0F1A] shadow-xl shadow-blue-500/10"
         : "border border-blue-500/20 bg-gradient-to-br from-[#111827] to-[#0B0F1A] shadow-xl shadow-blue-500/10"
     const spotsToneClass =
-        available === 0 ? "text-red-500" : available <= 5 ? "text-yellow-400" : "text-green-400"
+        availableSlots === 0 ? "text-red-500" : availableSlots <= 5 ? "text-yellow-400" : "text-green-400"
 
     return (
         <motion.div
@@ -124,9 +133,9 @@ export default function SessionCard({ session, isUpdated = false }: SessionCardP
             <div className="mt-auto flex items-center justify-between gap-2 border-t border-white/5 pt-2">
                 <span className={`text-xs tabular-nums ${spotsToneClass}`}>
                     {capacity > 0
-                        ? available === 0
+                        ? availableSlots === 0
                             ? "Full"
-                            : `${available} cupos disponibles`
+                            : `${availableSlots} cupos disponibles`
                         : "—"}
                 </span>
                 <motion.button
@@ -152,12 +161,32 @@ export default function SessionCard({ session, isUpdated = false }: SessionCardP
                     {label}
                 </motion.button>
             </div>
-
-            {!canBook ? (
-                <Link href="/#pricing" className="text-xs font-bold text-blue-400 hover:text-blue-300">
-                    Comprar acceso →
-                </Link>
-            ) : null}
+            <div className="mt-2 space-y-1">
+                {!canBook ? (
+                    <>
+                        <p className="text-xs text-amber-200/90">Acceso no disponible</p>
+                        <Link href="/pricing" className="text-xs font-bold text-blue-400 hover:text-blue-300">
+                            Obtener acceso →
+                        </Link>
+                    </>
+                ) : !joinLink ? (
+                    <p className="text-xs text-gray-400">Sin enlace de reunión</p>
+                ) : sessionFullForJoin ? (
+                    <p className="text-xs font-semibold text-red-400">Sesión llena</p>
+                ) : !hasReserved ? (
+                    <p className="text-xs text-gray-400">Debes reservar esta sesión</p>
+                ) : mayOpenLiveJoin ? (
+                    <button
+                        type="button"
+                        onClick={() => window.open(joinLink, "_blank", "noopener,noreferrer")}
+                        className="inline-flex rounded-xl bg-red-600 px-3 py-1.5 text-xs font-bold text-white shadow-lg shadow-red-900/30 hover:bg-red-500"
+                    >
+                        Unirse a la sesión en vivo
+                    </button>
+                ) : isStudentJoinTooEarly(session, now) ? (
+                    <p className="text-xs text-gray-400">Disponible 10 minutos antes</p>
+                ) : null}
+            </div>
 
         </motion.div>
     )

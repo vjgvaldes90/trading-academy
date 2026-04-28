@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { createSupabaseServiceRoleClient } from "@/lib/access"
+import { DEFAULT_MEET_LINK } from "@/lib/defaultMeetLink"
 import { notifyConfirmedBookingsOfSessionChange } from "@/lib/notifySessionBookingStudents"
 
 export const runtime = "nodejs"
@@ -37,15 +38,21 @@ export async function PATCH(req: Request, context: RouteCtx) {
         const hasTime = Object.prototype.hasOwnProperty.call(b, "time")
         const hasCapacity = Object.prototype.hasOwnProperty.call(b, "capacity")
         const hasStatus = Object.prototype.hasOwnProperty.call(b, "status")
+        const hasLink = Object.prototype.hasOwnProperty.call(b, "link")
 
-        if (!hasTime && !hasCapacity && !hasStatus) {
+        if (!hasTime && !hasCapacity && !hasStatus && !hasLink) {
             return NextResponse.json(
-                { error: "Provide at least one of: time, capacity, status" },
+                { error: "Provide at least one of: time, capacity, link, status" },
                 { status: 400 }
             )
         }
 
-        const patch: { time?: string; capacity?: number; status?: string } = {}
+        const patch: {
+            time?: string
+            capacity?: number
+            link?: string
+            status?: string
+        } = {}
 
         if (hasStatus) {
             const raw = b.status
@@ -78,13 +85,19 @@ export async function PATCH(req: Request, context: RouteCtx) {
             patch.capacity = cap
         }
 
+        if (hasLink) {
+            const linkRaw = typeof b.link === "string" ? b.link.trim() : ""
+            const resolved = linkRaw !== "" ? linkRaw : DEFAULT_MEET_LINK
+            patch.link = resolved
+        }
+
         const supabase = createSupabaseServiceRoleClient()
 
         const { data, error } = await supabase
             .from("sessions")
             .update(patch)
             .eq("id", id)
-            .select("id, date, time, capacity, status")
+            .select("id, date, time, capacity, link, status")
             .single()
 
         if (error) {
@@ -100,7 +113,7 @@ export async function PATCH(req: Request, context: RouteCtx) {
 
         const notifyCancel = patch.status === "cancelled"
         const notifyUpdate =
-            !notifyCancel && (patch.time !== undefined || patch.capacity !== undefined)
+            !notifyCancel && (patch.time !== undefined || patch.capacity !== undefined || patch.link !== undefined)
         if (notifyCancel) {
             await notifyConfirmedBookingsOfSessionChange(
                 supabase,

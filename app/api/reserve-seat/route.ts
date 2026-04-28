@@ -1,4 +1,8 @@
 import { createSupabaseServiceRoleClient } from "@/lib/access"
+import {
+    evaluateAcademyAccess,
+    type TradingStudentAccessRow,
+} from "@/lib/studentAcademyAccess"
 
 export const runtime = "nodejs"
 
@@ -21,9 +25,26 @@ export async function POST(req: Request) {
 
         const supabase = createSupabaseServiceRoleClient()
 
+        const { data: accessRow, error: accessErr } = await supabase
+            .from("trading_students")
+            .select("access_code, access_type, is_active, access_expires_at")
+            .eq("email", user_email)
+            .maybeSingle()
+        if (accessErr) {
+            console.error("[reserve-seat] trading_students access check", accessErr)
+            return Response.json({ error: "Error verificando acceso" }, { status: 500 })
+        }
+        const accessEv = evaluateAcademyAccess(accessRow as TradingStudentAccessRow | null)
+        if (!accessEv.ok) {
+            return Response.json(
+                { error: accessEv.reason === "inactive" ? "Access revoked" : "Access denied" },
+                { status: 403 }
+            )
+        }
+
         const { data: sessionRow, error: sessionErr } = await supabase
             .from("sessions")
-            .select("capacity")
+            .select("capacity, booked_slots")
             .eq("id", session_id)
             .eq("status", "active")
             .maybeSingle()
@@ -39,6 +60,12 @@ export async function POST(req: Request) {
         const capacity =
             typeof (sessionRow as { capacity?: unknown }).capacity === "number"
                 ? (sessionRow as { capacity: number }).capacity
+                : 0
+
+        const columnBooked =
+            typeof (sessionRow as { booked_slots?: unknown }).booked_slots === "number" &&
+            Number.isFinite((sessionRow as { booked_slots: number }).booked_slots)
+                ? Math.max(0, (sessionRow as { booked_slots: number }).booked_slots)
                 : 0
 
         const nowIso = new Date().toISOString()
@@ -91,8 +118,9 @@ export async function POST(req: Request) {
             return Response.json({ error: "User already has an active reservation" }, { status: 400 })
         }
 
+        const ledgerBooked = Math.max(columnBooked, bookings_confirmados ?? 0)
         const available_spots =
-            capacity - (bookings_confirmados ?? 0) - (reservations_activas ?? 0)
+            capacity - ledgerBooked - (reservations_activas ?? 0)
 
         if (available_spots <= 0) {
             return Response.json({ error: "Session full" }, { status: 400 })
@@ -122,8 +150,7 @@ export async function POST(req: Request) {
 
         const reservationId =
             typeof reservation?.id === "string" ? reservation.id : null
-        const totalAfter =
-            (bookings_confirmados ?? 0) + (reservations_activas ?? 0) + 1
+        const totalAfter = ledgerBooked + (reservations_activas ?? 0) + 1
 
         // Concurrency safeguard: if another request filled capacity in parallel, rollback this reservation.
         if (totalAfter > capacity) {
@@ -144,10 +171,10 @@ export async function POST(req: Request) {
             reservation_id: reservationId,
             expires_at: reservation?.expires_at ?? expiresAt,
         })
-    } catch (err: any) {
+    } catch (err: unknown) {
         console.error("SERVER ERROR:", err)
         return Response.json(
-            { error: "Server error", details: err.message },
+            { error: "Server error", details: err instanceof Error ? err.message : "Unknown error" },
             { status: 500 }
         )
     }

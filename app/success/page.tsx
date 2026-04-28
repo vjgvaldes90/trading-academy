@@ -1,24 +1,21 @@
 "use client"
 
-import { Suspense, useEffect, useRef, useState } from "react"
+import { Suspense, useEffect, useRef } from "react"
 import { useSearchParams } from "next/navigation"
 
 const REDIRECT_MS = 2800
 
 function SuccessPageContent() {
     const searchParams = useSearchParams()
-    const [isError, setIsError] = useState(false)
-    const [errorMessage, setErrorMessage] = useState("")
+    const sessionId = searchParams.get("session_id")?.trim() ?? ""
+    const isError = sessionId.length === 0
+    const errorMessage = isError
+        ? "No se encontró la sesión de pago. Vuelve a intentar o contacta soporte."
+        : ""
     const didRedirect = useRef(false)
 
     useEffect(() => {
-        const sessionId = searchParams.get("session_id")
-
-        if (!sessionId) {
-            setIsError(true)
-            setErrorMessage("No se encontró la sesión de pago. Vuelve a intentar o contacta soporte.")
-            return
-        }
+        if (!sessionId) return
 
         void (async () => {
             try {
@@ -47,7 +44,7 @@ function SuccessPageContent() {
         }, REDIRECT_MS)
 
         return () => window.clearTimeout(timer)
-    }, [searchParams])
+    }, [sessionId])
 
     return (
         <div

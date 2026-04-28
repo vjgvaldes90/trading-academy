@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, type FormEvent } from "react"
 import { supabase } from "@/lib/supabase"
 
 const availableDays = [
@@ -46,7 +46,7 @@ export default function BookingForm() {
         loadSpots()
     }, [selectedDay, selectedHour])
 
-    const handleBooking = async (e: any) => {
+    const handleBooking = async (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault()
         setLoading(true)
 
@@ -112,6 +112,9 @@ export default function BookingForm() {
         }
 
         // 💰 crear checkout
+        const {
+            data: { user },
+        } = await supabase.auth.getUser()
         const res = await fetch("/api/create-checkout", {
             method: "POST",
             cache: "no-store",
@@ -119,7 +122,7 @@ export default function BookingForm() {
             headers: {
                 "Content-Type": "application/json",
             },
-            body: JSON.stringify({ email }),
+            body: JSON.stringify({ email, userId: user?.id ?? null }),
         })
 
         console.log("STATUS:", res.status)

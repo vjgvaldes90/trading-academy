@@ -3,6 +3,9 @@ import { DASHBOARD_CLIENT_EMAIL_COOKIE } from "@/lib/studentLocalStorage"
 
 export const SESSION_COOKIE = "session"
 export const HAS_PAID_COOKIE = "hasPaid"
+/** HttpOnly cookies for single-active-session middleware */
+export const SESSION_TOKEN_COOKIE = "session_token"
+export const USER_EMAIL_COOKIE = "user_email"
 
 const WEEK_SECONDS = 60 * 60 * 24 * 7
 
@@ -50,6 +53,8 @@ export function clearAuthCookies(response: NextResponse) {
     const opts = { ...cookieBaseOptions(), maxAge: 0 }
     response.cookies.set(SESSION_COOKIE, "", opts)
     response.cookies.set(HAS_PAID_COOKIE, "", opts)
+    response.cookies.set(SESSION_TOKEN_COOKIE, "", opts)
+    response.cookies.set(USER_EMAIL_COOKIE, "", opts)
     response.cookies.set(DASHBOARD_CLIENT_EMAIL_COOKIE, "", { ...clientVisibleEmailCookieOptions(), maxAge: 0 })
     console.log("[auth] cookies cleared (logout)")
 }

@@ -1,5 +1,6 @@
 export type DbSession = {
     id: string
+    title?: string | null
     /** Display label (e.g. weekday name); not used for filtering. */
     day: string | null
     /** Canonical session calendar date (YYYY-MM-DD), maps from `session_date`. */
@@ -11,6 +12,7 @@ export type DbSession = {
     /** Backend-computed real-time availability from /api/sessions. */
     available_spots?: number | null
     link: string | null
+    is_live?: boolean
     /** Row closed / not offered; excluded from booking lists. */
     is_booked?: boolean
     /** Cupo reservado por el usuario actual (hydrate en dashboard + tras reserva en cliente). */
@@ -20,6 +22,11 @@ export type DbSession = {
 export type SessionStatus = "live" | "today" | "next"
 
 const LIVE_WINDOW_MINUTES = 10
+
+/** Student dashboard: join allowed up to this many minutes before start, or anytime after start until hidden. */
+const STUDENT_JOIN_MINUTES_BEFORE_START = 10
+/** Student dashboard: hide sessions more than this many minutes after start. */
+const STUDENT_SESSION_HIDE_MINUTES_AFTER_START = 120
 
 const SPANISH_WEEKDAYS = [
     "Domingo",
@@ -85,6 +92,76 @@ export function isSessionLiveNow(s: DbSession, now: Date): boolean {
     const t0 = at.getTime()
     const t1 = t0 + LIVE_WINDOW_MINUTES * 60 * 1000
     return now.getTime() >= t0 && now.getTime() < t1
+}
+
+/**
+ * Minutes until session start: `(startAt - now) / 60000`.
+ * Positive = session is in the future; negative = already started.
+ */
+export function getMinutesUntilSessionStart(s: DbSession, now: Date): number | null {
+    const at = startAt(s)
+    if (!at) return null
+    return (at.getTime() - now.getTime()) / (1000 * 60)
+}
+
+/** `(now - sessionStart) / 60000`. Positive = session already started. */
+export function minutesSinceSessionStart(s: DbSession, now: Date): number | null {
+    const diff = getMinutesUntilSessionStart(s, now)
+    if (diff === null) return null
+    return -diff
+}
+
+/** Hide sessions that ended more than 2 hours ago (student dashboard lists). */
+export function shouldHideStudentDashboardSession(s: DbSession, now: Date): boolean {
+    const since = minutesSinceSessionStart(s, now)
+    return since != null && since > STUDENT_SESSION_HIDE_MINUTES_AFTER_START
+}
+
+export type StudentLiveJoinOptions = {
+    hasPaid: boolean
+    /** Confirmed booking for this session (required to open the live link). */
+    hasReservation: boolean
+}
+
+/**
+ * Paid user with a reservation may open the live link within 10 minutes before start
+ * or after start (until hidden by {@link shouldHideStudentDashboardSession}).
+ */
+export function canShowStudentLiveJoinButton(s: DbSession, now: Date, options: StudentLiveJoinOptions): boolean {
+    if (!options.hasPaid) return false
+    if (!options.hasReservation) return false
+    const link = s.link?.trim()
+    if (!link) return false
+    const diffMin = getMinutesUntilSessionStart(s, now)
+    if (diffMin === null) return false
+    const withinTenMinutesBeforeStart =
+        diffMin > 0 && diffMin <= STUDENT_JOIN_MINUTES_BEFORE_START
+    const startedOrAtStart = diffMin <= 0
+    return withinTenMinutesBeforeStart || startedOrAtStart
+}
+
+/** More than 10 minutes before start (session still in the future). */
+export function isStudentJoinTooEarly(s: DbSession, now: Date): boolean {
+    const diff = getMinutesUntilSessionStart(s, now)
+    if (diff === null) return false
+    return diff > STUDENT_JOIN_MINUTES_BEFORE_START
+}
+
+/** Join is enabled 10 minutes before start and during the live window. */
+export function canJoinLiveSessionNow(s: DbSession, now: Date): boolean {
+    const at = startAt(s)
+    if (!at) return false
+    const openAt = at.getTime() - LIVE_WINDOW_MINUTES * 60 * 1000
+    const closeAt = at.getTime() + LIVE_WINDOW_MINUTES * 60 * 1000
+    const t = now.getTime()
+    return t >= openAt && t < closeAt
+}
+
+export function startsWithinNextMinutes(s: DbSession, now: Date, minutes: number): boolean {
+    const at = startAt(s)
+    if (!at) return false
+    const delta = at.getTime() - now.getTime()
+    return delta >= 0 && delta <= minutes * 60 * 1000
 }
 
 export type TimeDisplayParts = { clock: string; period: string | null }
@@ -208,12 +285,21 @@ export function getNextSessionFromDB(
 
 export function buildNextSessionTicker(
     sessionState: { status: SessionStatus; session: DbSession } | null,
-    now: Date
+    now: Date,
+    opts: { hasPaid: boolean; hasReservation: boolean }
 ): { line: string; joinHref: string } {
     if (!sessionState) return { line: "Sin próxima sesión programada.", joinHref: "#weekly-schedule" }
 
     const { status, session } = sessionState
-    const joinHref = session.link?.trim() || "#weekly-schedule"
+    const rawLink = session.link?.trim() ?? ""
+    const joinHref =
+        rawLink.length > 0 &&
+        canShowStudentLiveJoinButton(session, now, {
+            hasPaid: opts.hasPaid,
+            hasReservation: opts.hasReservation,
+        })
+            ? rawLink
+            : "#weekly-schedule"
     const wd = weekdayLabel(session)
     const tm = formatTimeLabel(session) || "--"
     const at = startAt(session)

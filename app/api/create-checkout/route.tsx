@@ -23,9 +23,14 @@ export async function POST(req: Request) {
     try {
         const body = (await req.json().catch(() => null)) as {
             email?: unknown
+            userId?: unknown
             sessionId?: unknown
         } | null
         const email = typeof body?.email === "string" ? body.email.trim() : ""
+        const userId =
+            typeof body?.userId === "string" && body.userId.trim().length > 0
+                ? body.userId.trim()
+                : null
         const sessionId =
             typeof body?.sessionId === "string" && body.sessionId.trim().length > 0
                 ? body.sessionId.trim()
@@ -41,6 +46,9 @@ export async function POST(req: Request) {
 
         const metadata: Record<string, string> = {
             email: email.toLowerCase(),
+        }
+        if (userId) {
+            metadata.user_id = userId
         }
         if (sessionId) {
             metadata.trading_session_id = sessionId

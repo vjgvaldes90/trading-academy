@@ -21,9 +21,11 @@ export type WelcomeEmailProps = {
 export function createWelcomeEmail({ name, email, magicLink, accessCode }: WelcomeEmailProps): string {
     void email
     const safeName = escapeHtml(name.trim() || "estudiante")
-    const safeCode = escapeHtml(accessCode.trim())
+    const codeTrim = accessCode.trim()
+    const safeCode = escapeHtml(codeTrim)
     // magicLink is built server-side; encode for attribute safety
     const safeHref = escapeHtml(magicLink)
+    const showAccessCode = codeTrim.length > 0
 
     return `
 <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color:#f3f4f6;margin:0;padding:0;">
@@ -54,12 +56,16 @@ export function createWelcomeEmail({ name, email, magicLink, accessCode }: Welco
                 </td>
               </tr>
             </table>
-            <p style="font-size:14px;color:#6b7280;margin:0 0 10px 0;">
+            ${
+                showAccessCode
+                    ? `<p style="font-size:14px;color:#6b7280;margin:0 0 10px 0;">
               O usa este código de acceso:
             </p>
             <div style="font-size:28px;font-weight:bold;letter-spacing:8px;padding:16px;border:1px dashed #d1d5db;border-radius:12px;color:#111827;margin:0 0 20px 0;">
               ${safeCode}
-            </div>
+            </div>`
+                    : ""
+            }
             <hr style="border:none;border-top:1px solid #e5e7eb;margin:20px 0;" />
             <p style="font-size:12px;color:#9ca3af;margin:0;line-height:1.5;">
               Si no solicitaste esto, puedes ignorar este mensaje.

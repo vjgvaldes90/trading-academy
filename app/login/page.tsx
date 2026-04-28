@@ -23,28 +23,18 @@ function LoginPageInner() {
             : "/dashboard"
 
     const fromEmailCta = searchParams.has("redirect")
+    const queryError = searchParams.get("error")?.trim()
+    const queryAccessError =
+        queryError === "access_denied"
+            ? "Tu acceso a la academia no está activo o ha caducado. Si crees que es un error, contacta al administrador."
+            : queryError === "session_expired"
+              ? "Tu sesión ha finalizado porque iniciaste sesión en otro dispositivo. Vuelve a entrar con tu código o enlace."
+              : null
 
     useEffect(() => {
         if (!magicToken) return
-        console.log("[login] token in URL → bypass OTP and use magic login")
         window.location.replace(`/magic-login?token=${encodeURIComponent(magicToken)}`)
     }, [magicToken])
-
-    useEffect(() => {
-        const err = searchParams.get("error")?.trim()
-        if (err === "access_denied") {
-            setAccessError(
-                "Tu acceso a la academia no está activo o ha caducado. Si crees que es un error, contacta al administrador."
-            )
-        }
-    }, [searchParams])
-
-    useEffect(() => {
-        console.log("[login] redirect query param", {
-            redirect: rawRedirect,
-            resolvedTarget: afterLoginTarget,
-        })
-    }, [rawRedirect, afterLoginTarget])
 
     const handleAccess = async () => {
         setAccessError(null)
@@ -84,6 +74,10 @@ function LoginPageInner() {
                     window.location.replace("/expired")
                     return
                 }
+                if (data.reason === "inactive") {
+                    window.location.replace("/blocked")
+                    return
+                }
                 if (typeof data.message === "string") {
                     setAccessError(data.message)
                     return
@@ -94,10 +88,6 @@ function LoginPageInner() {
                 const serverRedirect =
                     typeof data.redirect === "string" ? data.redirect : null
                 const dest = sanitizeRedirect(serverRedirect ?? afterLoginTarget, afterLoginTarget)
-                console.log("[login] access code OK", {
-                    profileCompleted: data.profileCompleted === true,
-                    redirect: dest,
-                })
                 const st = data.student as
                     | { name?: string; email?: string; classes?: unknown }
                     | undefined
@@ -119,7 +109,6 @@ function LoginPageInner() {
                 }
                 window.location.assign(dest)
             } else {
-                console.log("[login] invalid code", { hasPaid: false })
                 setAccessError("Código inválido")
             }
         } catch (err) {
@@ -129,10 +118,12 @@ function LoginPageInner() {
     }
 
     return (
-        <div className="min-h-screen grid md:grid-cols-2">
+        <div className="relative min-h-screen overflow-hidden bg-[#020617] text-white md:grid md:grid-cols-2">
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_15%_20%,rgba(37,99,235,0.35),transparent_40%),radial-gradient(circle_at_85%_80%,rgba(239,68,68,0.2),transparent_45%)]" />
+            <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,rgba(148,163,184,0.07)_1px,transparent_1px),linear-gradient(to_bottom,rgba(148,163,184,0.05)_1px,transparent_1px)] bg-[size:32px_32px] opacity-30" />
             <LoginInfo />
 
-            <div className="flex items-center justify-center bg-white p-8">
+            <div className="relative flex items-center justify-center p-8">
                 <LoginCard
                     mode={mode}
                     setMode={setMode}
@@ -141,7 +132,7 @@ function LoginPageInner() {
                     code={code}
                     setCode={setCode}
                     handleAccess={handleAccess}
-                    accessError={accessError}
+                    accessError={accessError ?? queryAccessError}
                     onClearAccessError={() => setAccessError(null)}
                     startOnAccessTab={fromEmailCta}
                 />
@@ -154,7 +145,7 @@ export default function LoginPage() {
     return (
         <Suspense
             fallback={
-                <div className="min-h-screen flex items-center justify-center bg-white text-gray-700">
+                <div className="flex min-h-screen items-center justify-center bg-[#020617] text-slate-300">
                     Cargando…
                 </div>
             }

@@ -3,13 +3,21 @@
 import type { TabKey } from "@/context/SessionContext"
 import { useSession } from "@/context/SessionContext"
 import { useBooking } from "@/hooks/useBooking"
-import { DbSession, getSessionAvailableSeats, sessionDisplayDay, sessionDisplayHour } from "@/lib/sessions"
+import {
+    canShowStudentLiveJoinButton,
+    DbSession,
+    getSessionAvailableSeats,
+    isStudentJoinTooEarly,
+    sessionDisplayDay,
+    sessionDisplayHour,
+} from "@/lib/sessions"
 import BookingInsertTestButton from "@/components/debug/BookingInsertTestButton"
 import Link from "next/link"
 import { useState } from "react"
 
 function SlotRow({ session }: { session: DbSession }) {
     const { bookingAccess, userEmail, myBookings, cancelMyBooking } = useSession()
+    const now = new Date()
     const canBook = bookingAccess.canBook
     const myBooking =
         userEmail != null
@@ -28,10 +36,17 @@ function SlotRow({ session }: { session: DbSession }) {
     const label = `${sessionDisplayDay(session)} · ${sessionDisplayHour(session) || "—"}`
 
     const reserveDisabled = lockedOutForReserve || isLoading
+    const joinLink = session.link?.trim() ?? ""
+    const sessionFullForJoin = available === 0 && !isMine
+    const mayOpenLiveJoin =
+        canShowStudentLiveJoinButton(session, now, {
+            hasPaid: canBook,
+            hasReservation: isMine,
+        }) && Boolean(joinLink)
 
     let reserveLabel = "Reservar"
     if (isLoading) reserveLabel = "Reservando…"
-    else if (!canBook) reserveLabel = "Sin acceso"
+    else if (!canBook) reserveLabel = "Acceso no disponible"
     else if (isFull) reserveLabel = "Full"
 
     const handleCancel = async () => {
@@ -91,6 +106,25 @@ function SlotRow({ session }: { session: DbSession }) {
                     {reserveLabel}
                 </button>
             ) : null}
+            {!canBook ? (
+                <p style={{ margin: 0, fontSize: "0.75rem", color: "#fcd34d" }}>Acceso no disponible</p>
+            ) : !joinLink ? (
+                <p style={{ margin: 0, fontSize: "0.75rem", color: "#94a3b8" }}>Sin enlace de reunión</p>
+            ) : sessionFullForJoin ? (
+                <p style={{ margin: 0, fontSize: "0.75rem", fontWeight: 600, color: "#f87171" }}>Sesión llena</p>
+            ) : !isMine ? (
+                <p style={{ margin: 0, fontSize: "0.75rem", color: "#94a3b8" }}>Debes reservar esta sesión</p>
+            ) : mayOpenLiveJoin ? (
+                <button
+                    type="button"
+                    onClick={() => window.open(joinLink, "_blank", "noopener,noreferrer")}
+                    className="inline-flex w-full items-center justify-center rounded-xl bg-red-600 px-4 py-2 text-xs font-bold text-white shadow-lg shadow-red-900/30 hover:bg-red-500"
+                >
+                    Unirse a la sesión en vivo
+                </button>
+            ) : isStudentJoinTooEarly(session, now) ? (
+                <p style={{ margin: 0, fontSize: "0.75rem", color: "#94a3b8" }}>Disponible 10 minutos antes</p>
+            ) : null}
             <p
                 style={{
                     margin: 0,
@@ -123,6 +157,7 @@ export default function BookSessionSection() {
         activeTab,
         setActiveTab,
         filteredSessions,
+        sessions,
         sessionBookingError,
         sessionBookingSuccess,
     } = useSession()
@@ -201,9 +236,13 @@ export default function BookSessionSection() {
                 ))}
             </div>
 
-            {filteredSessions.length === 0 ? (
+            {!sessions?.length ? (
+                <p style={{ color: "var(--ds-text-muted)", margin: 0, fontSize: "0.875rem", textAlign: "center" }}>
+                    No tienes sesiones disponibles aún
+                </p>
+            ) : filteredSessions.length === 0 ? (
                 <p style={{ color: "var(--ds-text-muted)", margin: 0, fontSize: "0.875rem" }}>
-                    No hay sesiones disponibles
+                    No hay sesiones en este rango.
                 </p>
             ) : (
                 <div

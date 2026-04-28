@@ -1,11 +1,20 @@
 "use client"
 
 import { useSession } from "@/context/SessionContext"
-import { getNextBookedSession, sessionDisplayDay, sessionDisplayHour } from "@/lib/sessions"
+import {
+    canShowStudentLiveJoinButton,
+    getMinutesUntilSessionStart,
+    getNextBookedSession,
+    isStudentJoinTooEarly,
+    sessionDisplayDay,
+    sessionDisplayHour,
+} from "@/lib/sessions"
+import Link from "next/link"
+import type { CSSProperties } from "react"
 import { useEffect, useMemo, useState } from "react"
 
 export default function NextSessionCard() {
-    const { sessions } = useSession()
+    const { sessions, bookingAccess } = useSession()
     const [now, setNow] = useState(() => new Date())
 
     useEffect(() => {
@@ -20,10 +29,29 @@ export default function NextSessionCard() {
     const label = `Próxima sesión: ${sessionDisplayDay(nextBooked)} ${sessionDisplayHour(nextBooked)}`.trim()
 
     const joinHref = nextBooked.link?.trim() ?? ""
-    const hasJoinLink = joinHref.length > 0
+    const canJoin =
+        joinHref.length > 0 &&
+        canShowStudentLiveJoinButton(nextBooked, now, {
+            hasPaid: bookingAccess.canBook,
+            hasReservation: true,
+        })
 
     const scrollToBooking = () => {
         document.getElementById("reservar-sesion")?.scrollIntoView({ behavior: "smooth", block: "start" })
+    }
+
+    const secondaryButtonStyle: CSSProperties = {
+        width: "100%",
+        padding: "0.75rem 1.25rem",
+        borderRadius: 12,
+        border: "none",
+        cursor: "pointer",
+        background: "linear-gradient(90deg, #3b82f6 0%, #1d4ed8 100%)",
+        color: "#fff",
+        fontWeight: 700,
+        fontSize: "0.9375rem",
+        boxShadow: "0 10px 24px rgba(59,130,246,0.3)",
+        transition: "all 0.2s ease",
     }
 
     return (
@@ -48,11 +76,10 @@ export default function NextSessionCard() {
                 >
                     {label}
                 </p>
-                {hasJoinLink ? (
-                    <a
-                        href={joinHref}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                {canJoin ? (
+                    <button
+                        type="button"
+                        onClick={() => window.open(joinHref, "_blank", "noopener,noreferrer")}
                         style={{
                             display: "flex",
                             width: "100%",
@@ -60,37 +87,57 @@ export default function NextSessionCard() {
                             alignItems: "center",
                             padding: "0.75rem 1.25rem",
                             borderRadius: 12,
-                            background: "linear-gradient(90deg, #3b82f6 0%, #1d4ed8 100%)",
-                            color: "#fff",
-                            fontWeight: 700,
-                            fontSize: "0.9375rem",
-                            textDecoration: "none",
-                            boxShadow: "0 10px 24px rgba(59,130,246,0.3)",
-                            transition: "all 0.2s ease",
-                        }}
-                    >
-                        Unirse
-                    </a>
-                ) : (
-                    <button
-                        type="button"
-                        onClick={scrollToBooking}
-                        style={{
-                            width: "100%",
-                            padding: "0.75rem 1.25rem",
-                            borderRadius: 12,
                             border: "none",
                             cursor: "pointer",
-                            background: "linear-gradient(90deg, #3b82f6 0%, #1d4ed8 100%)",
+                            background: "linear-gradient(90deg, #dc2626 0%, #b91c1c 100%)",
                             color: "#fff",
                             fontWeight: 700,
                             fontSize: "0.9375rem",
-                            boxShadow: "0 10px 24px rgba(59,130,246,0.3)",
+                            boxShadow: "0 10px 24px rgba(220,38,38,0.35)",
                             transition: "all 0.2s ease",
                         }}
                     >
-                        Ver horarios
+                        Unirse a la sesión en vivo
                     </button>
+                ) : !bookingAccess.canBook ? (
+                    <div style={{ display: "grid", gap: 8 }}>
+                        <p style={{ margin: 0, fontSize: "0.8125rem", color: "#fcd34d", textAlign: "center" }}>
+                            Acceso no disponible
+                        </p>
+                        <Link
+                            href="/pricing"
+                            style={{
+                                textAlign: "center",
+                                fontSize: "0.8125rem",
+                                fontWeight: 700,
+                                color: "#60a5fa",
+                            }}
+                        >
+                            Obtener acceso →
+                        </Link>
+                    </div>
+                ) : !joinHref ? (
+                    <div style={{ display: "grid", gap: 8 }}>
+                        <button type="button" onClick={scrollToBooking} style={secondaryButtonStyle}>
+                            Ver horarios
+                        </button>
+                        <p style={{ margin: 0, fontSize: "0.78rem", color: "#94a3b8", textAlign: "center" }}>
+                            Sin enlace de reunión
+                        </p>
+                    </div>
+                ) : (
+                    <div style={{ display: "grid", gap: 8 }}>
+                        <button type="button" onClick={scrollToBooking} style={secondaryButtonStyle}>
+                            Ver horarios
+                        </button>
+                        <p style={{ margin: 0, fontSize: "0.78rem", color: "#94a3b8", textAlign: "center" }}>
+                            {isStudentJoinTooEarly(nextBooked, now)
+                                ? "Disponible 10 minutos antes"
+                                : getMinutesUntilSessionStart(nextBooked, now) === null
+                                  ? "Horario no disponible"
+                                  : "Sesión llena"}
+                        </p>
+                    </div>
                 )}
             </div>
         </section>

@@ -20,7 +20,7 @@ const testimonials = [
 export default function Testimonials() {
     return (
         <motion.section
-            className="bg-white py-24"
+            className="bg-[#030712] py-24 text-white"
             initial={{ opacity: 0, y: 60 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
@@ -29,12 +29,12 @@ export default function Testimonials() {
             <div className="max-w-6xl mx-auto px-8 text-center">
 
                 {/* 🔥 TITULO */}
-                <h2 className="text-4xl font-bold mb-4 text-gray-900">
+                <h2 className="mb-4 text-4xl font-bold text-slate-100">
                     Resultados reales de estudiantes reales
                 </h2>
 
                 {/* 💬 SUBTEXTO */}
-                <p className="text-gray-600 mb-12">
+                <p className="mb-12 text-slate-300">
                     Esto es lo que están logrando después de aplicar el método
                 </p>
 
@@ -44,11 +44,11 @@ export default function Testimonials() {
                     {testimonials.map((t, i) => (
                         <div
                             key={i}
-                            className="bg-gray-50 p-6 rounded-xl shadow hover:shadow-xl transition text-left"
+                            className="rounded-xl border border-blue-400/20 bg-[#0B1220]/90 p-6 text-left shadow-[0_18px_40px_rgba(2,6,23,0.55)] transition hover:-translate-y-0.5 hover:shadow-[0_22px_44px_rgba(30,64,175,0.28)]"
                         >
-                            <p className="text-gray-700 mb-4">“{t.text}”</p>
+                            <p className="mb-4 text-slate-300">“{t.text}”</p>
 
-                            <p className="font-semibold text-gray-900">
+                            <p className="font-semibold text-slate-100">
                                 {t.name}
                             </p>
                         </div>
@@ -59,7 +59,7 @@ export default function Testimonials() {
                 {/* 💰 CTA */}
                 <a
                     href="/login"
-                    className="inline-block mt-12 bg-green-500 text-black px-8 py-4 rounded-xl text-lg font-bold hover:bg-green-400 transition transform hover:scale-105"
+                    className="mt-12 inline-block rounded-xl border border-blue-300/25 bg-gradient-to-r from-blue-500 to-blue-700 px-8 py-4 text-lg font-bold text-white shadow-[0_14px_34px_rgba(37,99,235,0.35)] transition hover:scale-105 hover:brightness-110"
                 >
                     🚀 Empezar ahora
                 </a>
