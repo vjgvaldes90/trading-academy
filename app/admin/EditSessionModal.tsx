@@ -40,7 +40,6 @@ export type EditSessionTarget = {
     id: string
     time: string | null
     capacity: number | null
-    link?: string | null
     /** Current confirmed bookings; used to block capacity below booked. */
     booked?: number | null
     date?: string | null
@@ -61,7 +60,6 @@ export default function EditSessionModal({ open, session, onClose, onSuccess }: 
             : ""
     )
     const [submitError, setSubmitError] = useState<string | null>(null)
-    const [link, setLink] = useState(session?.link?.trim() ?? "")
     const [submitting, setSubmitting] = useState(false)
 
     useEffect(() => {
@@ -73,7 +71,6 @@ export default function EditSessionModal({ open, session, onClose, onSuccess }: 
                 : ""
         )
         setSubmitError(null)
-        setLink(session.link?.trim() ?? "")
         setSubmitting(false)
     }, [open, session])
 
@@ -112,10 +109,10 @@ export default function EditSessionModal({ open, session, onClose, onSuccess }: 
             const res = await fetch(`/api/admin/sessions/${session.id}`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
+                credentials: "include",
                 body: JSON.stringify({
                     time: time.trim(),
                     capacity: cap,
-                    link: link.trim(),
                 }),
                 cache: "no-store",
             })
@@ -205,6 +202,9 @@ export default function EditSessionModal({ open, session, onClose, onSuccess }: 
                 <div style={{ padding: "12px 18px 0", color: "#64748b", fontSize: "0.8125rem" }}>
                     Fecha (solo lectura): <span style={{ color: "#e2e8f0" }}>{dateLabel}</span>
                 </div>
+                <p style={{ margin: "8px 18px 0", color: "#64748b", fontSize: "0.78rem", lineHeight: 1.45 }}>
+                    El enlace de Zoom (estudiantes y anfitrión) se actualiza automáticamente al guardar la hora.
+                </p>
 
                 <form onSubmit={(e) => void handleSubmit(e)} style={{ padding: "14px 18px 20px" }}>
                     <div style={{ marginBottom: 16 }}>
@@ -218,20 +218,6 @@ export default function EditSessionModal({ open, session, onClose, onSuccess }: 
                             value={time}
                             onChange={(e) => setTime(e.target.value)}
                             disabled={submitting}
-                            style={inputStyle}
-                        />
-                    </div>
-                    <div style={{ marginBottom: 18 }}>
-                        <label htmlFor="edit-session-link" style={labelStyle}>
-                            Link de la sesión (Meet / Zoom)
-                        </label>
-                        <input
-                            id="edit-session-link"
-                            type="text"
-                            value={link}
-                            onChange={(e) => setLink(e.target.value)}
-                            disabled={submitting}
-                            placeholder="https://meet.google.com/xxx-xxx"
                             style={inputStyle}
                         />
                     </div>

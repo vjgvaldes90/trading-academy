@@ -1,11 +1,13 @@
 "use client"
 
 import { useSession } from "@/context/SessionContext"
+import { fetchSecureStudentJoinUrl } from "@/lib/secureJoinClient"
 import {
     canShowStudentLiveJoinButton,
     getMinutesUntilSessionStart,
     getNextBookedSession,
     isStudentJoinTooEarly,
+    isStudentSecureJoinWindowClosed,
     sessionDisplayDay,
     sessionDisplayHour,
 } from "@/lib/sessions"
@@ -14,8 +16,9 @@ import type { CSSProperties } from "react"
 import { useEffect, useMemo, useState } from "react"
 
 export default function NextSessionCard() {
-    const { sessions, bookingAccess } = useSession()
+    const { sessions, bookingAccess, userEmail } = useSession()
     const [now, setNow] = useState(() => new Date())
+    const [joining, setJoining] = useState(false)
 
     useEffect(() => {
         const t = setInterval(() => setNow(new Date()), 30_000)
@@ -28,16 +31,33 @@ export default function NextSessionCard() {
 
     const label = `Próxima sesión: ${sessionDisplayDay(nextBooked)} ${sessionDisplayHour(nextBooked)}`.trim()
 
-    const joinHref = nextBooked.link?.trim() ?? ""
-    const canJoin =
-        joinHref.length > 0 &&
-        canShowStudentLiveJoinButton(nextBooked, now, {
-            hasPaid: bookingAccess.canBook,
-            hasReservation: true,
-        })
+    const canJoin = canShowStudentLiveJoinButton(nextBooked, now, {
+        hasPaid: bookingAccess.canBook,
+        hasReservation: true,
+    })
+
+    const sessionClosed =
+        bookingAccess.canBook &&
+        isStudentSecureJoinWindowClosed(nextBooked, now) &&
+        !isStudentJoinTooEarly(nextBooked, now)
 
     const scrollToBooking = () => {
         document.getElementById("reservar-sesion")?.scrollIntoView({ behavior: "smooth", block: "start" })
+    }
+
+    const handleSecureJoin = async () => {
+        if (!userEmail || joining) return
+        setJoining(true)
+        try {
+            const r = await fetchSecureStudentJoinUrl(nextBooked.id, userEmail)
+            if (r.ok) {
+                window.open(r.join_url, "_blank", "noopener,noreferrer")
+            } else {
+                console.warn("[NextSessionCard] join denied", r.code, r.message)
+            }
+        } finally {
+            setJoining(false)
+        }
     }
 
     const secondaryButtonStyle: CSSProperties = {
@@ -79,7 +99,8 @@ export default function NextSessionCard() {
                 {canJoin ? (
                     <button
                         type="button"
-                        onClick={() => window.open(joinHref, "_blank", "noopener,noreferrer")}
+                        disabled={joining}
+                        onClick={() => void handleSecureJoin()}
                         style={{
                             display: "flex",
                             width: "100%",
@@ -88,7 +109,8 @@ export default function NextSessionCard() {
                             padding: "0.75rem 1.25rem",
                             borderRadius: 12,
                             border: "none",
-                            cursor: "pointer",
+                            cursor: joining ? "wait" : "pointer",
+                            opacity: joining ? 0.85 : 1,
                             background: "linear-gradient(90deg, #dc2626 0%, #b91c1c 100%)",
                             color: "#fff",
                             fontWeight: 700,
@@ -97,7 +119,7 @@ export default function NextSessionCard() {
                             transition: "all 0.2s ease",
                         }}
                     >
-                        Unirse a la sesión en vivo
+                        {joining ? "Abriendo…" : "Unirse a la sesión en vivo"}
                     </button>
                 ) : !bookingAccess.canBook ? (
                     <div style={{ display: "grid", gap: 8 }}>
@@ -116,15 +138,10 @@ export default function NextSessionCard() {
                             Obtener acceso →
                         </Link>
                     </div>
-                ) : !joinHref ? (
-                    <div style={{ display: "grid", gap: 8 }}>
-                        <button type="button" onClick={scrollToBooking} style={secondaryButtonStyle}>
-                            Ver horarios
-                        </button>
-                        <p style={{ margin: 0, fontSize: "0.78rem", color: "#94a3b8", textAlign: "center" }}>
-                            Sin enlace de reunión
-                        </p>
-                    </div>
+                ) : sessionClosed ? (
+                    <p style={{ margin: 0, fontSize: "0.8125rem", color: "#94a3b8", textAlign: "center" }}>
+                        Sesión cerrada
+                    </p>
                 ) : (
                     <div style={{ display: "grid", gap: 8 }}>
                         <button type="button" onClick={scrollToBooking} style={secondaryButtonStyle}>

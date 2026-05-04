@@ -1,6 +1,13 @@
 import { NextResponse } from "next/server"
 import { createSupabaseServiceRoleClient } from "@/lib/access"
-import { DEFAULT_MEET_LINK } from "@/lib/defaultMeetLink"
+import { spanishWeekdayFromIsoDate } from "@/lib/sessions"
+import {
+    buildZoomStartTime,
+    createZoomMeeting,
+    deleteZoomMeeting,
+    ZoomApiError,
+    ZoomConfigError,
+} from "@/lib/zoom"
 
 export const runtime = "nodejs"
 
@@ -17,6 +24,26 @@ function parseCapacity(value: unknown): number | null {
     return null
 }
 
+function parseDurationMinutes(value: unknown): number | null {
+    if (typeof value === "number" && Number.isFinite(value) && Number.isInteger(value) && value > 0) {
+        return Math.min(value, 1440)
+    }
+    if (typeof value === "string" && value.trim() !== "") {
+        const n = Number.parseInt(value.trim(), 10)
+        if (Number.isFinite(n) && n > 0) return Math.min(n, 1440)
+    }
+    return null
+}
+
+function defaultMeetingDurationMinutes(): number {
+    const raw = process.env.ZOOM_DEFAULT_MEETING_DURATION_MINUTES?.trim()
+    if (!raw) return 120
+    const n = Number.parseInt(raw, 10)
+    if (!Number.isFinite(n) || n <= 0) return 120
+    return Math.min(n, 1440)
+}
+
+/** Zoom meetings: S2S OAuth only (`ZOOM_ACCOUNT_ID`, `ZOOM_CLIENT_ID`, `ZOOM_CLIENT_SECRET` in `@/lib/zoom`). */
 export async function POST(req: Request) {
     try {
         let body: unknown
@@ -29,8 +56,8 @@ export async function POST(req: Request) {
         const b = body as Record<string, unknown>
         const dateRaw = typeof b.date === "string" ? b.date.trim() : ""
         const timeRaw = typeof b.time === "string" ? b.time.trim() : ""
-        const linkFromBody = typeof b.link === "string" ? b.link.trim() : ""
         const parsedCapacity = parseCapacity(b.capacity)
+        const parsedDuration = parseDurationMinutes(b.duration ?? b.duration_minutes)
 
         if (!dateRaw || !timeRaw) {
             return NextResponse.json(
@@ -46,11 +73,6 @@ export async function POST(req: Request) {
             )
         }
 
-        const resolvedLink = linkFromBody !== "" ? linkFromBody : DEFAULT_MEET_LINK
-
-        const date = dateRaw
-        const time = timeRaw
-        const link = resolvedLink
         const capacity: number =
             typeof parsedCapacity === "number" &&
             Number.isFinite(parsedCapacity) &&
@@ -59,32 +81,69 @@ export async function POST(req: Request) {
                 ? parsedCapacity
                 : 10
 
-        console.log("SESSION INSERT FIXED:", {
-            date,
-            time,
-            capacity,
-            link,
-        })
+        const duration = parsedDuration ?? defaultMeetingDurationMinutes()
+
+        let startTimeZoom: string
+        try {
+            startTimeZoom = buildZoomStartTime(dateRaw, timeRaw)
+        } catch (e: unknown) {
+            const msg = e instanceof Error ? e.message : "Invalid date/time"
+            return NextResponse.json({ error: "Invalid session date or time", details: msg }, { status: 400 })
+        }
+
+        const topic =
+            typeof b.topic === "string" && b.topic.trim() !== ""
+                ? b.topic.trim()
+                : `Smart Option Academy — ${dateRaw} ${timeRaw}`
+
+        let zoom: Awaited<ReturnType<typeof createZoomMeeting>>
+        try {
+            zoom = await createZoomMeeting({
+                topic,
+                start_time: startTimeZoom,
+                duration,
+            })
+        } catch (e: unknown) {
+            if (e instanceof ZoomConfigError) {
+                return NextResponse.json(
+                    { error: "Zoom is not configured for this server", details: e.message },
+                    { status: 500 }
+                )
+            }
+            if (e instanceof ZoomApiError) {
+                return NextResponse.json(
+                    { error: "Could not create Zoom meeting; session was not saved", details: e.message },
+                    { status: 502 }
+                )
+            }
+            throw e
+        }
 
         const supabase = createSupabaseServiceRoleClient()
 
-        const { data, error } = await supabase
-            .from("sessions")
-            .insert({
-                date,
-                time,
-                capacity,
-                booked_slots: 0,
-                status: "active",
-                link,
-            })
-            .select("id, day, date, time, max_slots, booked_slots, link, created_at, capacity, status")
-            .single()
+        const day = spanishWeekdayFromIsoDate(dateRaw)
+        const insertRow = {
+            day,
+            date: dateRaw,
+            time: timeRaw,
+            capacity,
+            max_slots: capacity,
+            booked_slots: 0,
+            link: zoom.join_url,
+            status: "active" as const,
+        }
+
+        const { data, error } = await supabase.from("sessions").insert(insertRow).select("*").single()
 
         if (error) {
             console.error("[api/admin/sessions/create] insert error", error)
+            try {
+                await deleteZoomMeeting(zoom.meeting_id)
+            } catch (rollbackErr: unknown) {
+                console.error("[api/admin/sessions/create] zoom rollback delete failed", rollbackErr)
+            }
             return NextResponse.json(
-                { error: "Failed to create session", details: error.message },
+                { error: "Failed to create session after Zoom meeting was created", details: error.message },
                 { status: 500 }
             )
         }

@@ -6,18 +6,33 @@ import CancelSessionConfirmModal from "@/app/admin/CancelSessionConfirmModal"
 import CreateSessionModal from "@/app/admin/CreateSessionModal"
 import EditSessionModal from "@/app/admin/EditSessionModal"
 import SessionBookingsModal from "@/app/admin/SessionBookingsModal"
+import { fetchSecureAdminStartUrl } from "@/lib/secureJoinClient"
+import { isWithinAdminHostWindow, type DbSession } from "@/lib/sessions"
 
 type AdminSessionRow = {
     id: string
     title?: string | null
     date: string | null
     time: string | null
-    link?: string | null
     capacity: number | null
     booked: number | null
     status?: string
     starts_soon?: boolean
     is_live?: boolean
+}
+
+function adminRowToDbSession(r: AdminSessionRow): DbSession {
+    const cap = typeof r.capacity === "number" ? r.capacity : 0
+    const booked = typeof r.booked === "number" ? r.booked : 0
+    return {
+        id: r.id,
+        day: null,
+        date: r.date,
+        time: r.time,
+        max_slots: cap,
+        booked_slots: booked,
+        link: null,
+    }
 }
 
 function startOfLocalDay(d: Date): Date {
@@ -136,12 +151,16 @@ function AdminSessionsTable({
     onOpenBookings,
     onEditSession,
     onRequestCancelSession,
+    now,
+    onHostStart,
 }: {
     rows: AdminSessionRow[]
     highlightedIds: Set<string>
     onOpenBookings: (sessionId: string) => void
     onEditSession: (row: AdminSessionRow) => void
     onRequestCancelSession: (row: AdminSessionRow) => void
+    now: Date
+    onHostStart: (sessionId: string) => void | Promise<void>
 }) {
     if (rows.length === 0) {
         return (
@@ -188,6 +207,9 @@ function AdminSessionsTable({
                         const availColor = availableIndicatorColor(available)
                         const pct = occupancyPercentRounded(booked, capacity)
                         const availLabel = availabilityLabel(available)
+                        const hostAllowed =
+                            (r.status ?? "active") === "active" &&
+                            isWithinAdminHostWindow(adminRowToDbSession(r), now)
                         return (
                             <tr
                                 key={r.id}
@@ -330,11 +352,8 @@ function AdminSessionsTable({
                                         </button>
                                         <button
                                             type="button"
-                                            disabled={!r.link}
-                                            onClick={() => {
-                                                if (!r.link) return
-                                                window.open(r.link, "_blank", "noopener,noreferrer")
-                                            }}
+                                            disabled={!hostAllowed}
+                                            onClick={() => void onHostStart(r.id)}
                                             style={{
                                                 padding: "8px 14px",
                                                 borderRadius: 10,
@@ -343,12 +362,12 @@ function AdminSessionsTable({
                                                 color: "#bfdbfe",
                                                 fontWeight: 700,
                                                 fontSize: "0.8125rem",
-                                                cursor: r.link ? "pointer" : "not-allowed",
-                                                opacity: r.link ? 1 : 0.55,
+                                                cursor: hostAllowed ? "pointer" : "not-allowed",
+                                                opacity: hostAllowed ? 1 : 0.55,
                                                 transition: "all 0.2s ease",
                                             }}
                                         >
-                                            Entrar a la sesión
+                                            Entrar como anfitrión (Zoom)
                                         </button>
                                         <button
                                             type="button"
@@ -399,6 +418,7 @@ export default function AdminSessionsPage() {
         try {
             const res = await fetch("/api/admin/sessions", {
                 cache: "no-store",
+                credentials: "include",
                 signal,
             })
 
@@ -454,10 +474,16 @@ export default function AdminSessionsPage() {
         [soonSessions]
     )
 
-    const upcomingSoonSession = useMemo(
-        () => soonSessions.find((r) => typeof r.link === "string" && r.link.trim()),
-        [soonSessions]
-    )
+    const upcomingSoonSession = useMemo(() => soonSessions[0] ?? null, [soonSessions])
+
+    const handleAdminHostStart = useCallback(async (sessionId: string) => {
+        const r = await fetchSecureAdminStartUrl(sessionId)
+        if (r.ok) {
+            window.open(r.zoom_start_url, "_blank", "noopener,noreferrer")
+        } else {
+            window.alert(r.message)
+        }
+    }, [])
 
     const handleBookingCancelled = (sessionId: string) => {
         setRows((prev) =>
@@ -508,9 +534,7 @@ export default function AdminSessionsPage() {
                         </span>
                         <button
                             type="button"
-                            onClick={() =>
-                                window.open(upcomingSoonSession.link ?? "", "_blank", "noopener,noreferrer")
-                            }
+                            onClick={() => void handleAdminHostStart(upcomingSoonSession.id)}
                             style={{
                                 borderRadius: 10,
                                 border: "1px solid rgba(250,204,21,0.55)",
@@ -648,6 +672,8 @@ export default function AdminSessionsPage() {
                                     onOpenBookings={setSelectedSession}
                                     onEditSession={setEditSession}
                                     onRequestCancelSession={setCancelTarget}
+                                    now={now}
+                                    onHostStart={handleAdminHostStart}
                                 />
                             ) : null}
 
@@ -704,6 +730,8 @@ export default function AdminSessionsPage() {
                                     onOpenBookings={setSelectedSession}
                                     onEditSession={setEditSession}
                                     onRequestCancelSession={setCancelTarget}
+                                    now={now}
+                                    onHostStart={handleAdminHostStart}
                                 />
                             ) : null}
                         </div>
@@ -742,6 +770,7 @@ export default function AdminSessionsPage() {
                     const res = await fetch(`/api/admin/sessions/${cancelTarget.id}`, {
                         method: "DELETE",
                         cache: "no-store",
+                        credentials: "include",
                     })
                     const payload = (await res.json().catch(() => ({}))) as { error?: string }
                     if (!res.ok) {

@@ -2,14 +2,17 @@
 
 import Link from "next/link"
 import { motion } from "framer-motion"
+import { useState } from "react"
 import { useSession } from "@/context/SessionContext"
 import { useBooking } from "@/hooks/useBooking"
 import { hasReservationForSession } from "@/lib/studentReservations"
+import { fetchSecureStudentJoinUrl } from "@/lib/secureJoinClient"
 import {
     canShowStudentLiveJoinButton,
     DbSession,
     getSessionAvailableSeats,
     isStudentJoinTooEarly,
+    isStudentSecureJoinWindowClosed,
     sessionDisplayDay,
     sessionDisplayHour,
 } from "@/lib/sessions"
@@ -26,11 +29,11 @@ function reserveLabel(
     loading: boolean,
     status: "idle" | "success" | "error"
 ): string {
-    if (isBookedByUser) return "Reservado ✅"
+    if (isBookedByUser) return "Reservado"
     if (loading) return "Reservando..."
     if (blocked) return "Acceso no disponible"
     if (slotFull) return "Full"
-    if (status === "success") return "Reservado ✅"
+    if (status === "success") return "Reservado"
     if (status === "error") return "Reintentar"
     return "Reservar cupo"
 }
@@ -38,7 +41,8 @@ function reserveLabel(
 export default function SessionCard({ session, isUpdated = false }: SessionCardProps) {
     const { bookingAccess, userEmail, myBookings } = useSession()
     const now = new Date()
-    const joinLink = session.link?.trim() ?? ""
+    const [joining, setJoining] = useState(false)
+
     const canBook = bookingAccess.canBook
     const bookedByUser = Boolean(session.isBookedByUser)
     const isBooked = Boolean(session.is_booked)
@@ -46,11 +50,10 @@ export default function SessionCard({ session, isUpdated = false }: SessionCardP
     const hasReserved =
         bookedByUser || hasReservationForSession(myBookings, session.id, userEmail)
     const sessionFullForJoin = availableSlots <= 0 && !hasReserved
-    const mayOpenLiveJoin =
-        canShowStudentLiveJoinButton(session, now, {
-            hasPaid: canBook,
-            hasReservation: hasReserved,
-        }) && Boolean(joinLink)
+    const mayOpenLiveJoin = canShowStudentLiveJoinButton(session, now, {
+        hasPaid: canBook,
+        hasReservation: hasReserved,
+    })
     const slotFullByCapacity = availableSlots === 0 && !bookedByUser
     const lockedOut =
         isBooked || !canBook || bookedByUser || slotFullByCapacity || !userEmail
@@ -98,6 +101,24 @@ export default function SessionCard({ session, isUpdated = false }: SessionCardP
         : "border border-blue-500/20 bg-gradient-to-br from-[#111827] to-[#0B0F1A] shadow-xl shadow-blue-500/10"
     const spotsToneClass =
         availableSlots === 0 ? "text-red-500" : availableSlots <= 5 ? "text-yellow-400" : "text-green-400"
+
+    const handleSecureJoin = async () => {
+        if (!userEmail || joining) return
+        setJoining(true)
+        try {
+            const r = await fetchSecureStudentJoinUrl(session.id, userEmail)
+            if (r.ok) {
+                window.open(r.join_url, "_blank", "noopener,noreferrer")
+            } else {
+                console.warn("[SessionCard] join denied", r.code, r.message)
+            }
+        } finally {
+            setJoining(false)
+        }
+    }
+
+    const sessionClosed =
+        canBook && hasReserved && isStudentSecureJoinWindowClosed(session, now) && !isStudentJoinTooEarly(session, now)
 
     return (
         <motion.div
@@ -155,7 +176,7 @@ export default function SessionCard({ session, isUpdated = false }: SessionCardP
                                 ? "cursor-not-allowed bg-gray-800 text-gray-500"
                                 : ctaDisabled && !isLoading
                                   ? "cursor-not-allowed bg-gray-800 text-gray-500"
-                                : "bg-gradient-to-r from-blue-500 to-blue-700 text-white shadow-lg shadow-blue-500/30 hover:from-blue-400 hover:to-blue-600",
+                                  : "bg-gradient-to-r from-blue-500 to-blue-700 text-white shadow-lg shadow-blue-500/30 hover:from-blue-400 hover:to-blue-600",
                     ].join(" ")}
                 >
                     {label}
@@ -169,25 +190,25 @@ export default function SessionCard({ session, isUpdated = false }: SessionCardP
                             Obtener acceso →
                         </Link>
                     </>
-                ) : !joinLink ? (
-                    <p className="text-xs text-gray-400">Sin enlace de reunión</p>
                 ) : sessionFullForJoin ? (
                     <p className="text-xs font-semibold text-red-400">Sesión llena</p>
                 ) : !hasReserved ? (
                     <p className="text-xs text-gray-400">Debes reservar esta sesión</p>
+                ) : sessionClosed ? (
+                    <p className="text-xs font-semibold text-slate-400">Sesión cerrada</p>
                 ) : mayOpenLiveJoin ? (
                     <button
                         type="button"
-                        onClick={() => window.open(joinLink, "_blank", "noopener,noreferrer")}
-                        className="inline-flex rounded-xl bg-red-600 px-3 py-1.5 text-xs font-bold text-white shadow-lg shadow-red-900/30 hover:bg-red-500"
+                        disabled={joining}
+                        onClick={() => void handleSecureJoin()}
+                        className="inline-flex rounded-xl bg-red-600 px-3 py-1.5 text-xs font-bold text-white shadow-lg shadow-red-900/30 hover:bg-red-500 disabled:cursor-wait disabled:opacity-70"
                     >
-                        Unirse a la sesión en vivo
+                        {joining ? "Abriendo…" : "Unirse a la sesión en vivo"}
                     </button>
                 ) : isStudentJoinTooEarly(session, now) ? (
                     <p className="text-xs text-gray-400">Disponible 10 minutos antes</p>
                 ) : null}
             </div>
-
         </motion.div>
     )
 }

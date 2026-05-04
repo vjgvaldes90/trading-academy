@@ -37,7 +37,10 @@ export default function AdminStudentsPage() {
         setLoading(true)
         setError(null)
         try {
-            const res = await fetch("/api/admin/trading-students", { cache: "no-store" })
+            const res = await fetch("/api/admin/trading-students", {
+                cache: "no-store",
+                credentials: "include",
+            })
             const payload = (await res.json().catch(() => [])) as unknown
             if (!res.ok) {
                 const msg =
@@ -83,6 +86,7 @@ export default function AdminStudentsPage() {
             const res = await fetch(`/api/admin/students/${studentPathEmail(email)}`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
+                credentials: "include",
                 body: JSON.stringify(body),
                 cache: "no-store",
             })
@@ -126,7 +130,7 @@ export default function AdminStudentsPage() {
         try {
             const res = await fetch(
                 `/api/admin/refund-preview?userId=${encodeURIComponent(row.id)}`,
-                { cache: "no-store" }
+                { cache: "no-store", credentials: "include" }
             )
             const data = (await res.json().catch(() => ({}))) as {
                 ok?: unknown
@@ -230,6 +234,7 @@ export default function AdminStudentsPage() {
                                     const res = await fetch("/api/admin/cancel-subscription", {
                                         method: "POST",
                                         headers: { "Content-Type": "application/json" },
+                                        credentials: "include",
                                         cache: "no-store",
                                         body: JSON.stringify({ userId: refundModal.userId }),
                                     })

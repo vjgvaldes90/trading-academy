@@ -48,8 +48,6 @@ export async function GET() {
         const payload = (sessions ?? []).map((row) => {
             const r = row as Record<string, unknown>
             const id = typeof r.id === "string" ? r.id : ""
-            const linkCol = typeof r.link === "string" ? r.link.trim() : ""
-            const resolvedUrl = linkCol || null
             const date =
                 typeof r.date === "string"
                     ? r.date
@@ -69,7 +67,7 @@ export async function GET() {
                 time,
                 max_slots: 0,
                 booked_slots: 0,
-                link: resolvedUrl,
+                link: null,
                 is_live: r.is_live === true,
             }
             const nearStart = canJoinLiveSessionNow(dbSession, now)
@@ -80,7 +78,6 @@ export async function GET() {
                 title: typeof r.title === "string" ? r.title : null,
                 date,
                 time,
-                link: resolvedUrl,
                 capacity: typeof r.capacity === "number" ? r.capacity : 0,
                 booked: bookedCountBySession.get(id) ?? 0,
                 status: typeof r.status === "string" ? r.status : "active",

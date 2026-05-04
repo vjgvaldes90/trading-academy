@@ -3,11 +3,13 @@
 import type { TabKey } from "@/context/SessionContext"
 import { useSession } from "@/context/SessionContext"
 import { useBooking } from "@/hooks/useBooking"
+import { fetchSecureStudentJoinUrl } from "@/lib/secureJoinClient"
 import {
     canShowStudentLiveJoinButton,
     DbSession,
     getSessionAvailableSeats,
     isStudentJoinTooEarly,
+    isStudentSecureJoinWindowClosed,
     sessionDisplayDay,
     sessionDisplayHour,
 } from "@/lib/sessions"
@@ -32,22 +34,42 @@ function SlotRow({ session }: { session: DbSession }) {
 
     const [cancelLoading, setCancelLoading] = useState(false)
     const [cancelError, setCancelError] = useState<string | null>(null)
+    const [joining, setJoining] = useState(false)
 
     const label = `${sessionDisplayDay(session)} · ${sessionDisplayHour(session) || "—"}`
 
     const reserveDisabled = lockedOutForReserve || isLoading
-    const joinLink = session.link?.trim() ?? ""
     const sessionFullForJoin = available === 0 && !isMine
-    const mayOpenLiveJoin =
-        canShowStudentLiveJoinButton(session, now, {
-            hasPaid: canBook,
-            hasReservation: isMine,
-        }) && Boolean(joinLink)
+    const mayOpenLiveJoin = canShowStudentLiveJoinButton(session, now, {
+        hasPaid: canBook,
+        hasReservation: isMine,
+    })
 
     let reserveLabel = "Reservar"
     if (isLoading) reserveLabel = "Reservando…"
     else if (!canBook) reserveLabel = "Acceso no disponible"
     else if (isFull) reserveLabel = "Full"
+
+    const handleSecureJoin = async () => {
+        if (!userEmail || joining) return
+        setJoining(true)
+        try {
+            const r = await fetchSecureStudentJoinUrl(session.id, userEmail)
+            if (r.ok) {
+                window.open(r.join_url, "_blank", "noopener,noreferrer")
+            } else {
+                console.warn("[BookSessionSection] join denied", r.code, r.message)
+            }
+        } finally {
+            setJoining(false)
+        }
+    }
+
+    const sessionClosed =
+        canBook &&
+        isMine &&
+        isStudentSecureJoinWindowClosed(session, now) &&
+        !isStudentJoinTooEarly(session, now)
 
     const handleCancel = async () => {
         if (cancelLoading || !myBooking?.id) return
@@ -108,19 +130,20 @@ function SlotRow({ session }: { session: DbSession }) {
             ) : null}
             {!canBook ? (
                 <p style={{ margin: 0, fontSize: "0.75rem", color: "#fcd34d" }}>Acceso no disponible</p>
-            ) : !joinLink ? (
-                <p style={{ margin: 0, fontSize: "0.75rem", color: "#94a3b8" }}>Sin enlace de reunión</p>
             ) : sessionFullForJoin ? (
                 <p style={{ margin: 0, fontSize: "0.75rem", fontWeight: 600, color: "#f87171" }}>Sesión llena</p>
             ) : !isMine ? (
                 <p style={{ margin: 0, fontSize: "0.75rem", color: "#94a3b8" }}>Debes reservar esta sesión</p>
+            ) : sessionClosed ? (
+                <p style={{ margin: 0, fontSize: "0.75rem", fontWeight: 600, color: "#94a3b8" }}>Sesión cerrada</p>
             ) : mayOpenLiveJoin ? (
                 <button
                     type="button"
-                    onClick={() => window.open(joinLink, "_blank", "noopener,noreferrer")}
-                    className="inline-flex w-full items-center justify-center rounded-xl bg-red-600 px-4 py-2 text-xs font-bold text-white shadow-lg shadow-red-900/30 hover:bg-red-500"
+                    disabled={joining}
+                    onClick={() => void handleSecureJoin()}
+                    className="inline-flex w-full items-center justify-center rounded-xl bg-red-600 px-4 py-2 text-xs font-bold text-white shadow-lg shadow-red-900/30 hover:bg-red-500 disabled:cursor-wait disabled:opacity-70"
                 >
-                    Unirse a la sesión en vivo
+                    {joining ? "Abriendo…" : "Unirse a la sesión en vivo"}
                 </button>
             ) : isStudentJoinTooEarly(session, now) ? (
                 <p style={{ margin: 0, fontSize: "0.75rem", color: "#94a3b8" }}>Disponible 10 minutos antes</p>

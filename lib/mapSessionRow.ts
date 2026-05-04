@@ -3,7 +3,7 @@ import type { DbSession } from "./sessions"
 /**
  * Maps Supabase `sessions` row to `DbSession`.
  * Supports `session_date` / `session_day` / `session_hour` and legacy `date` / `day` / `time`.
- * Meet URL: `sessions.link`.
+ * Student join URL: `sessions.link` (Zoom `join_url`).
  */
 export function mapSupabaseSessionRow(row: Record<string, unknown>): DbSession | null {
     const id = typeof row.id === "string" ? row.id : null

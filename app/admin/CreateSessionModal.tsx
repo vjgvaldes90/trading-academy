@@ -2,7 +2,6 @@
 
 import type { CSSProperties, FormEvent } from "react"
 import { useEffect, useState } from "react"
-import { DEFAULT_MEET_LINK } from "@/lib/defaultMeetLink"
 
 const inputStyle: CSSProperties = {
     width: "100%",
@@ -36,7 +35,6 @@ export default function CreateSessionModal({ open, onClose, onSuccess }: CreateS
     const [date, setDate] = useState("")
     const [time, setTime] = useState("")
     const [capacity, setCapacity] = useState("")
-    const [link, setLink] = useState(DEFAULT_MEET_LINK)
     const [submitError, setSubmitError] = useState<string | null>(null)
     const [submitting, setSubmitting] = useState(false)
 
@@ -45,7 +43,6 @@ export default function CreateSessionModal({ open, onClose, onSuccess }: CreateS
         setDate("")
         setTime("")
         setCapacity("")
-        setLink(DEFAULT_MEET_LINK)
         setSubmitError(null)
         setSubmitting(false)
     }, [open])
@@ -76,15 +73,14 @@ export default function CreateSessionModal({ open, onClose, onSuccess }: CreateS
 
         setSubmitting(true)
         try {
-            const linkPayload = link.trim() !== "" ? link.trim() : DEFAULT_MEET_LINK
             const res = await fetch("/api/admin/sessions/create", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
+                credentials: "include",
                 body: JSON.stringify({
                     date: date.trim(),
                     time: time.trim(),
                     capacity: cap,
-                    link: linkPayload,
                 }),
                 cache: "no-store",
             })
@@ -151,7 +147,7 @@ export default function CreateSessionModal({ open, onClose, onSuccess }: CreateS
                         id="create-session-title"
                         style={{ margin: 0, fontSize: "1.05rem", fontWeight: 800, color: "#f8fafc" }}
                     >
-                        Nueva sesión
+                        Nueva sesión (Zoom)
                     </h2>
                     <button
                         type="button"
@@ -172,6 +168,11 @@ export default function CreateSessionModal({ open, onClose, onSuccess }: CreateS
                         Cerrar
                     </button>
                 </div>
+
+                <p style={{ margin: "12px 18px 0", color: "#64748b", fontSize: "0.8125rem", lineHeight: 1.45 }}>
+                    Se creará una reunión de Zoom mediante la API del servidor (OAuth cuenta a cuenta). No se pueden
+                    pegar enlaces manuales.
+                </p>
 
                 <form onSubmit={(e) => void handleSubmit(e)} style={{ padding: "18px 18px 20px" }}>
                     <div style={{ marginBottom: 16 }}>
@@ -199,20 +200,6 @@ export default function CreateSessionModal({ open, onClose, onSuccess }: CreateS
                             value={time}
                             onChange={(e) => setTime(e.target.value)}
                             disabled={submitting}
-                            style={inputStyle}
-                        />
-                    </div>
-                    <div style={{ marginBottom: 18 }}>
-                        <label htmlFor="create-session-link" style={labelStyle}>
-                            Link de la sesión (Meet / Zoom)
-                        </label>
-                        <input
-                            id="create-session-link"
-                            type="text"
-                            value={link}
-                            onChange={(e) => setLink(e.target.value)}
-                            disabled={submitting}
-                            placeholder="https://meet.google.com/xxx-xxx"
                             style={inputStyle}
                         />
                     </div>

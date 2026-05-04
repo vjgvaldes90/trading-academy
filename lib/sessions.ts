@@ -28,6 +28,38 @@ const STUDENT_JOIN_MINUTES_BEFORE_START = 10
 /** Student dashboard: hide sessions more than this many minutes after start. */
 const STUDENT_SESSION_HIDE_MINUTES_AFTER_START = 120
 
+/** Secure join API: same window as {@link isWithinStudentSecureJoinWindow}. */
+export const STUDENT_SECURE_JOIN_MINUTES_BEFORE = 10
+export const STUDENT_SECURE_JOIN_MINUTES_AFTER = 120
+/** Admin host URL: allowed from this many minutes before start onward. */
+export const ADMIN_HOST_MINUTES_BEFORE = 15
+
+export function isWithinStudentSecureJoinWindow(s: DbSession, now: Date): boolean {
+    const at = startAt(s)
+    if (!at) return false
+    const t = now.getTime()
+    const startMs = at.getTime()
+    const earliest = startMs - STUDENT_SECURE_JOIN_MINUTES_BEFORE * 60 * 1000
+    const latest = startMs + STUDENT_SECURE_JOIN_MINUTES_AFTER * 60 * 1000
+    return t >= earliest && t <= latest
+}
+
+/** After the secure student join window ends (UI: “Sesión cerrada”). */
+export function isStudentSecureJoinWindowClosed(s: DbSession, now: Date): boolean {
+    const at = startAt(s)
+    if (!at) return false
+    const latest = at.getTime() + STUDENT_SECURE_JOIN_MINUTES_AFTER * 60 * 1000
+    return now.getTime() > latest
+}
+
+/** Admin may request host start URL from N minutes before session start onward. */
+export function isWithinAdminHostWindow(s: DbSession, now: Date): boolean {
+    const at = startAt(s)
+    if (!at) return false
+    const earliest = at.getTime() - ADMIN_HOST_MINUTES_BEFORE * 60 * 1000
+    return now.getTime() >= earliest
+}
+
 const SPANISH_WEEKDAYS = [
     "Domingo",
     "Lunes",
@@ -37,6 +69,18 @@ const SPANISH_WEEKDAYS = [
     "Viernes",
     "Sábado",
 ]
+
+/** Spanish weekday label from `YYYY-MM-DD` using local calendar date parts. */
+export function spanishWeekdayFromIsoDate(dateYmd: string): string {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateYmd.trim())
+    if (!m) return "Sesión"
+    const y = Number(m[1])
+    const mo = Number(m[2]) - 1
+    const da = Number(m[3])
+    const d = new Date(y, mo, da)
+    if (Number.isNaN(d.getTime())) return "Sesión"
+    return SPANISH_WEEKDAYS[d.getDay()] ?? "Sesión"
+}
 
 export function parseTimeToMinutes(time: string): number | null {
     const t = time.trim()
@@ -124,20 +168,13 @@ export type StudentLiveJoinOptions = {
 }
 
 /**
- * Paid user with a reservation may open the live link within 10 minutes before start
- * or after start (until hidden by {@link shouldHideStudentDashboardSession}).
+ * Paid user with a reservation may request the join URL during the secure window
+ * ({@link isWithinStudentSecureJoinWindow}). URLs are not exposed in list payloads; use POST `/api/session/join`.
  */
 export function canShowStudentLiveJoinButton(s: DbSession, now: Date, options: StudentLiveJoinOptions): boolean {
     if (!options.hasPaid) return false
     if (!options.hasReservation) return false
-    const link = s.link?.trim()
-    if (!link) return false
-    const diffMin = getMinutesUntilSessionStart(s, now)
-    if (diffMin === null) return false
-    const withinTenMinutesBeforeStart =
-        diffMin > 0 && diffMin <= STUDENT_JOIN_MINUTES_BEFORE_START
-    const startedOrAtStart = diffMin <= 0
-    return withinTenMinutesBeforeStart || startedOrAtStart
+    return isWithinStudentSecureJoinWindow(s, now)
 }
 
 /** More than 10 minutes before start (session still in the future). */
@@ -291,15 +328,12 @@ export function buildNextSessionTicker(
     if (!sessionState) return { line: "Sin próxima sesión programada.", joinHref: "#weekly-schedule" }
 
     const { status, session } = sessionState
-    const rawLink = session.link?.trim() ?? ""
-    const joinHref =
-        rawLink.length > 0 &&
-        canShowStudentLiveJoinButton(session, now, {
-            hasPaid: opts.hasPaid,
-            hasReservation: opts.hasReservation,
-        })
-            ? rawLink
-            : "#weekly-schedule"
+    const joinHref = canShowStudentLiveJoinButton(session, now, {
+        hasPaid: opts.hasPaid,
+        hasReservation: opts.hasReservation,
+    })
+        ? "#reservar-sesion"
+        : "#weekly-schedule"
     const wd = weekdayLabel(session)
     const tm = formatTimeLabel(session) || "--"
     const at = startAt(session)

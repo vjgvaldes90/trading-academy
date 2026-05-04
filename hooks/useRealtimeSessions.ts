@@ -2,6 +2,7 @@
 
 import { supabase } from "@/lib/supabase"
 import { mapSupabaseSessionRow } from "@/lib/mapSessionRow"
+import { stripSensitiveSessionFields } from "@/lib/secureZoomJoin"
 import { DbSession } from "@/lib/sessions"
 import { useEffect } from "react"
 
@@ -37,7 +38,7 @@ export function useRealtimeSessions({ onEvent }: UseRealtimeSessionsParams) {
                     if (!sessionId) return
 
                     if (eventType === "INSERT") {
-                        const session = mapSupabaseSessionRow(current)
+                        const session = mapSupabaseSessionRow(stripSensitiveSessionFields(current))
                         if (!session) return
                         onEvent({ type: "INSERT", sessionId, scope: "trading_sessions", session })
                         return
@@ -59,7 +60,7 @@ export function useRealtimeSessions({ onEvent }: UseRealtimeSessionsParams) {
                         sessionId,
                         scope: "trading_sessions",
                         bookedSlots,
-                        session: mapSupabaseSessionRow(current) ?? undefined,
+                        session: mapSupabaseSessionRow(stripSensitiveSessionFields(current)) ?? undefined,
                     })
                 }
             )

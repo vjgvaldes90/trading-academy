@@ -1,17 +1,19 @@
 import { NextResponse } from "next/server"
-import { createClient } from "@supabase/supabase-js"
+import { createSupabaseServiceRoleClient } from "@/lib/access"
+import { stripSensitiveSessionFields } from "@/lib/secureZoomJoin"
+import {
+    evaluateAcademyAccess,
+    type TradingStudentAccessRow,
+} from "@/lib/studentAcademyAccess"
 
-/**
- * TEMPORARY DEBUG: returns all `sessions` rows with `select("*")` and no filters.
- * TODO: restore access check + `status = active` + availability mapping after confirming visibility.
- */
-const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+export const runtime = "nodejs"
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
+/**
+ * Student session list: metadata + availability only (no Zoom URLs).
+ * Caller must pass `user_email` for access evaluation.
+ */
 export async function GET(req: Request) {
     try {
         const { searchParams } = new URL(req.url)
@@ -26,18 +28,38 @@ export async function GET(req: Request) {
             return NextResponse.json({ error: "Invalid user_email" }, { status: 400 })
         }
 
-        const { data, error } = await supabase.from("sessions").select("*")
+        const supabase = createSupabaseServiceRoleClient()
 
-        if (error) {
-            console.error("[api/sessions] debug query error", error)
-            return NextResponse.json([], { status: 200 })
+        const { data: accessRow, error: accessErr } = await supabase
+            .from("trading_students")
+            .select("access_code, access_type, is_active, access_expires_at")
+            .eq("email", userEmail)
+            .maybeSingle()
+
+        if (accessErr) {
+            console.error("[api/sessions] access check", accessErr)
+            return NextResponse.json({ error: "Access check failed" }, { status: 500 })
         }
 
-        console.log("SESSIONS RAW:", data)
+        const accessEv = evaluateAcademyAccess(accessRow as TradingStudentAccessRow | null)
+        if (!accessEv.ok) {
+            return NextResponse.json(
+                { error: "Access denied", reason: accessEv.reason ?? "not_found" },
+                { status: 403 }
+            )
+        }
 
-        return NextResponse.json(data ?? [])
+        const { data, error } = await supabase.from("sessions").select("*").eq("status", "active")
+
+        if (error) {
+            console.error("[api/sessions] query error", error)
+            return NextResponse.json({ error: "Failed to load sessions" }, { status: 500 })
+        }
+
+        const safe = (data ?? []).map((row) => stripSensitiveSessionFields(row as Record<string, unknown>))
+        return NextResponse.json(safe)
     } catch (err) {
-        console.error("API crash:", err)
-        return NextResponse.json([], { status: 200 })
+        console.error("[api/sessions] GET", err)
+        return NextResponse.json({ error: "Internal error" }, { status: 500 })
     }
 }
