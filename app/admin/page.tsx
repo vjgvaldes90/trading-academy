@@ -477,16 +477,16 @@ export default function AdminSessionsPage() {
     const upcomingSoonSession = useMemo(() => soonSessions[0] ?? null, [soonSessions])
 
     // TEMP TESTING OVERRIDE: hardcoded production admin email for host-join requests.
-    const adminEmailForHostJoin = "TU_CORREO_ADMIN_REAL".trim().toLowerCase()
+    const ADMIN_EMAIL = "TU_CORREO_ADMIN_REAL".trim().toLowerCase()
 
     const handleAdminHostStart = useCallback(async (sessionId: string) => {
-        const r = await fetchSecureAdminStartUrl(sessionId, adminEmailForHostJoin)
+        const r = await fetchSecureAdminStartUrl(sessionId, ADMIN_EMAIL)
         if (r.ok) {
             window.open(r.zoom_start_url, "_blank", "noopener,noreferrer")
         } else {
             window.alert(r.message)
         }
-    }, [adminEmailForHostJoin])
+    }, [ADMIN_EMAIL])
 
     const handleBookingCancelled = (sessionId: string) => {
         setRows((prev) =>
