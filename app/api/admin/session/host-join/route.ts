@@ -14,8 +14,12 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 type Body = { session_id?: unknown }
 
+function normalizeEmail(value: unknown): string {
+    return typeof value === "string" ? value.trim().toLowerCase() : ""
+}
+
 function normalizedAdminEmail(): string {
-    return process.env.ADMIN_EMAIL?.trim().toLowerCase() ?? ""
+    return normalizeEmail(process.env.ADMIN_EMAIL)
 }
 
 async function resolveAdminEmail(adminEmailFromBody: string): Promise<string | null> {
@@ -27,8 +31,8 @@ async function resolveAdminEmail(adminEmailFromBody: string): Promise<string | n
 
     const jar = await cookies()
     const candidates = [
-        jar.get(SESSION_COOKIE)?.value?.trim().toLowerCase() ?? "",
-        jar.get(DASHBOARD_CLIENT_EMAIL_COOKIE)?.value?.trim().toLowerCase() ?? "",
+        normalizeEmail(jar.get(SESSION_COOKIE)?.value),
+        normalizeEmail(jar.get(DASHBOARD_CLIENT_EMAIL_COOKIE)?.value),
     ].filter(Boolean)
 
     const supabase = createSupabaseServiceRoleClient()
@@ -62,8 +66,7 @@ export async function POST(req: Request) {
             | (Body & { admin_email?: unknown })
             | null
         const sessionId = typeof body?.session_id === "string" ? body.session_id.trim() : ""
-        const adminEmailFromBody =
-            typeof body?.admin_email === "string" ? body.admin_email.trim().toLowerCase() : ""
+        const adminEmailFromBody = normalizeEmail(body?.admin_email)
         if (!adminEmailFromBody || !EMAIL_RE.test(adminEmailFromBody)) {
             return NextResponse.json({ error: "Invalid admin_email", code: "invalid_admin_email" }, { status: 400 })
         }

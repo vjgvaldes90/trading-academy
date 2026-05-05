@@ -38,6 +38,10 @@ export type AdminStartResult =
     | { ok: true; zoom_start_url: string }
     | { ok: false; message: string; code?: string }
 
+function normalizeEmail(value: string): string {
+    return value.trim().toLowerCase()
+}
+
 export async function fetchSecureAdminStartUrl(
     sessionId: string,
     adminEmail: string
@@ -48,7 +52,7 @@ export async function fetchSecureAdminStartUrl(
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
             session_id: sessionId,
-            admin_email: adminEmail.trim().toLowerCase(),
+            admin_email: normalizeEmail(adminEmail),
         }),
     })
     const data = (await res.json().catch(() => ({}))) as {
