@@ -1,11 +1,7 @@
-import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
 import { createSupabaseServiceRoleClient } from "@/lib/access"
-import { SESSION_COOKIE } from "@/lib/authCookies"
-import { getVerifiedStudentEmailFromCookies } from "@/lib/requireVerifiedSessionCookie"
 import { mapSupabaseSessionRow } from "@/lib/mapSessionRow"
 import { isWithinAdminHostWindow } from "@/lib/sessions"
-import { DASHBOARD_CLIENT_EMAIL_COOKIE } from "@/lib/studentLocalStorage"
 
 export const runtime = "nodejs"
 
@@ -20,36 +16,6 @@ function normalizeEmail(value: unknown): string {
 
 function normalizedAdminEmail(): string {
     return normalizeEmail(process.env.ADMIN_EMAIL)
-}
-
-async function resolveAdminEmail(adminEmailFromBody: string): Promise<string | null> {
-    const adminEmail = normalizedAdminEmail()
-    if (!adminEmail || !adminEmailFromBody || adminEmailFromBody !== adminEmail) return null
-
-    const strictVerified = await getVerifiedStudentEmailFromCookies()
-    if (strictVerified && strictVerified === adminEmailFromBody) return strictVerified
-
-    const jar = await cookies()
-    const candidates = [
-        normalizeEmail(jar.get(SESSION_COOKIE)?.value),
-        normalizeEmail(jar.get(DASHBOARD_CLIENT_EMAIL_COOKIE)?.value),
-    ].filter(Boolean)
-
-    const supabase = createSupabaseServiceRoleClient()
-    for (const email of candidates) {
-        if (!EMAIL_RE.test(email)) continue
-        if (email !== adminEmailFromBody) continue
-        const { data, error } = await supabase
-            .from("trading_students")
-            .select("email, is_active")
-            .eq("email", email)
-            .maybeSingle()
-        if (error || !data) continue
-        if ((data as { is_active?: unknown }).is_active === false) continue
-        return email
-    }
-
-    return null
 }
 
 export async function POST(req: Request) {
@@ -68,16 +34,11 @@ export async function POST(req: Request) {
             )
         }
 
-        /** TEMP (prod stabilize): ignore unreliable client `admin_email`; identity target is always env ADMIN_EMAIL. */
-        const adminEmailFromBody = adminEmail
+        /** Host identity: ADMIN_EMAIL only (no student cookie gate). Session/host-window checks below remain mandatory. */
+        const verifiedAdmin = adminEmail
 
         const body = (await req.json().catch(() => null)) as Body | null
         const sessionId = typeof body?.session_id === "string" ? body.session_id.trim() : ""
-
-        const verifiedAdmin = await resolveAdminEmail(adminEmailFromBody)
-        if (!verifiedAdmin) {
-            return NextResponse.json({ error: "Unauthorized", code: "unauthorized" }, { status: 401 })
-        }
 
         if (!sessionId || !UUID_RE.test(sessionId)) {
             return NextResponse.json({ error: "Invalid session_id" }, { status: 400 })
