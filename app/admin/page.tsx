@@ -476,25 +476,17 @@ export default function AdminSessionsPage() {
 
     const upcomingSoonSession = useMemo(() => soonSessions[0] ?? null, [soonSessions])
 
-    const adminEmailFromCookie = useMemo(() => {
-        if (typeof document === "undefined") return ""
-        const key = "ta_student_email="
-        const hit = document.cookie
-            .split(";")
-            .map((p) => p.trim())
-            .find((p) => p.startsWith(key))
-        if (!hit) return ""
-        return decodeURIComponent(hit.slice(key.length)).trim().toLowerCase()
-    }, [])
+    // TEMP TESTING OVERRIDE: hardcoded production admin email for host-join requests.
+    const adminEmailForHostJoin = "TU_CORREO_ADMIN_REAL".trim().toLowerCase()
 
     const handleAdminHostStart = useCallback(async (sessionId: string) => {
-        const r = await fetchSecureAdminStartUrl(sessionId, adminEmailFromCookie)
+        const r = await fetchSecureAdminStartUrl(sessionId, adminEmailForHostJoin)
         if (r.ok) {
             window.open(r.zoom_start_url, "_blank", "noopener,noreferrer")
         } else {
             window.alert(r.message)
         }
-    }, [adminEmailFromCookie])
+    }, [adminEmailForHostJoin])
 
     const handleBookingCancelled = (sessionId: string) => {
         setRows((prev) =>
