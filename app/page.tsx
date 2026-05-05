@@ -9,6 +9,8 @@ import Testimonials from "@/components/landing/Testimonials"
 import Schedule from "@/components/landing/Schedule"
 import WhatYouLearn from "@/components/landing/WhatYouLearn"
 import Instructor from "@/components/landing/Instructor"
+import ImportantDisclaimer from "@/components/landing/ImportantDisclaimer"
+import SiteFooter from "@/components/shared/SiteFooter"
 
 export default function Home() {
   return (
@@ -22,11 +24,8 @@ export default function Home() {
       <WhatYouLearn />
       <Schedule />
       <Pricing />
-      <footer className="border-t border-blue-400/15 bg-[#020617] py-12 text-center text-white">
-        <p className="text-slate-500">
-          © 2026 Trading Academy. Todos los derechos reservados.
-        </p>
-      </footer>
+      <ImportantDisclaimer />
+      <SiteFooter />
       <a
         href="https://wa.me/13055551234?text=Hola%20quiero%20información%20sobre%20las%20sesiones%20de%20trading"
         target="_blank"

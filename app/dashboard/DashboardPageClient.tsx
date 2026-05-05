@@ -106,6 +106,20 @@ function DashboardShell({
                         paddingBottom: "var(--ds-5)",
                     }}
                 >
+                    <section
+                        aria-label="Recordatorio legal"
+                        style={{
+                            borderRadius: 12,
+                            border: "1px solid rgba(59,130,246,0.25)",
+                            background: "rgba(15,23,42,0.75)",
+                            padding: "10px 12px",
+                        }}
+                    >
+                        <p style={{ margin: 0, fontSize: "0.8rem", color: "#cbd5e1" }}>
+                            Recordatorio: este programa es unicamente educativo y no constituye asesoria financiera
+                            personalizada.
+                        </p>
+                    </section>
                     <StudentNotificationsSection />
                     <MyBookingsSection />
                     <NextSessionCard />

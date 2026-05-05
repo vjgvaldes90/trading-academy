@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react"
 import { useSearchParams } from "next/navigation"
+import Link from "next/link"
 import LoginInfo from "@/components/login/LoginInfo"
 import LoginCard from "@/components/login/LoginCard"
 import { sanitizeRedirect } from "@/lib/sanitizeRedirect"
@@ -137,6 +138,11 @@ function LoginPageInner() {
                     startOnAccessTab={fromEmailCta}
                 />
             </div>
+            <div className="absolute bottom-5 left-0 right-0 z-20 flex justify-center px-6">
+                <Link href="/disclaimer" className="text-xs font-semibold text-slate-400 transition hover:text-blue-300">
+                    Disclaimer Legal
+                </Link>
+            </div>
         </div>
     )
 }
@@ -146,7 +152,7 @@ export default function LoginPage() {
         <Suspense
             fallback={
                 <div className="flex min-h-screen items-center justify-center bg-[#020617] text-slate-300">
-                    Cargandoâ€¦
+                    Cargandoâÿ¦
                 </div>
             }
         >
