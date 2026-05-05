@@ -27,9 +27,9 @@ function LoginPageInner() {
     const queryError = searchParams.get("error")?.trim()
     const queryAccessError =
         queryError === "access_denied"
-            ? "Tu acceso a la academia no está activo o ha caducado. Si crees que es un error, contacta al administrador."
+            ? "Tu acceso a la academia no esta activo o ha caducado. Si crees que es un error, contacta al administrador."
             : queryError === "session_expired"
-              ? "Tu sesión ha finalizado porque iniciaste sesión en otro dispositivo. Vuelve a entrar con tu código o enlace."
+              ? "Tu sesion ha finalizado porque iniciaste sesion en otro dispositivo. Vuelve a entrar con tu codigo o enlace."
               : null
 
     useEffect(() => {
@@ -41,7 +41,7 @@ function LoginPageInner() {
         setAccessError(null)
         const trimmed = code.trim()
         if (!trimmed) {
-            setAccessError("Código inválido")
+            setAccessError("Codigo invalido")
             return
         }
 
@@ -56,7 +56,7 @@ function LoginPageInner() {
             })
 
             if (!res.ok) {
-                setAccessError("Código inválido")
+                setAccessError("Codigo invalido")
                 return
             }
 
@@ -110,11 +110,11 @@ function LoginPageInner() {
                 }
                 window.location.assign(dest)
             } else {
-                setAccessError("Código inválido")
+                setAccessError("Codigo invalido")
             }
         } catch (err) {
             console.error("Access error:", err)
-            setAccessError("Código inválido")
+            setAccessError("Codigo invalido")
         }
     }
 
@@ -152,7 +152,7 @@ export default function LoginPage() {
         <Suspense
             fallback={
                 <div className="flex min-h-screen items-center justify-center bg-[#020617] text-slate-300">
-                    Cargando���
+                    Cargando...
                 </div>
             }
         >
