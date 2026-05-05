@@ -3,10 +3,10 @@
 import Link from "next/link"
 import { motion } from "framer-motion"
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { useSession } from "@/context/SessionContext"
 import { useBooking } from "@/hooks/useBooking"
 import { hasReservationForSession } from "@/lib/studentReservations"
-import { fetchSecureStudentJoinUrl } from "@/lib/secureJoinClient"
 import {
     canShowStudentLiveJoinButton,
     DbSession,
@@ -40,6 +40,7 @@ function reserveLabel(
 
 export default function SessionCard({ session, isUpdated = false }: SessionCardProps) {
     const { bookingAccess, userEmail, myBookings } = useSession()
+    const router = useRouter()
     const now = new Date()
     const [joining, setJoining] = useState(false)
 
@@ -106,12 +107,7 @@ export default function SessionCard({ session, isUpdated = false }: SessionCardP
         if (!userEmail || joining) return
         setJoining(true)
         try {
-            const r = await fetchSecureStudentJoinUrl(session.id, userEmail)
-            if (r.ok) {
-                window.location.href = r.join_url
-            } else {
-                alert(r.message)
-            }
+            router.push(`/student/classroom/${session.id}`)
         } finally {
             setJoining(false)
         }

@@ -3,7 +3,6 @@
 import type { TabKey } from "@/context/SessionContext"
 import { useSession } from "@/context/SessionContext"
 import { useBooking } from "@/hooks/useBooking"
-import { fetchSecureStudentJoinUrl } from "@/lib/secureJoinClient"
 import {
     canShowStudentLiveJoinButton,
     DbSession,
@@ -15,10 +14,12 @@ import {
 } from "@/lib/sessions"
 import BookingInsertTestButton from "@/components/debug/BookingInsertTestButton"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { useState } from "react"
 
 function SlotRow({ session }: { session: DbSession }) {
     const { bookingAccess, userEmail, myBookings, cancelMyBooking } = useSession()
+    const router = useRouter()
     const now = new Date()
     const canBook = bookingAccess.canBook
     const myBooking =
@@ -54,12 +55,7 @@ function SlotRow({ session }: { session: DbSession }) {
         if (!userEmail || joining) return
         setJoining(true)
         try {
-            const r = await fetchSecureStudentJoinUrl(session.id, userEmail)
-            if (r.ok) {
-                window.location.href = r.join_url
-            } else {
-                alert(r.message)
-            }
+            router.push(`/student/classroom/${session.id}`)
         } finally {
             setJoining(false)
         }

@@ -1,7 +1,6 @@
 "use client"
 
 import { useSession } from "@/context/SessionContext"
-import { fetchSecureStudentJoinUrl } from "@/lib/secureJoinClient"
 import {
     canShowStudentLiveJoinButton,
     getMinutesUntilSessionStart,
@@ -11,12 +10,14 @@ import {
     sessionDisplayDay,
     sessionDisplayHour,
 } from "@/lib/sessions"
+import { useRouter } from "next/navigation"
 import Link from "next/link"
 import type { CSSProperties } from "react"
 import { useEffect, useMemo, useState } from "react"
 
 export default function NextSessionCard() {
     const { sessions, bookingAccess, userEmail } = useSession()
+    const router = useRouter()
     const [now, setNow] = useState(() => new Date())
     const [joining, setJoining] = useState(false)
 
@@ -51,12 +52,7 @@ export default function NextSessionCard() {
         if (!userEmail || joining) return
         setJoining(true)
         try {
-            const r = await fetchSecureStudentJoinUrl(nextBooked.id, userEmail)
-            if (r.ok) {
-                window.location.href = r.join_url
-            } else {
-                alert(r.message)
-            }
+            router.push(`/student/classroom/${nextBooked.id}`)
         } finally {
             setJoining(false)
         }
