@@ -88,6 +88,27 @@ export default function StudentClassroomPage() {
         }
     }
 
+    const handleEnterLiveClass = async () => {
+        if (loadingJoin) return
+        let url = joinUrl
+        if (!url) {
+            await prepareJoin()
+            url = joinUrl
+        }
+        if (!url && studentEmail && sessionId) {
+            const result = await fetchSecureStudentJoinUrl(sessionId, studentEmail)
+            if (!result.ok) {
+                setError(result.message)
+                return
+            }
+            url = result.join_url
+            setJoinUrl(result.join_url)
+        }
+        if (url) {
+            window.location.href = url
+        }
+    }
+
     useEffect(() => {
         if (!studentEmail || !sessionId) return
         void prepareJoin()
@@ -115,23 +136,12 @@ export default function StudentClassroomPage() {
                         <div className="mt-4 flex flex-wrap gap-3">
                             <button
                                 type="button"
-                                onClick={() => void prepareJoin()}
+                                onClick={() => void handleEnterLiveClass()}
                                 disabled={loadingJoin}
                                 className="rounded-lg border border-blue-300/30 bg-gradient-to-r from-blue-500 to-blue-700 px-4 py-2 text-sm font-bold text-white transition hover:brightness-110 disabled:opacity-70"
                             >
-                                {loadingJoin ? "Validando acceso..." : "Preparar acceso"}
+                                {loadingJoin ? "Validando acceso..." : "Entrar a Clase en Vivo"}
                             </button>
-                            {joinUrl ? (
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        window.location.href = joinUrl
-                                    }}
-                                    className="rounded-lg border border-emerald-300/30 bg-emerald-500/15 px-4 py-2 text-sm font-semibold text-emerald-200 transition hover:bg-emerald-500/25"
-                                >
-                                    Abrir sesion en esta pestana
-                                </button>
-                            ) : null}
                             <Link
                                 href="/dashboard"
                                 className="rounded-lg border border-slate-500/30 px-4 py-2 text-sm font-semibold text-slate-300 transition hover:border-slate-400/40 hover:text-slate-200"
@@ -161,21 +171,9 @@ export default function StudentClassroomPage() {
                                         embebida. Si no esta disponible, usa el boton de acceso para continuar sin
                                         friccion.
                                     </p>
-                                    {joinUrl ? (
-                                        <button
-                                            type="button"
-                                            onClick={() => {
-                                                window.location.href = joinUrl
-                                            }}
-                                            className="rounded-lg border border-blue-300/30 bg-blue-500/15 px-4 py-2 text-sm font-semibold text-blue-200 transition hover:bg-blue-500/25"
-                                        >
-                                            Continuar a la clase
-                                        </button>
-                                    ) : (
-                                        <p className="text-xs text-slate-500">
-                                            Esperando validacion de ventana de acceso y reserva...
-                                        </p>
-                                    )}
+                                    <p className="text-xs text-slate-500">
+                                        Usa el boton principal para entrar. El sistema valida tu acceso automaticamente.
+                                    </p>
                                 </div>
                             )}
                         </div>

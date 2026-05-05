@@ -94,6 +94,16 @@ export default function NextSessionCard() {
                 >
                     {label}
                 </p>
+                <p
+                    style={{
+                        margin: "0 0 var(--ds-3)",
+                        color: "#94a3b8",
+                        fontSize: "0.82rem",
+                        textAlign: "center",
+                    }}
+                >
+                    Tu acceso se valida automaticamente para que entres sin complicaciones.
+                </p>
                 {canJoin ? (
                     <button
                         type="button"
@@ -117,7 +127,7 @@ export default function NextSessionCard() {
                             transition: "all 0.2s ease",
                         }}
                     >
-                        {joining ? "Abriendo…" : "Unirse a la sesión en vivo"}
+                        {joining ? "Abriendo..." : "Entrar a Clase en Vivo"}
                     </button>
                 ) : !bookingAccess.canBook ? (
                     <div style={{ display: "grid", gap: 8 }}>
@@ -143,7 +153,7 @@ export default function NextSessionCard() {
                 ) : (
                     <div style={{ display: "grid", gap: 8 }}>
                         <button type="button" onClick={scrollToBooking} style={secondaryButtonStyle}>
-                            Ver horarios
+                            Ver y reservar horarios
                         </button>
                         <p style={{ margin: 0, fontSize: "0.78rem", color: "#94a3b8", textAlign: "center" }}>
                             {isStudentJoinTooEarly(nextBooked, now)

@@ -107,6 +107,23 @@ function DashboardShell({
                     }}
                 >
                     <section
+                        aria-label="Acceso rapido a clase"
+                        style={{
+                            borderRadius: 12,
+                            border: "1px solid rgba(59,130,246,0.28)",
+                            background: "linear-gradient(135deg, rgba(30,64,175,0.2), rgba(2,6,23,0.75))",
+                            padding: "12px 14px",
+                        }}
+                    >
+                        <p style={{ margin: 0, fontSize: "0.72rem", letterSpacing: "0.08em", color: "#93c5fd", fontWeight: 700 }}>
+                            ACCESO RAPIDO
+                        </p>
+                        <p style={{ margin: "6px 0 0", fontSize: "0.9rem", color: "#e2e8f0" }}>
+                            Tu proxima clase en vivo aparece primero. Solo toca <strong>Entrar a Clase en Vivo</strong>.
+                        </p>
+                    </section>
+                    <NextSessionCard />
+                    <section
                         aria-label="Recordatorio legal"
                         style={{
                             borderRadius: 12,
@@ -120,11 +137,24 @@ function DashboardShell({
                             personalizada.
                         </p>
                     </section>
-                    <StudentNotificationsSection />
-                    <MyBookingsSection />
-                    <NextSessionCard />
+                    <details
+                        style={{
+                            borderRadius: 12,
+                            border: "1px solid rgba(59,130,246,0.2)",
+                            background: "rgba(15,23,42,0.6)",
+                            padding: "10px 12px",
+                        }}
+                    >
+                        <summary style={{ cursor: "pointer", fontWeight: 700, color: "#cbd5e1" }}>
+                            Ver mas opciones
+                        </summary>
+                        <div style={{ display: "grid", gap: "var(--ds-4)", marginTop: "var(--ds-3)" }}>
+                            <StudentNotificationsSection />
+                            <MyBookingsSection />
+                            <ResourcesSection />
+                        </div>
+                    </details>
                     <BookSessionSection />
-                    <ResourcesSection />
                 </div>
             </main>
             <CancelSessionConfirmModal
