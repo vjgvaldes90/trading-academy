@@ -33,9 +33,62 @@ export const STUDENT_SECURE_JOIN_MINUTES_BEFORE = 10
 export const STUDENT_SECURE_JOIN_MINUTES_AFTER = 120
 /** Admin host URL: allowed from this many minutes before start onward. */
 export const ADMIN_HOST_MINUTES_BEFORE = 15
+/** Student secure-join window is evaluated against NY academy time. */
+const STUDENT_TIME_ZONE = "America/New_York"
+
+function getTimeZoneOffsetMs(at: Date, timeZone: string): number {
+    const dtf = new Intl.DateTimeFormat("en-US", {
+        timeZone,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false,
+    })
+    const parts = dtf.formatToParts(at)
+    const pick = (type: string): number => {
+        const value = parts.find((p) => p.type === type)?.value
+        return Number(value ?? "0")
+    }
+    const y = pick("year")
+    const m = pick("month")
+    const d = pick("day")
+    const h = pick("hour")
+    const min = pick("minute")
+    const s = pick("second")
+    const asUtc = Date.UTC(y, m - 1, d, h, min, s, 0)
+    return asUtc - at.getTime()
+}
+
+function zonedDateTimeToUtc(dateYmd: string, time: string, timeZone: string): Date | null {
+    const minutes = parseTimeToMinutes(time)
+    if (minutes == null) return null
+    const [y, m, d] = dateYmd.split("-").map(Number)
+    if (!y || !m || !d) return null
+    const hour = Math.floor(minutes / 60)
+    const min = minutes % 60
+
+    // Convert a wall-clock date/time in `timeZone` into an absolute UTC instant.
+    // Two-pass refinement handles DST transitions reliably.
+    const wallClockUtcMs = Date.UTC(y, m - 1, d, hour, min, 0, 0)
+    let utcMs = wallClockUtcMs
+    for (let i = 0; i < 2; i++) {
+        const offsetMs = getTimeZoneOffsetMs(new Date(utcMs), timeZone)
+        utcMs = wallClockUtcMs - offsetMs
+    }
+
+    return new Date(utcMs)
+}
+
+function studentStartAt(session: DbSession): Date | null {
+    if (!session.date || !session.time) return null
+    return zonedDateTimeToUtc(session.date, session.time, STUDENT_TIME_ZONE)
+}
 
 export function isWithinStudentSecureJoinWindow(s: DbSession, now: Date): boolean {
-    const at = startAt(s)
+    const at = studentStartAt(s)
     if (!at) return false
     const t = now.getTime()
     const startMs = at.getTime()
@@ -46,7 +99,7 @@ export function isWithinStudentSecureJoinWindow(s: DbSession, now: Date): boolea
 
 /** After the secure student join window ends (UI: “Sesión cerrada”). */
 export function isStudentSecureJoinWindowClosed(s: DbSession, now: Date): boolean {
-    const at = startAt(s)
+    const at = studentStartAt(s)
     if (!at) return false
     const latest = at.getTime() + STUDENT_SECURE_JOIN_MINUTES_AFTER * 60 * 1000
     return now.getTime() > latest
@@ -143,7 +196,7 @@ export function isSessionLiveNow(s: DbSession, now: Date): boolean {
  * Positive = session is in the future; negative = already started.
  */
 export function getMinutesUntilSessionStart(s: DbSession, now: Date): number | null {
-    const at = startAt(s)
+    const at = studentStartAt(s)
     if (!at) return null
     return (at.getTime() - now.getTime()) / (1000 * 60)
 }
