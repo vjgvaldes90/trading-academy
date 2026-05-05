@@ -38,12 +38,18 @@ export type AdminStartResult =
     | { ok: true; zoom_start_url: string }
     | { ok: false; message: string; code?: string }
 
-export async function fetchSecureAdminStartUrl(sessionId: string): Promise<AdminStartResult> {
+export async function fetchSecureAdminStartUrl(
+    sessionId: string,
+    adminEmail: string
+): Promise<AdminStartResult> {
     const res = await fetch("/api/admin/session/host-join", {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ session_id: sessionId }),
+        body: JSON.stringify({
+            session_id: sessionId,
+            admin_email: adminEmail.trim().toLowerCase(),
+        }),
     })
     const data = (await res.json().catch(() => ({}))) as {
         zoom_start_url?: string

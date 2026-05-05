@@ -18,12 +18,12 @@ function normalizedAdminEmail(): string {
     return process.env.ADMIN_EMAIL?.trim().toLowerCase() ?? ""
 }
 
-async function resolveAdminEmail(): Promise<string | null> {
+async function resolveAdminEmail(adminEmailFromBody: string): Promise<string | null> {
     const adminEmail = normalizedAdminEmail()
-    if (!adminEmail) return null
+    if (!adminEmail || !adminEmailFromBody || adminEmailFromBody !== adminEmail) return null
 
     const strictVerified = await getVerifiedStudentEmailFromCookies()
-    if (strictVerified && strictVerified === adminEmail) return strictVerified
+    if (strictVerified && strictVerified === adminEmailFromBody) return strictVerified
 
     const jar = await cookies()
     const candidates = [
@@ -34,7 +34,7 @@ async function resolveAdminEmail(): Promise<string | null> {
     const supabase = createSupabaseServiceRoleClient()
     for (const email of candidates) {
         if (!EMAIL_RE.test(email)) continue
-        if (email !== adminEmail) continue
+        if (email !== adminEmailFromBody) continue
         const { data, error } = await supabase
             .from("trading_students")
             .select("email, is_active")
@@ -58,13 +58,24 @@ export async function POST(req: Request) {
             )
         }
 
-        const verifiedAdmin = await resolveAdminEmail()
+        const body = (await req.json().catch(() => null)) as
+            | (Body & { admin_email?: unknown })
+            | null
+        const sessionId = typeof body?.session_id === "string" ? body.session_id.trim() : ""
+        const adminEmailFromBody =
+            typeof body?.admin_email === "string" ? body.admin_email.trim().toLowerCase() : ""
+        if (!adminEmailFromBody || !EMAIL_RE.test(adminEmailFromBody)) {
+            return NextResponse.json({ error: "Invalid admin_email", code: "invalid_admin_email" }, { status: 400 })
+        }
+        if (adminEmailFromBody !== adminEmail) {
+            return NextResponse.json({ error: "Unauthorized", code: "admin_email_mismatch" }, { status: 401 })
+        }
+
+        const verifiedAdmin = await resolveAdminEmail(adminEmailFromBody)
         if (!verifiedAdmin) {
             return NextResponse.json({ error: "Unauthorized", code: "unauthorized" }, { status: 401 })
         }
 
-        const body = (await req.json().catch(() => null)) as Body | null
-        const sessionId = typeof body?.session_id === "string" ? body.session_id.trim() : ""
         if (!sessionId || !UUID_RE.test(sessionId)) {
             return NextResponse.json({ error: "Invalid session_id" }, { status: 400 })
         }
