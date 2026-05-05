@@ -20,6 +20,7 @@ type JoinBody = {
 
 export async function POST(req: Request) {
     try {
+        let denyReason = ""
         const verifiedEmail = await getVerifiedStudentEmailFromCookies()
         if (!verifiedEmail) {
             denyReason = "unauthorized"
