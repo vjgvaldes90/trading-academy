@@ -39,7 +39,7 @@ export type AdminStartResult =
     | { ok: false; message: string; code?: string }
 
 export async function fetchSecureAdminStartUrl(sessionId: string): Promise<AdminStartResult> {
-    const res = await fetch("/api/admin/session/start", {
+    const res = await fetch("/api/admin/session/host-join", {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
