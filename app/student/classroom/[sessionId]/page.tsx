@@ -7,7 +7,11 @@ import Navbar from "@/components/landing/Navbar"
 import SiteFooter from "@/components/shared/SiteFooter"
 import { fetchSecureStudentJoinUrl } from "@/lib/secureJoinClient"
 import { resolveDashboardStudent } from "@/lib/studentLocalStorage"
-import { canRenderZoomIframe, ZOOM_CLASSROOM_PROVIDER } from "@/lib/zoomClassroom"
+import {
+    buildJoinUrlWithPreferredName,
+    canRenderZoomIframe,
+    ZOOM_CLASSROOM_PROVIDER,
+} from "@/lib/zoomClassroom"
 
 type SessionPreview = {
     id: string
@@ -32,6 +36,7 @@ export default function StudentClassroomPage() {
     const sessionId = typeof params?.sessionId === "string" ? params.sessionId.trim() : ""
 
     const [studentEmail, setStudentEmail] = useState<string>("")
+    const [studentJoinName, setStudentJoinName] = useState<string>("")
     const [sessionPreview, setSessionPreview] = useState<SessionPreview | null>(null)
     const [joinUrl, setJoinUrl] = useState<string>("")
     const [loadingJoin, setLoadingJoin] = useState(false)
@@ -43,7 +48,10 @@ export default function StudentClassroomPage() {
             router.replace(`/login?redirect=${encodeURIComponent(`/student/classroom/${sessionId}`)}`)
             return
         }
-        setStudentEmail(student.email.trim().toLowerCase())
+        const email = student.email.trim().toLowerCase()
+        const preferredName = student.name?.trim() || email
+        setStudentEmail(email)
+        setStudentJoinName(preferredName)
     }, [router, sessionId])
 
     useEffect(() => {
@@ -72,17 +80,22 @@ export default function StudentClassroomPage() {
     const sessionTitle = sessionPreview?.title ?? "Aula de sesion en vivo"
     const scheduleLine = [sessionPreview?.day ?? "", sessionPreview?.time ?? ""].filter(Boolean).join(" - ")
 
-    const prepareJoin = async () => {
-        if (!studentEmail || !sessionId || loadingJoin) return
+    const prepareJoin = async (): Promise<string | null> => {
+        if (!studentEmail || !sessionId || loadingJoin) return null
         setError("")
         setLoadingJoin(true)
         try {
             const result = await fetchSecureStudentJoinUrl(sessionId, studentEmail)
             if (!result.ok) {
                 setError(result.message)
-                return
+                return null
             }
-            setJoinUrl(result.join_url)
+            const preparedUrl = buildJoinUrlWithPreferredName(
+                result.join_url,
+                studentJoinName || studentEmail
+            )
+            setJoinUrl(preparedUrl)
+            return preparedUrl
         } finally {
             setLoadingJoin(false)
         }
@@ -90,10 +103,9 @@ export default function StudentClassroomPage() {
 
     const handleEnterLiveClass = async () => {
         if (loadingJoin) return
-        let url = joinUrl
+        let url: string | null = joinUrl || null
         if (!url) {
-            await prepareJoin()
-            url = joinUrl
+            url = await prepareJoin()
         }
         if (!url && studentEmail && sessionId) {
             const result = await fetchSecureStudentJoinUrl(sessionId, studentEmail)
@@ -101,8 +113,12 @@ export default function StudentClassroomPage() {
                 setError(result.message)
                 return
             }
-            url = result.join_url
-            setJoinUrl(result.join_url)
+            const preparedUrl = buildJoinUrlWithPreferredName(
+                result.join_url,
+                studentJoinName || studentEmail
+            )
+            url = preparedUrl
+            setJoinUrl(preparedUrl)
         }
         if (url) {
             window.location.href = url
@@ -113,7 +129,7 @@ export default function StudentClassroomPage() {
         if (!studentEmail || !sessionId) return
         void prepareJoin()
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [studentEmail, sessionId])
+    }, [studentEmail, sessionId, studentJoinName])
 
     const canEmbed = useMemo(() => {
         if (!joinUrl) return false
