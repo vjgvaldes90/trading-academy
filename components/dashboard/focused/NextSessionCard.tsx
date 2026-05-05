@@ -31,10 +31,12 @@ export default function NextSessionCard() {
 
     const label = `Próxima sesión: ${sessionDisplayDay(nextBooked)} ${sessionDisplayHour(nextBooked)}`.trim()
 
-    const canJoin = canShowStudentLiveJoinButton(nextBooked, now, {
-        hasPaid: bookingAccess.canBook,
-        hasReservation: true,
-    })
+    const canJoin =
+        Boolean(userEmail) &&
+        canShowStudentLiveJoinButton(nextBooked, now, {
+            hasPaid: bookingAccess.canBook,
+            hasReservation: true,
+        })
 
     const sessionClosed =
         bookingAccess.canBook &&
@@ -51,9 +53,9 @@ export default function NextSessionCard() {
         try {
             const r = await fetchSecureStudentJoinUrl(nextBooked.id, userEmail)
             if (r.ok) {
-                window.open(r.join_url, "_blank", "noopener,noreferrer")
+                window.location.href = r.join_url
             } else {
-                console.warn("[NextSessionCard] join denied", r.code, r.message)
+                alert(r.message)
             }
         } finally {
             setJoining(false)

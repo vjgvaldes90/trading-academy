@@ -56,9 +56,9 @@ function SlotRow({ session }: { session: DbSession }) {
         try {
             const r = await fetchSecureStudentJoinUrl(session.id, userEmail)
             if (r.ok) {
-                window.open(r.join_url, "_blank", "noopener,noreferrer")
+                window.location.href = r.join_url
             } else {
-                console.warn("[BookSessionSection] join denied", r.code, r.message)
+                alert(r.message)
             }
         } finally {
             setJoining(false)

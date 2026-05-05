@@ -108,9 +108,9 @@ export default function SessionCard({ session, isUpdated = false }: SessionCardP
         try {
             const r = await fetchSecureStudentJoinUrl(session.id, userEmail)
             if (r.ok) {
-                window.open(r.join_url, "_blank", "noopener,noreferrer")
+                window.location.href = r.join_url
             } else {
-                console.warn("[SessionCard] join denied", r.code, r.message)
+                alert(r.message)
             }
         } finally {
             setJoining(false)
