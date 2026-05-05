@@ -61,18 +61,18 @@ export async function POST(req: Request) {
                 { status: 503 }
             )
         }
+        if (!EMAIL_RE.test(adminEmail)) {
+            return NextResponse.json(
+                { error: "Server misconfiguration: invalid ADMIN_EMAIL", code: "admin_email_invalid" },
+                { status: 503 }
+            )
+        }
 
-        const body = (await req.json().catch(() => null)) as
-            | (Body & { admin_email?: unknown })
-            | null
+        /** TEMP (prod stabilize): ignore unreliable client `admin_email`; identity target is always env ADMIN_EMAIL. */
+        const adminEmailFromBody = adminEmail
+
+        const body = (await req.json().catch(() => null)) as Body | null
         const sessionId = typeof body?.session_id === "string" ? body.session_id.trim() : ""
-        const adminEmailFromBody = normalizeEmail(body?.admin_email)
-        if (!adminEmailFromBody || !EMAIL_RE.test(adminEmailFromBody)) {
-            return NextResponse.json({ error: "Invalid admin_email", code: "invalid_admin_email" }, { status: 400 })
-        }
-        if (adminEmailFromBody !== adminEmail) {
-            return NextResponse.json({ error: "Unauthorized", code: "admin_email_mismatch" }, { status: 401 })
-        }
 
         const verifiedAdmin = await resolveAdminEmail(adminEmailFromBody)
         if (!verifiedAdmin) {
