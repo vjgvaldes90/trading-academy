@@ -4,16 +4,20 @@ import { motion } from "framer-motion"
 
 const steps = [
   {
-    title: "Accede a las sesiones en vivo",
-    text: "Conéctate varias veces por semana y observa cómo se analiza el mercado en tiempo real.",
+    title: "Formación de alto rendimiento",
+    text: "Programa elite de educación financiera orientado a inversionistas disciplinados y metódicos.",
   },
   {
-    title: "Aprende a identificar oportunidades",
-    text: "Descubre exactamente cuándo entrar y salir con estrategias claras y aplicables.",
+    title: "Gráficos y mercado en tiempo real",
+    text: "Aprende a analizar gráficos en tiempo real dentro de mentoría en vivo y metodología estructurada.",
   },
   {
-    title: "Opera con confianza",
-    text: "Aplica lo aprendido paso a paso y toma decisiones sin adivinar el mercado.",
+    title: "Opciones, stocks y ETFs",
+    text: "Domina la compra y venta de opciones con fundamentos institucionales y gestión profesional del riesgo.",
+  },
+  {
+    title: "Ingresos consistentes con método",
+    text: "Construye ingresos consistentes con una metodología estructurada, sin atajos ni promesas irreales.",
   },
 ]
 
@@ -30,12 +34,12 @@ export default function HowItWorks() {
 
         {/* 🔥 TITULO */}
         <h2 className="mb-4 text-4xl font-bold text-slate-100">
-          Así es como empiezas a mejorar en trading
+          De principiante a trader profesional
         </h2>
 
         {/* 💬 SUBTEXTO */}
         <p className="mx-auto mb-12 max-w-2xl text-slate-300">
-          No necesitas experiencia previa. Solo seguir el proceso paso a paso.
+          Educación financiera premium con enfoque en opciones, acciones y ETFs, mentoría en vivo y proceso claro paso a paso.
         </p>
 
         {/* 🧱 STEPS */}
@@ -67,7 +71,7 @@ export default function HowItWorks() {
           href="/login"
           className="mt-12 inline-block rounded-xl border border-blue-300/25 bg-gradient-to-r from-blue-500 to-blue-700 px-8 py-4 text-lg font-bold text-white shadow-[0_14px_34px_rgba(37,99,235,0.35)] transition hover:scale-105 hover:brightness-110"
         >
-          🚀 Empezar ahora
+          Comienza tu formación
         </a>
 
       </div>

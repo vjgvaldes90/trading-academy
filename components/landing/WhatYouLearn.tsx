@@ -1,45 +1,28 @@
 "use client"
 
 import { motion } from "framer-motion"
-import {
-  BarChart3,
-  TrendingUp,
-  Shield,
-  Brain,
-  Monitor,
-  GraduationCap,
-} from "lucide-react"
+import { BarChart3, Shield, BookOpenCheck, ClipboardList } from "lucide-react"
 
 const items = [
   {
     icon: BarChart3,
-    title: "Análisis del Mercado",
-    text: "Aprende a leer gráficos y entender la estructura del mercado.",
-  },
-  {
-    icon: TrendingUp,
-    title: "Estrategias de Trading",
-    text: "Conocerás estrategias profesionales utilizadas por traders.",
+    title: "Domina análisis técnico",
+    text: "Lee el mercado con criterio profesional antes de ejecutar cualquier estrategia con capital real.",
   },
   {
     icon: Shield,
-    title: "Gestión de Riesgo",
-    text: "Aprende a proteger tu capital y manejar el riesgo correctamente.",
+    title: "Aprende gestión de riesgo",
+    text: "Protege capital y tamaño de posición con reglas institucionales aplicables en opciones, stocks y ETFs.",
   },
   {
-    icon: Brain,
-    title: "Psicología del Trading",
-    text: "Control emocional y disciplina para operar de forma consistente.",
+    icon: ClipboardList,
+    title: "Metodología profesional estructurada",
+    text: "Sigue un proceso claro y repetible, alineado a educación financiera de alto nivel, no improvisación.",
   },
   {
-    icon: Monitor,
-    title: "Trading en Vivo",
-    text: "Operaciones en vivo donde verás cómo se toman decisiones reales.",
-  },
-  {
-    icon: GraduationCap,
-    title: "Mentoría Directa",
-    text: "Podrás hacer preguntas y recibir guía directa del instructor.",
+    icon: BookOpenCheck,
+    title: "Educación financiera práctica",
+    text: "Aplica lo aprendido en sesiones guiadas para construir hábitos de inversión serios y sostenibles.",
   },
 ]
 
@@ -55,9 +38,12 @@ export default function WhatYouLearn() {
       <div className="max-w-6xl mx-auto px-8 text-center">
 
         {/* 🧠 TITULO */}
-        <h2 className="mb-12 text-4xl font-bold text-slate-100">
-          Qué aprenderás en el programa
+        <h2 className="mb-6 text-4xl font-bold text-slate-100">
+          No arriesgues tu dinero sin educación.
         </h2>
+        <p className="mx-auto mb-12 max-w-2xl text-slate-300">
+          Aprende primero a invertir con conocimiento, análisis técnico y gestión de riesgo antes de operar capital real.
+        </p>
 
         {/* 🧱 GRID */}
         <div className="grid md:grid-cols-3 gap-10">
@@ -91,7 +77,7 @@ export default function WhatYouLearn() {
           href="/login"
           className="mt-12 inline-block rounded-xl border border-blue-300/25 bg-gradient-to-r from-blue-500 to-blue-700 px-8 py-4 text-lg font-bold text-white shadow-[0_14px_34px_rgba(37,99,235,0.35)] transition hover:scale-105 hover:brightness-110"
         >
-          🚀 Empezar ahora
+          Comienza tu formación
         </a>
 
       </div>

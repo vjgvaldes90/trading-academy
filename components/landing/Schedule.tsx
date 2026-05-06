@@ -5,17 +5,17 @@ import { motion } from "framer-motion"
 const sessions = [
   {
     day: "Lunes",
-    title: "Trading en vivo",
+    title: "Análisis y trading en vivo",
     time: "9:30 AM (EST)",
   },
   {
     day: "Martes",
-    title: "Trading en vivo",
+    title: "Análisis y trading en vivo",
     time: "9:30 AM (EST)",
   },
   {
-    day: "Miercoles",
-    title: "Trading en vivo",
+    day: "Miércoles",
+    title: "Análisis y trading en vivo",
     time: "9:30 AM (EST)",
   },
 ]
@@ -43,7 +43,7 @@ export default function Schedule() {
 
         {/* 💬 SUBTEXTO */}
         <p className="mb-12 text-slate-300">
-          Conéctate varias veces por semana y aprende directamente en el mercado real
+          Opciones, stocks y ETFs con mentoría en vivo y proceso estructurado frente al mercado real.
         </p>
 
         {/* 🧱 GRID */}
@@ -75,7 +75,7 @@ export default function Schedule() {
           href="/login"
           className="mt-12 inline-block rounded-xl border border-blue-300/25 bg-gradient-to-r from-blue-500 to-blue-700 px-8 py-4 text-lg font-bold text-white shadow-[0_14px_34px_rgba(37,99,235,0.35)] transition hover:scale-105 hover:brightness-110"
         >
-          🚀 Empezar ahora
+          Comienza tu formación
         </a>
 
         {/* 🕒 NOTA */}

@@ -30,7 +30,7 @@ export default function Hero() {
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          Deja de adivinar el mercado y empieza a entenderlo
+          Formación profesional para inversionistas de alto rendimiento
         </motion.h1>
 
         {/* 💥 SUBTEXTO */}
@@ -40,8 +40,12 @@ export default function Hero() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
         >
-          Aprende a leer gráficos, tomar decisiones reales y operar con confianza
-          en sesiones en vivo.
+          <span className="block">
+            La bolsa de valores no es una apuesta, es una profesión que tú también puedes aprender.
+          </span>
+          <span className="mt-4 block text-base md:text-lg">
+            Genera ingresos diarios aprendiendo opciones financieras, stocks y ETFs con metodología profesional.
+          </span>
         </motion.p>
 
         {/* 💰 CTA */}
@@ -52,12 +56,12 @@ export default function Hero() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
         >
-          🚀 Empezar ahora
+          Comienza tu formación
         </motion.a>
 
         {/* 🧲 PRUEBA SOCIAL */}
         <p className="mt-4 text-sm text-slate-400">
-          +100 estudiantes ya están aprendiendo en vivo
+          La mejor inversión está en tu conocimiento.
         </p>
 
       </div>

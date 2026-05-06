@@ -17,21 +17,20 @@ export default function Pricing() {
                 {/* LEFT SIDE */}
                 <div>
                     <h2 className="text-5xl font-bold mb-6">
-                        De principiante a trader rentable con sesiones en vivo
+                        Smart Option Academy: educación financiera elite en vivo
                     </h2>
 
                     <p className="mb-10 text-lg text-slate-300">
-                        Aprende viendo operaciones reales, toma decisiones con confianza
-                        y mejora tu rendimiento con mentoría directa.
+                        Opciones, stocks y ETFs con metodología profesional, análisis técnico y gestión de riesgo frente al mercado en tiempo real.
                     </p>
 
                     <div className="space-y-4 text-slate-300">
 
-                        <p>✔ Sesiones en vivo 3 veces por semana</p>
-                        <p>✔ Análisis en tiempo real</p>
-                        <p>✔ Estrategias profesionales</p>
-                        <p>✔ Mentoría directa</p>
-                        <p>✔ Comunidad privada</p>
+                        <p>✔ Mentoría en vivo: opciones, stocks y ETFs</p>
+                        <p>✔ Análisis técnico y lectura del mercado en tiempo real</p>
+                        <p>✔ Estructura de alto rendimiento y gestión del riesgo</p>
+                        <p>✔ Metodología profesional repetible paso a paso</p>
+                        <p>✔ Acceso privado para cohortes enfocadas en excelencia</p>
 
                     </div>
                 </div>
@@ -69,7 +68,7 @@ export default function Pricing() {
 
                         {/* SUBTEXTO MEJORADO */}
                         <p className="text-gray-400 mb-8">
-                            Accede a sesiones en vivo, estrategias reales y mentoría directa
+                            Educación financiera premium frente al mercado, sin atajos
                         </p>
 
                         {/* CTA */}
@@ -77,7 +76,7 @@ export default function Pricing() {
                             href="/login"
                             className="block w-full rounded-xl border border-blue-300/25 bg-gradient-to-r from-blue-500 to-blue-700 py-4 text-lg font-bold text-white shadow-[0_14px_34px_rgba(37,99,235,0.35)] transition hover:scale-105 hover:brightness-110"
                         >
-                            🚀 Empezar ahora
+                            Comienza tu formación
                         </a>
 
                         {/* MICRO COPY */}

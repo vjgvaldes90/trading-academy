@@ -5,15 +5,15 @@ import { motion } from "framer-motion"
 const testimonials = [
     {
         name: "Carlos M.",
-        text: "Antes no entendía nada del mercado. Ahora sé exactamente cuándo entrar y salir.",
+        text: "La formación estructurada me dio claridad: hoy opero con proceso, no con impulsos.",
     },
     {
         name: "Luis G.",
-        text: "Las sesiones en vivo cambian todo. Ves cómo se toman decisiones reales.",
+        text: "Las sesiones en vivo con análisis profesional aceleraron mi comprensión de opciones y gestión de riesgo.",
     },
     {
         name: "Andrea R.",
-        text: "Recuperé lo que había perdido aprendiendo a gestionar el riesgo correctamente.",
+        text: "Entendí por fin cómo proteger capital y aplicar metodología antes de escalar tamaño de posición.",
     },
 ]
 
@@ -30,12 +30,12 @@ export default function Testimonials() {
 
                 {/* 🔥 TITULO */}
                 <h2 className="mb-4 text-4xl font-bold text-slate-100">
-                    Resultados reales de estudiantes reales
+                    Educación elite con compañeros exigentes como tú
                 </h2>
 
                 {/* 💬 SUBTEXTO */}
                 <p className="mb-12 text-slate-300">
-                    Esto es lo que están logrando después de aplicar el método
+                    Profesionales que priorizan método, riesgo disciplinado y aprendizaje continuo en mercados reales.
                 </p>
 
                 {/* 🧱 GRID */}
@@ -61,7 +61,7 @@ export default function Testimonials() {
                     href="/login"
                     className="mt-12 inline-block rounded-xl border border-blue-300/25 bg-gradient-to-r from-blue-500 to-blue-700 px-8 py-4 text-lg font-bold text-white shadow-[0_14px_34px_rgba(37,99,235,0.35)] transition hover:scale-105 hover:brightness-110"
                 >
-                    🚀 Empezar ahora
+                    Comienza tu formación
                 </a>
 
             </div>

@@ -13,15 +13,15 @@ export default function ChartSection() {
         >
             <div className="mx-auto max-w-6xl px-8 text-center">
                 <p className="mb-2 text-sm font-semibold uppercase tracking-[0.2em] text-red-400 md:text-base">
-                    Trading Elite
+                    Live Market Analysis
                 </p>
 
                 <h2 className="mb-3 text-3xl font-bold leading-tight md:text-4xl">
-                    Aprende. Opera. Escala.
+                    Stocks • Options • ETFs
                 </h2>
 
                 <p className="mx-auto mb-7 max-w-xl text-base text-slate-300 md:text-lg">
-                    Mentoría real en vivo.
+                    Accede a análisis de mercado en tiempo real y aprende estrategias profesionales junto a expertos.
                 </p>
 
                 <motion.div

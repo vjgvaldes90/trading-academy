@@ -33,19 +33,19 @@ export default function Instructor() {
                     </p>
 
                     <h2 className="mb-6 text-4xl font-bold text-slate-100">
-                        Aprende directamente con Tony Linares
+                        Mentoría institucional en vivo con Tony Linares
                     </h2>
 
                     <p className="mb-4 text-lg text-slate-300">
-                        Tony opera el mercado de forma activa y enseña exactamente cómo toma decisiones en tiempo real.
+                        Tony forma inversionistas con estándar profesional: análisis fundamentado, opciones, acciones y ETFs, y control del riesgo.
                     </p>
 
                     <p className="mb-4 text-lg text-slate-300">
-                        No es teoría complicada — es un enfoque práctico donde ves el análisis, las entradas y la gestión del riesgo paso a paso.
+                        Priorizamos metodología clara: ves el análisis técnico, la lógica del trade y la gestión de riesgo aplicada paso a paso.
                     </p>
 
                     <p className="text-lg text-slate-300">
-                        Durante las sesiones en vivo podrás hacer preguntas y aprender directamente cómo pensar como un trader profesional.
+                        En vivo recibes preguntas, feedback y frameworks que usan inversionistas institucionalmente disciplinados.
                     </p>
 
                     {/* 💰 CTA */}
@@ -53,7 +53,7 @@ export default function Instructor() {
                         href="/login"
                         className="mt-6 inline-block rounded-xl border border-blue-300/25 bg-gradient-to-r from-blue-500 to-blue-700 px-6 py-3 font-bold text-white shadow-[0_12px_30px_rgba(37,99,235,0.35)] transition hover:brightness-110"
                     >
-                        🚀 Aprender con Tony
+                        Comienza tu formación
                     </a>
 
                 </div>
