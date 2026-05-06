@@ -4,7 +4,6 @@ import { CheckCircle2, Download } from "lucide-react"
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
 import { useEffect, useMemo, useState } from "react"
-import Navbar from "@/components/landing/Navbar"
 import SiteFooter from "@/components/shared/SiteFooter"
 import { fetchSecureStudentJoinUrl } from "@/lib/secureJoinClient"
 import { resolveDashboardStudent } from "@/lib/studentLocalStorage"
@@ -175,14 +174,25 @@ export default function StudentClassroomPage() {
 
     return (
         <div className="min-h-screen bg-[#020617] text-white">
-            <Navbar />
-            <main className="mx-auto w-full max-w-6xl px-4 pb-14 pt-28 sm:px-6">
+            <header className="sticky top-0 z-40 border-b border-blue-400/15 bg-[#020617]/92 backdrop-blur-md shadow-[0_1px_0_rgba(59,130,246,0.08)]">
+                <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
+                    <p className="min-w-0 text-sm font-semibold tracking-tight text-slate-100">
+                        <span className="text-blue-400">Smart Option Academy</span>
+                        <span className="font-normal text-slate-500"> | </span>
+                        <span className="text-slate-300">Aula del Estudiante</span>
+                    </p>
+                    <Link
+                        href="/dashboard"
+                        className="inline-flex shrink-0 items-center justify-center rounded-lg border border-blue-300/30 bg-blue-500/10 px-4 py-2 text-sm font-semibold text-blue-100 transition hover:border-blue-300/50 hover:bg-blue-500/20"
+                    >
+                        Volver al Dashboard
+                    </Link>
+                </div>
+            </header>
+            <main className="mx-auto w-full max-w-6xl px-4 pb-14 pt-6 sm:px-6 sm:pt-8">
                 <div className="grid gap-5 lg:grid-cols-[1.7fr_1fr]">
                     <section className="rounded-2xl border border-blue-300/20 bg-[#0B1220]/95 p-4 shadow-[0_20px_52px_rgba(2,6,23,0.55)] sm:p-6">
-                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-blue-300">
-                            Aula del estudiante
-                        </p>
-                        <h1 className="mt-2 text-2xl font-bold text-slate-100 sm:text-3xl">{sessionTitle}</h1>
+                        <h1 className="text-2xl font-bold leading-tight text-slate-100 sm:text-3xl">{sessionTitle}</h1>
                         {scheduleLine ? <p className="mt-1 text-sm text-slate-400">{scheduleLine}</p> : null}
 
                         {!hideZoomRecommendation ? (
@@ -252,16 +262,10 @@ export default function StudentClassroomPage() {
                                 type="button"
                                 onClick={() => void handleEnterLiveClass()}
                                 disabled={loadingJoin}
-                                className="rounded-lg border border-blue-300/30 bg-gradient-to-r from-blue-500 to-blue-700 px-4 py-2 text-sm font-bold text-white transition hover:brightness-110 disabled:opacity-70"
+                                className="w-full rounded-lg border border-blue-300/30 bg-gradient-to-r from-blue-500 to-blue-700 px-5 py-3 text-sm font-bold text-white shadow-[0_12px_28px_rgba(37,99,235,0.3)] transition hover:brightness-110 disabled:opacity-70 sm:w-auto sm:min-w-[220px]"
                             >
                                 {loadingJoin ? "Validando acceso..." : "Entrar a Clase en Vivo"}
                             </button>
-                            <Link
-                                href="/dashboard"
-                                className="rounded-lg border border-slate-500/30 px-4 py-2 text-sm font-semibold text-slate-300 transition hover:border-slate-400/40 hover:text-slate-200"
-                            >
-                                Volver al dashboard
-                            </Link>
                         </div>
 
                         {error ? (
