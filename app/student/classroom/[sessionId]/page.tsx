@@ -3,15 +3,11 @@
 import { CheckCircle2, Download } from "lucide-react"
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useState } from "react"
 import SiteFooter from "@/components/shared/SiteFooter"
 import { fetchSecureStudentJoinUrl } from "@/lib/secureJoinClient"
 import { resolveDashboardStudent } from "@/lib/studentLocalStorage"
-import {
-    buildJoinUrlWithPreferredName,
-    canRenderZoomIframe,
-    ZOOM_CLASSROOM_PROVIDER,
-} from "@/lib/zoomClassroom"
+import { buildJoinUrlWithPreferredName } from "@/lib/zoomClassroom"
 
 /** Returning students: persistently hide Zoom desktop recommendation. */
 const ZOOM_SETUP_ACK_LS = "soa_classroom_zoom_desktop_ack"
@@ -166,12 +162,6 @@ export default function StudentClassroomPage() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [studentEmail, sessionId, studentJoinName])
 
-    const canEmbed = useMemo(() => {
-        if (!joinUrl) return false
-        if (ZOOM_CLASSROOM_PROVIDER !== "browser-join") return false
-        return canRenderZoomIframe(joinUrl)
-    }, [joinUrl])
-
     return (
         <div className="min-h-screen bg-[#020617] text-white">
             <header className="sticky top-0 z-40 border-b border-blue-400/15 bg-[#020617]/92 backdrop-blur-md shadow-[0_1px_0_rgba(59,130,246,0.08)]">
@@ -274,26 +264,24 @@ export default function StudentClassroomPage() {
                             </p>
                         ) : null}
 
-                        <div className="mt-5 overflow-hidden rounded-xl border border-blue-300/15 bg-[#040B18]">
-                            {canEmbed ? (
-                                <iframe
-                                    title="Zoom classroom session"
-                                    src={joinUrl}
-                                    className="h-[58vh] min-h-[420px] w-full"
-                                    allow="camera; microphone; fullscreen; display-capture"
-                                />
-                            ) : (
-                                <div className="flex min-h-[320px] flex-col items-center justify-center gap-3 p-6 text-center">
-                                    <p className="max-w-xl text-sm text-slate-300">
-                                        Tu clase se abrira dentro de la plataforma cuando Zoom permita la vista
-                                        embebida. Si no esta disponible, usa el boton de acceso para continuar sin
-                                        friccion.
-                                    </p>
-                                    <p className="text-xs text-slate-500">
-                                        Usa el boton principal para entrar. El sistema valida tu acceso automaticamente.
-                                    </p>
-                                </div>
-                            )}
+                        <div
+                            className="mt-6 rounded-xl border border-blue-300/20 bg-[#040B18]/90 p-8 text-center shadow-[inset_0_1px_0_rgba(59,130,246,0.06)] sm:p-10"
+                            aria-live="polite"
+                        >
+                            <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-blue-400/90">
+                                Smart Option Academy
+                            </p>
+                            <h2 className="mt-3 text-lg font-bold leading-snug text-slate-100 sm:text-xl">
+                                Tu acceso a la sesión estará disponible automáticamente
+                            </h2>
+                            <p className="mx-auto mt-3 max-w-lg text-sm leading-relaxed text-slate-400">
+                                Haz clic en &quot;Entrar a Clase en Vivo&quot; para validar tu acceso de forma segura y
+                                conectarte a tu sesión premium.
+                            </p>
+                            <p className="mx-auto mt-4 max-w-lg text-xs leading-relaxed text-slate-500">
+                                Recomendamos Zoom Desktop para la mejor experiencia, aunque también podrás acceder
+                                mediante navegador.
+                            </p>
                         </div>
                     </section>
 
