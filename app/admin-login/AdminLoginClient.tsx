@@ -20,23 +20,30 @@ export default function AdminLoginClient({ queryError }: Props) {
         setBusy(true)
         try {
             const normalizedEmail = email.trim().toLowerCase()
-            const res = await fetch("/api/admin/auth/request-link", {
+            const res = await fetch("/api/admin/auth/login", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ email: normalizedEmail }),
             })
-            const payload = (await res.json().catch(() => ({}))) as { error?: string; ok?: unknown }
+            const payload = (await res.json().catch(() => ({}))) as {
+                error?: string
+                ok?: unknown
+                redirect?: string
+            }
             if (!res.ok || payload.ok !== true) {
                 throw new Error(
                     typeof payload.error === "string" && payload.error.trim()
                         ? payload.error
-                        : "Could not send admin login link"
+                        : "Could not complete admin login"
                 )
             }
-            setMessage("Secure login link sent. Please check your corporate inbox.")
-            setEmail(normalizedEmail)
+            const target =
+                typeof payload.redirect === "string" && payload.redirect.startsWith("/")
+                    ? payload.redirect
+                    : "/admin"
+            window.location.assign(target)
         } catch (e) {
-            setError(e instanceof Error ? e.message : "Could not send admin login link")
+            setError(e instanceof Error ? e.message : "Could not complete admin login")
         } finally {
             setBusy(false)
         }
@@ -78,7 +85,7 @@ export default function AdminLoginClient({ queryError }: Props) {
                             disabled={busy}
                             className="w-full rounded-xl bg-gradient-to-b from-blue-500 to-blue-700 px-4 py-3 text-sm font-bold text-white transition hover:from-blue-400 hover:to-blue-600 disabled:cursor-not-allowed disabled:opacity-60"
                         >
-                            {busy ? "Sending secure link..." : "Send secure admin login link"}
+                            {busy ? "Signing in..." : "Sign in to admin dashboard"}
                         </button>
                     </form>
 
