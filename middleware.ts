@@ -57,7 +57,7 @@ export async function middleware(request: NextRequest) {
     const userEmail = request.cookies.get(USER_EMAIL_COOKIE)?.value?.trim().toLowerCase() ?? ""
 
     if (!token || !userEmail) {
-        const login = new URL("/login", request.url)
+        const login = new URL(pathname.startsWith("/admin") ? "/admin-login" : "/login", request.url)
         login.searchParams.set("error", "session_expired")
         return NextResponse.redirect(login)
     }
@@ -66,7 +66,7 @@ export async function middleware(request: NextRequest) {
     const key = supabaseServiceRoleKeyForEdge()
     if (!url || !key) {
         console.error("[single-session] proxy: missing Supabase URL or service role key")
-        const login = new URL("/login", request.url)
+        const login = new URL(pathname.startsWith("/admin") ? "/admin-login" : "/login", request.url)
         login.searchParams.set("error", "session_expired")
         return NextResponse.redirect(login)
     }
@@ -80,20 +80,20 @@ export async function middleware(request: NextRequest) {
 
     if (error) {
         console.error("[single-session] proxy DB error", error)
-        const login = new URL("/login", request.url)
+        const login = new URL(pathname.startsWith("/admin") ? "/admin-login" : "/login", request.url)
         login.searchParams.set("error", "session_expired")
         return NextResponse.redirect(login)
     }
 
     const dbToken = data?.session_token != null ? String(data.session_token).trim() : ""
     if (!dbToken || dbToken !== token) {
-        const login = new URL("/login", request.url)
+        const login = new URL(pathname.startsWith("/admin") ? "/admin-login" : "/login", request.url)
         login.searchParams.set("error", "session_expired")
         return NextResponse.redirect(login)
     }
 
     if (pathname.startsWith("/admin") && !isAuthorizedAdminEmail(userEmail)) {
-        const login = new URL("/login", request.url)
+        const login = new URL("/admin-login", request.url)
         login.searchParams.set("error", "unauthorized")
         return NextResponse.redirect(login)
     }
