@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { requireAuthorizedAdminFromCookies } from "@/lib/adminAuth"
 import { createSupabaseServiceRoleClient } from "@/lib/access"
 import { notifyConfirmedBookingsOfSessionChange } from "@/lib/notifySessionBookingStudents"
 import {
@@ -46,6 +47,9 @@ const SESSION_CLEAR_CANCEL: Record<string, unknown> = {
 
 export async function PATCH(req: Request, context: RouteCtx) {
     try {
+        const auth = await requireAuthorizedAdminFromCookies()
+        if (!auth.ok) return auth.response
+
         const { id } = await context.params
         if (!id || !UUID_RE.test(id)) {
             return NextResponse.json({ error: "Invalid session id" }, { status: 400 })
@@ -306,6 +310,9 @@ export async function PATCH(req: Request, context: RouteCtx) {
 
 export async function DELETE(_req: Request, context: RouteCtx) {
     try {
+        const auth = await requireAuthorizedAdminFromCookies()
+        if (!auth.ok) return auth.response
+
         const { id } = await context.params
         if (!id || !UUID_RE.test(id)) {
             return NextResponse.json({ error: "Invalid session id" }, { status: 400 })

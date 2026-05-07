@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js"
 import { type NextRequest, NextResponse } from "next/server"
+import { isAuthorizedAdminEmail } from "@/lib/adminEmails"
 import { SESSION_TOKEN_COOKIE, USER_EMAIL_COOKIE } from "@/lib/authCookies"
 
 function supabaseUrlForEdge(): string | null {
@@ -37,6 +38,7 @@ function isSingleSessionExemptApiPath(pathname: string): boolean {
 }
 
 function requiresSingleSessionCheck(pathname: string): boolean {
+    if (pathname.startsWith("/admin")) return true
     if (pathname.startsWith("/dashboard")) return true
     if (pathname.startsWith("/complete-profile")) return true
     if (pathname.startsWith("/sessions")) return true
@@ -90,11 +92,18 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(login)
     }
 
+    if (pathname.startsWith("/admin") && !isAuthorizedAdminEmail(userEmail)) {
+        const login = new URL("/login", request.url)
+        login.searchParams.set("error", "unauthorized")
+        return NextResponse.redirect(login)
+    }
+
     return NextResponse.next()
 }
 
 export const config = {
     matcher: [
+        "/admin/:path*",
         "/dashboard/:path*",
         "/complete-profile/:path*",
         "/sessions/:path*",

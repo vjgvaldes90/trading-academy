@@ -1,41 +1,20 @@
 import { NextResponse } from "next/server"
 import { createSupabaseServiceRoleClient } from "@/lib/access"
+import { requireAuthorizedAdminFromCookies } from "@/lib/adminAuth"
 import { mapSupabaseSessionRow } from "@/lib/mapSessionRow"
 import { isWithinAdminHostWindow } from "@/lib/sessions"
 
 export const runtime = "nodejs"
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 type Body = { session_id?: unknown }
 
-function normalizeEmail(value: unknown): string {
-    return typeof value === "string" ? value.trim().toLowerCase() : ""
-}
-
-function normalizedAdminEmail(): string {
-    return normalizeEmail(process.env.ADMIN_EMAIL)
-}
-
 export async function POST(req: Request) {
     try {
-        const adminEmail = normalizedAdminEmail()
-        if (!adminEmail) {
-            return NextResponse.json(
-                { error: "Server misconfiguration: missing ADMIN_EMAIL", code: "admin_email_missing" },
-                { status: 503 }
-            )
-        }
-        if (!EMAIL_RE.test(adminEmail)) {
-            return NextResponse.json(
-                { error: "Server misconfiguration: invalid ADMIN_EMAIL", code: "admin_email_invalid" },
-                { status: 503 }
-            )
-        }
-
-        /** Host identity: ADMIN_EMAIL only (no student cookie gate). Session/host-window checks below remain mandatory. */
-        const verifiedAdmin = adminEmail
+        const auth = await requireAuthorizedAdminFromCookies()
+        if (!auth.ok) return auth.response
+        const verifiedAdmin = auth.email
 
         const body = (await req.json().catch(() => null)) as Body | null
         const sessionId = typeof body?.session_id === "string" ? body.session_id.trim() : ""

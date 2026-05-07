@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import Stripe from "stripe"
 import { createClient } from "@supabase/supabase-js"
+import { requireAuthorizedAdminFromCookies } from "@/lib/adminAuth"
 
 export const runtime = "nodejs"
 
@@ -53,6 +54,9 @@ function okJson(
 
 export async function GET(req: Request) {
     try {
+        const auth = await requireAuthorizedAdminFromCookies()
+        if (!auth.ok) return auth.response
+
         const userId = new URL(req.url).searchParams.get("userId")?.trim() ?? ""
 
         const supabaseUrl = process.env.SUPABASE_URL

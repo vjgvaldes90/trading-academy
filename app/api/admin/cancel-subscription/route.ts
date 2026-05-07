@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import Stripe from "stripe"
+import { requireAuthorizedAdminFromCookies } from "@/lib/adminAuth"
 import { createSupabaseServiceRoleClient } from "@/lib/access"
 import { computeRefundPreviewFromSubscription } from "@/lib/adminSubscriptionRefundPreview"
 
@@ -11,6 +12,9 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 
 export async function POST(req: Request) {
     try {
+        const auth = await requireAuthorizedAdminFromCookies()
+        if (!auth.ok) return auth.response
+
         console.log("🔥 ADMIN CANCEL START")
         const body = (await req.json().catch(() => null)) as { userId?: unknown } | null
         const userId = typeof body?.userId === "string" ? body.userId.trim() : ""

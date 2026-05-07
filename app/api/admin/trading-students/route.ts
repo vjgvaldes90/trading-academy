@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { requireAuthorizedAdminFromCookies } from "@/lib/adminAuth"
 import { createSupabaseServiceRoleClient } from "@/lib/access"
 import { isAllowedAdminAccessType } from "@/lib/studentAcademyAccess"
 
@@ -11,6 +12,9 @@ function normalizeEmail(raw: unknown): string | null {
 
 export async function GET() {
     try {
+        const auth = await requireAuthorizedAdminFromCookies()
+        if (!auth.ok) return auth.response
+
         const supabase = createSupabaseServiceRoleClient()
         const { data, error } = await supabase
             .from("trading_students")
@@ -34,6 +38,9 @@ export async function GET() {
 
 export async function PATCH(req: Request) {
     try {
+        const auth = await requireAuthorizedAdminFromCookies()
+        if (!auth.ok) return auth.response
+
         let body: unknown
         try {
             body = await req.json()

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { requireAuthorizedAdminFromCookies } from "@/lib/adminAuth"
 import { createSupabaseServiceRoleClient } from "@/lib/access"
 import { isAllowedAdminAccessType } from "@/lib/studentAcademyAccess"
 
@@ -10,6 +11,9 @@ type RouteCtx = { params: Promise<{ email: string }> }
 
 export async function PATCH(req: Request, context: RouteCtx) {
     try {
+        const auth = await requireAuthorizedAdminFromCookies()
+        if (!auth.ok) return auth.response
+
         const { email: rawParam } = await context.params
         const email = decodeURIComponent((rawParam ?? "").trim()).toLowerCase()
 

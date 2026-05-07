@@ -1,5 +1,6 @@
 import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
+import { isAuthorizedAdminEmail } from "@/lib/adminAuth"
 import { createSupabaseServiceRoleClient } from "@/lib/access"
 import { SESSION_COOKIE, SESSION_TOKEN_COOKIE, USER_EMAIL_COOKIE } from "@/lib/authCookies"
 import { getVerifiedStudentEmailFromCookies } from "@/lib/requireVerifiedSessionCookie"
@@ -41,7 +42,7 @@ function logAdminAuthDebug(params: {
  * Host start uses the same verified academy session as dashboard routes guarded by
  * `proxy.ts` (`user_email` + `session_token` matching `trading_students`).
  * Other `/api/admin/*` routes do not check identity; this endpoint does so Zoom host URLs
- * are not returned anonymously. There is no env email allowlist (parity with open `/admin` UI).
+ * are not returned anonymously. Identity must also match the admin allowlist.
  */
 export async function POST(req: Request) {
     let cookieFlags: CookieFlags = {
@@ -58,11 +59,12 @@ export async function POST(req: Request) {
             session_token: Boolean(jar.get(SESSION_TOKEN_COOKIE)?.value?.trim()),
             session: Boolean(jar.get(SESSION_COOKIE)?.value?.trim()),
         }
-        verifiedEmail = await getVerifiedStudentEmailFromCookies()
+        const maybeVerifiedEmail = await getVerifiedStudentEmailFromCookies()
+        verifiedEmail = maybeVerifiedEmail && isAuthorizedAdminEmail(maybeVerifiedEmail) ? maybeVerifiedEmail : null
 
         logAdminAuthDebug({
             cookieFlags,
-            adminEmailDetected: verifiedEmail,
+            adminEmailDetected: maybeVerifiedEmail,
             denialReason: verifiedEmail ? null : "unauthorized",
         })
 

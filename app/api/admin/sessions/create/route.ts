@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { requireAuthorizedAdminFromCookies } from "@/lib/adminAuth"
 import { createSupabaseServiceRoleClient } from "@/lib/access"
 import { spanishWeekdayFromIsoDate } from "@/lib/sessions"
 import {
@@ -46,6 +47,9 @@ function defaultMeetingDurationMinutes(): number {
 /** Zoom meetings: S2S OAuth only (`ZOOM_ACCOUNT_ID`, `ZOOM_CLIENT_ID`, `ZOOM_CLIENT_SECRET` in `@/lib/zoom`). */
 export async function POST(req: Request) {
     try {
+        const auth = await requireAuthorizedAdminFromCookies()
+        if (!auth.ok) return auth.response
+
         let body: unknown
         try {
             body = await req.json()

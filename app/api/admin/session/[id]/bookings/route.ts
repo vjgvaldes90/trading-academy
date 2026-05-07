@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { requireAuthorizedAdminFromCookies } from "@/lib/adminAuth"
 import { createSupabaseServiceRoleClient } from "@/lib/access"
 
 export const runtime = "nodejs"
@@ -9,6 +10,9 @@ type RouteCtx = { params: Promise<{ id: string }> }
 
 export async function GET(_req: Request, context: RouteCtx) {
     try {
+        const auth = await requireAuthorizedAdminFromCookies()
+        if (!auth.ok) return auth.response
+
         const { id } = await context.params
         if (!id || !UUID_RE.test(id)) {
             return NextResponse.json({ error: "Invalid session id" }, { status: 400 })

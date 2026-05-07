@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { requireAuthorizedAdminFromCookies } from "@/lib/adminAuth"
 import { createSupabaseServiceRoleClient } from "@/lib/access"
 import { canJoinLiveSessionNow, startAt, type DbSession } from "@/lib/sessions"
 
@@ -6,6 +7,9 @@ export const runtime = "nodejs"
 
 export async function GET() {
     try {
+        const auth = await requireAuthorizedAdminFromCookies()
+        if (!auth.ok) return auth.response
+
         const supabase = createSupabaseServiceRoleClient()
 
         const { data: sessions, error: sessionsErr } = await supabase
