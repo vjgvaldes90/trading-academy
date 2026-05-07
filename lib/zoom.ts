@@ -10,6 +10,8 @@
  * - ZOOM_HOST_EMAIL — host user email; if unset, paths use users/me (may fail for some tenants)
  */
 
+import { ADMIN_EMAILS } from "@/lib/adminEmails"
+
 const ZOOM_API = "https://api.zoom.us/v2"
 const ZOOM_OAUTH = "https://zoom.us/oauth/token"
 
@@ -150,6 +152,11 @@ function zoomScheduledMeetingsUrl(): string {
     return `${ZOOM_API}/users/me/meetings`
 }
 
+function zoomAlternativeHostsCsv(): string {
+    const hosts = ADMIN_EMAILS.filter((email) => email && email.includes("@"))
+    return hosts.join(",")
+}
+
 export function getZoomSessionTimezone(): string {
     return process.env.ZOOM_SESSION_TIMEZONE?.trim() || "UTC"
 }
@@ -245,6 +252,7 @@ export async function createZoomMeeting(input: {
             : 60
 
     const url = zoomScheduledMeetingsUrl()
+    const alternativeHosts = zoomAlternativeHostsCsv()
     const { ok, status, json, text } = await zoomFetchJson("POST", url, {
         topic: input.topic,
         type: 2,
@@ -254,6 +262,7 @@ export async function createZoomMeeting(input: {
         settings: {
             waiting_room: true,
             join_before_host: false,
+            ...(alternativeHosts ? { alternative_hosts: alternativeHosts } : {}),
         },
     })
 
@@ -295,6 +304,7 @@ export async function updateZoomMeeting(meetingId: string, patch: ZoomMeetingUpd
 
     const timezone = getZoomSessionTimezone()
     const body: Record<string, unknown> = {}
+    const alternativeHosts = zoomAlternativeHostsCsv()
 
     if (typeof patch.topic === "string" && patch.topic.trim() !== "") {
         body.topic = patch.topic.trim()
@@ -305,6 +315,9 @@ export async function updateZoomMeeting(meetingId: string, patch: ZoomMeetingUpd
     if (typeof patch.start_time === "string" && patch.start_time.trim() !== "") {
         body.start_time = patch.start_time.trim()
         body.timezone = timezone
+    }
+    if (alternativeHosts) {
+        body.settings = { alternative_hosts: alternativeHosts }
     }
 
     if (Object.keys(body).length === 0) {
