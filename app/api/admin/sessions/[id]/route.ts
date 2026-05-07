@@ -49,6 +49,7 @@ export async function PATCH(req: Request, context: RouteCtx) {
     try {
         const auth = await requireAuthorizedAdminFromCookies()
         if (!auth.ok) return auth.response
+        const adminEmail = auth.email
 
         const { id } = await context.params
         if (!id || !UUID_RE.test(id)) {
@@ -87,7 +88,7 @@ export async function PATCH(req: Request, context: RouteCtx) {
 
             const { data, error } = await supabase
                 .from("sessions")
-                .update({ capacity: cap })
+                .update({ capacity: cap, last_edited_by_admin_email: adminEmail })
                 .eq("id", id)
                 .select("id, session_date, session_hour, date, time, capacity, link, status, zoom_meeting_id, zoom_start_url")
                 .single()
@@ -160,7 +161,7 @@ export async function PATCH(req: Request, context: RouteCtx) {
 
             const { data, error } = await supabase
                 .from("sessions")
-                .update(SESSION_CLEAR_CANCEL)
+                .update({ ...SESSION_CLEAR_CANCEL, last_edited_by_admin_email: adminEmail })
                 .eq("id", id)
                 .select("id, session_date, session_hour, date, time, capacity, link, status, zoom_meeting_id, zoom_start_url")
                 .single()
@@ -267,6 +268,7 @@ export async function PATCH(req: Request, context: RouteCtx) {
 
         const dbUpdate: Record<string, unknown> = {
             session_hour: timeRaw,
+            last_edited_by_admin_email: adminEmail,
         }
 
         if (capacityNum !== undefined) {
@@ -312,6 +314,7 @@ export async function DELETE(_req: Request, context: RouteCtx) {
     try {
         const auth = await requireAuthorizedAdminFromCookies()
         if (!auth.ok) return auth.response
+        const adminEmail = auth.email
 
         const { id } = await context.params
         if (!id || !UUID_RE.test(id)) {
@@ -355,7 +358,7 @@ export async function DELETE(_req: Request, context: RouteCtx) {
 
         const { data, error } = await supabase
             .from("sessions")
-            .update(SESSION_CLEAR_CANCEL)
+            .update({ ...SESSION_CLEAR_CANCEL, last_edited_by_admin_email: adminEmail })
             .eq("id", id)
             .select("id, session_date, session_hour, date, time, capacity, status, link")
             .single()

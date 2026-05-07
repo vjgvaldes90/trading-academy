@@ -88,6 +88,13 @@ export async function GET() {
                 is_live: started || r.is_live === true,
                 starts_at: startsAt ? startsAt.toISOString() : null,
                 starts_soon: nearStart,
+                created_by_admin_email:
+                    typeof r.created_by_admin_email === "string" ? r.created_by_admin_email : null,
+                last_edited_by_admin_email:
+                    typeof r.last_edited_by_admin_email === "string" ? r.last_edited_by_admin_email : null,
+                last_hosted_by_admin_email:
+                    typeof r.last_hosted_by_admin_email === "string" ? r.last_hosted_by_admin_email : null,
+                last_hosted_at: typeof r.last_hosted_at === "string" ? r.last_hosted_at : null,
             }
         })
 

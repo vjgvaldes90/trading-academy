@@ -49,6 +49,7 @@ export async function POST(req: Request) {
     try {
         const auth = await requireAuthorizedAdminFromCookies()
         if (!auth.ok) return auth.response
+        const adminEmail = auth.email
 
         let body: unknown
         try {
@@ -135,6 +136,8 @@ export async function POST(req: Request) {
             booked_slots: 0,
             link: zoom.join_url,
             status: "active" as const,
+            created_by_admin_email: adminEmail,
+            last_edited_by_admin_email: adminEmail,
         }
 
         const { data, error } = await supabase.from("sessions").insert(insertRow).select("*").single()

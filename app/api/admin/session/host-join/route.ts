@@ -58,6 +58,17 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: "No host meeting URL configured" }, { status: 503 })
         }
 
+        const { error: hostMetaErr } = await supabase
+            .from("sessions")
+            .update({
+                last_hosted_by_admin_email: verifiedAdmin,
+                last_hosted_at: new Date().toISOString(),
+            })
+            .eq("id", sessionId)
+        if (hostMetaErr) {
+            console.error("[api/admin/session/host-join] host metadata update", hostMetaErr)
+        }
+
         console.log("[ADMIN SESSION HOST JOIN SUCCESS]", { session_id: sessionId, admin: verifiedAdmin })
         return NextResponse.json({ join_url: hostUrl, zoom_start_url: hostUrl })
     } catch (e) {
