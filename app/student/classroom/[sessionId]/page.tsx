@@ -1,19 +1,25 @@
 "use client"
 
-import { CheckCircle2, Download } from "lucide-react"
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
-import { useEffect, useState } from "react"
+import { useEffect, useLayoutEffect, useState } from "react"
+import ZoomSetupSection from "@/components/student/classroom/ZoomSetupSection"
 import SiteFooter from "@/components/shared/SiteFooter"
 import { fetchSecureStudentJoinUrl } from "@/lib/secureJoinClient"
 import { resolveDashboardStudent } from "@/lib/studentLocalStorage"
 import { buildJoinUrlWithPreferredName } from "@/lib/zoomClassroom"
+import {
+    zoomDesktopDownloadUrl,
+    zoomSetupGuidePdfUrl,
+    zoomTutorialVideoUrl,
+} from "@/lib/classroomZoomResources"
+import type { ZoomSetupPanelState } from "@/components/student/classroom/ZoomSetupSection"
 
-/** Returning students: persistently hide Zoom desktop recommendation. */
+/**
+ * Dismissed only when student explicitly opts out of desktop Zoom (persistent).
+ * Do not use sessionStorage for panel visibility — it looked like a hydration bug on refresh.
+ */
 const ZOOM_SETUP_ACK_LS = "soa_classroom_zoom_desktop_ack"
-
-/** Acknowledge browser path for current tab only (still allows full join flow). */
-const ZOOM_BROWSER_PATH_SS = "soa_classroom_zoom_browser_session"
 
 type SessionPreview = {
     id: string
@@ -43,34 +49,29 @@ export default function StudentClassroomPage() {
     const [joinUrl, setJoinUrl] = useState<string>("")
     const [loadingJoin, setLoadingJoin] = useState(false)
     const [error, setError] = useState<string>("")
-    const [hideZoomRecommendation, setHideZoomRecommendation] = useState(false)
+    const [zoomSetupPanel, setZoomSetupPanel] = useState<ZoomSetupPanelState>("loading")
 
-    useEffect(() => {
+    useLayoutEffect(() => {
         try {
             const ack = window.localStorage.getItem(ZOOM_SETUP_ACK_LS)
-            const browserAck = window.sessionStorage.getItem(ZOOM_BROWSER_PATH_SS)
-            setHideZoomRecommendation(ack === "1" || browserAck === "1")
+            setZoomSetupPanel(ack === "1" ? "hidden" : "visible")
         } catch {
-            setHideZoomRecommendation(false)
+            setZoomSetupPanel("visible")
         }
     }, [])
 
-    const dismissZoomRecommendationPersistent = () => {
+    const dismissZoomPersistent = () => {
         try {
             window.localStorage.setItem(ZOOM_SETUP_ACK_LS, "1")
         } catch {
-            /* ignore quota / privacy mode */
-        }
-        setHideZoomRecommendation(true)
-    }
-
-    const dismissZoomRecommendationBrowser = () => {
-        try {
-            window.sessionStorage.setItem(ZOOM_BROWSER_PATH_SS, "1")
-        } catch {
             /* ignore */
         }
-        setHideZoomRecommendation(true)
+        setZoomSetupPanel("hidden")
+    }
+
+    /** Hides the setup card for this view only; refresh shows it again (browser path is not persisted). */
+    const dismissZoomBrowserOnly = () => {
+        setZoomSetupPanel("hidden")
     }
 
     useEffect(() => {
@@ -110,6 +111,10 @@ export default function StudentClassroomPage() {
 
     const sessionTitle = sessionPreview?.title ?? "Aula de sesion en vivo"
     const scheduleLine = [sessionPreview?.day ?? "", sessionPreview?.time ?? ""].filter(Boolean).join(" - ")
+
+    const zoomDownloadHref = zoomDesktopDownloadUrl()
+    const zoomPdfHref = zoomSetupGuidePdfUrl()
+    const zoomVideoHref = zoomTutorialVideoUrl()
 
     const prepareJoin = async (): Promise<string | null> => {
         if (!studentEmail || !sessionId || loadingJoin) return null
@@ -185,67 +190,14 @@ export default function StudentClassroomPage() {
                         <h1 className="text-2xl font-bold leading-tight text-slate-100 sm:text-3xl">{sessionTitle}</h1>
                         {scheduleLine ? <p className="mt-1 text-sm text-slate-400">{scheduleLine}</p> : null}
 
-                        {!hideZoomRecommendation ? (
-                            <div className="mt-6 rounded-2xl border border-blue-400/25 bg-gradient-to-br from-[#0B1220]/95 via-[#0A1020] to-[#080d18] p-5 shadow-[0_18px_44px_rgba(2,6,23,0.65)] ring-1 ring-blue-500/10 sm:p-6">
-                                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                                    <div className="flex min-w-0 flex-1 gap-3">
-                                        <span className="mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-blue-400/35 bg-blue-500/15 text-blue-200 shadow-inner shadow-blue-500/10">
-                                            <Download className="h-5 w-5" aria-hidden />
-                                        </span>
-                                        <div className="min-w-0">
-                                            <h2 className="text-base font-bold leading-snug text-slate-100 sm:text-lg">
-                                                Experiencia recomendada para tu sesión en vivo
-                                            </h2>
-                                            <p className="mt-2 text-sm leading-relaxed text-slate-400">
-                                                Para obtener la mejor calidad en gráficos, audio y ejecución en tiempo
-                                                real, recomendamos instalar la aplicación oficial de Zoom antes de
-                                                comenzar.
-                                            </p>
-                                            <ul className="mt-4 space-y-2.5">
-                                                {[
-                                                    "Mejor calidad de gráficos y pantalla compartida",
-                                                    "Menor retraso (delay)",
-                                                    "Audio más estable",
-                                                    "Acceso más fluido a sesiones premium",
-                                                ].map((line) => (
-                                                    <li key={line} className="flex items-start gap-2 text-sm text-slate-300">
-                                                        <CheckCircle2
-                                                            className="mt-0.5 h-4 w-4 shrink-0 text-blue-400/90"
-                                                            aria-hidden
-                                                        />
-                                                        <span>{line}</span>
-                                                    </li>
-                                                ))}
-                                            </ul>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="mt-5 flex flex-col gap-2.5 border-t border-white/10 pt-5 sm:flex-row sm:flex-wrap sm:items-center">
-                                    <a
-                                        href="https://zoom.us/download"
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="inline-flex min-h-[42px] min-w-[44px] items-center justify-center rounded-lg border border-blue-300/40 bg-gradient-to-r from-blue-500 to-blue-700 px-4 py-2.5 text-sm font-bold text-white shadow-[0_12px_28px_rgba(37,99,235,0.35)] transition hover:brightness-110"
-                                    >
-                                        Descargar Zoom
-                                    </a>
-                                    <button
-                                        type="button"
-                                        onClick={dismissZoomRecommendationBrowser}
-                                        className="inline-flex min-h-[42px] min-w-[44px] items-center justify-center rounded-lg border border-slate-500/40 bg-slate-900/40 px-4 py-2.5 text-sm font-semibold text-slate-200 transition hover:border-slate-400/50 hover:bg-slate-800/50"
-                                    >
-                                        Continuar con navegador
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={dismissZoomRecommendationPersistent}
-                                        className="text-center text-xs font-medium text-slate-500 underline-offset-2 hover:text-slate-400 hover:underline sm:ml-auto"
-                                    >
-                                        Ya tengo Zoom instalado
-                                    </button>
-                                </div>
-                            </div>
-                        ) : null}
+                        <ZoomSetupSection
+                            status={zoomSetupPanel}
+                            zoomDownloadHref={zoomDownloadHref}
+                            zoomPdfHref={zoomPdfHref}
+                            zoomVideoHref={zoomVideoHref}
+                            onDismissBrowser={dismissZoomBrowserOnly}
+                            onDismissPersistent={dismissZoomPersistent}
+                        />
 
                         <div className="mt-4 flex flex-wrap gap-3">
                             <button
@@ -258,31 +210,16 @@ export default function StudentClassroomPage() {
                             </button>
                         </div>
 
+                        <p className="mt-3 text-xs leading-relaxed text-slate-500">
+                            La validación de acceso es segura y ocurre al pulsar el botón anterior; luego se abre tu sesión
+                            (Zoom escritorio o navegador).
+                        </p>
+
                         {error ? (
                             <p className="mt-4 rounded-lg border border-red-400/30 bg-red-500/10 p-3 text-sm text-red-200">
                                 {error}
                             </p>
                         ) : null}
-
-                        <div
-                            className="mt-6 rounded-xl border border-blue-300/20 bg-[#040B18]/90 p-8 text-center shadow-[inset_0_1px_0_rgba(59,130,246,0.06)] sm:p-10"
-                            aria-live="polite"
-                        >
-                            <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-blue-400/90">
-                                Smart Option Academy
-                            </p>
-                            <h2 className="mt-3 text-lg font-bold leading-snug text-slate-100 sm:text-xl">
-                                Tu acceso a la sesión estará disponible automáticamente
-                            </h2>
-                            <p className="mx-auto mt-3 max-w-lg text-sm leading-relaxed text-slate-400">
-                                Haz clic en &quot;Entrar a Clase en Vivo&quot; para validar tu acceso de forma segura y
-                                conectarte a tu sesión premium.
-                            </p>
-                            <p className="mx-auto mt-4 max-w-lg text-xs leading-relaxed text-slate-500">
-                                Recomendamos Zoom Desktop para la mejor experiencia, aunque también podrás acceder
-                                mediante navegador.
-                            </p>
-                        </div>
                     </section>
 
                     <aside className="space-y-4">
