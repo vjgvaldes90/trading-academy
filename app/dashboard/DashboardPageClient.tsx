@@ -1,13 +1,16 @@
 "use client"
 
-import BookSessionSection from "@/components/dashboard/focused/BookSessionSection"
-import MyBookingsSection from "@/components/dashboard/focused/MyBookingsSection"
-import StudentNotificationsSection from "@/components/dashboard/focused/StudentNotificationsSection"
-import NextSessionCard from "@/components/dashboard/focused/NextSessionCard"
-import ResourcesSection from "@/components/dashboard/focused/ResourcesSection"
 import DashboardHeader from "@/components/dashboard/DashboardHeader"
 import CancelSessionConfirmModal from "@/app/admin/CancelSessionConfirmModal"
+import Sidebar from "@/components/student/Sidebar"
 import dashboardTheme from "@/components/dashboard/dashboardTheme.module.css"
+import type { StudentDashboardView } from "@/components/student/Sidebar"
+import DashboardHome from "@/components/dashboard/DashboardHome"
+import ClassesView from "@/components/dashboard/ClassesView"
+import ReserveSession from "@/components/dashboard/ReserveSession"
+import MyReservations from "@/components/dashboard/MyReservations"
+import Resources from "@/components/dashboard/Resources"
+import Settings from "@/components/dashboard/Settings"
 import { SessionProvider, useSession } from "@/context/SessionContext"
 import { supabase } from "@/lib/supabase"
 import {
@@ -32,7 +35,9 @@ function DashboardShell({
     welcomeName: string
     user: DashboardUserSubscription | null
 }) {
+    const router = useRouter()
     const { dashboardDataReady } = useSession()
+    const [activeView, setActiveView] = useState<StudentDashboardView>("dashboard")
     const [isCancelling, setIsCancelling] = useState(false)
     const [cancelModalOpen, setCancelModalOpen] = useState(false)
 
@@ -47,6 +52,20 @@ function DashboardShell({
     }
 
     const showCancelButton = Boolean(user?.subscription_id && user.subscription_status === "active")
+
+    const sectionTitles: Record<StudentDashboardView, string> = {
+        dashboard: "Dashboard",
+        classes: "Mis Clases",
+        reserve: "Reservar Sesión",
+        "my-reservations": "Mis Reservas",
+        resources: "Recursos",
+        settings: "Configuración",
+    }
+
+    const handleLogout = () => {
+        clearStoredStudent()
+        router.replace("/login")
+    }
 
     const handleCancelSubscription = async () => {
         if (!user?.email || isCancelling) return
@@ -78,83 +97,36 @@ function DashboardShell({
     }
 
     return (
-        <div className={`${dashboardTheme.shell} ${dashboardTheme.layoutColumn}`}>
-            <header style={{ flexShrink: 0 }}>
-                <DashboardHeader
-                    welcomeName={welcomeName}
-                    showCancelSubscription={showCancelButton}
-                    onCancelSubscription={() => setCancelModalOpen(true)}
-                    isCancellingSubscription={isCancelling}
-                />
-            </header>
+        <div
+            className={`flex min-h-screen text-white bg-[#0B1120] ${dashboardTheme.shell}`}
+            style={{ background: "#0B1120" }}
+        >
+            <Sidebar userName={welcomeName} roleLabel="Alumno" activeView={activeView} setActiveView={setActiveView} />
 
-            <main
-                style={{
-                    flex: 1,
-                    minHeight: 0,
-                    overflowY: "auto",
-                    WebkitOverflowScrolling: "touch",
-                }}
-            >
-                <div
-                    className={dashboardTheme.contentMax}
-                    style={{
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: "var(--ds-5)",
-                        paddingTop: "var(--ds-4)",
-                        paddingBottom: "var(--ds-5)",
-                    }}
-                >
-                    <section
-                        aria-label="Acceso rapido a clase"
-                        style={{
-                            borderRadius: 12,
-                            border: "1px solid rgba(59,130,246,0.28)",
-                            background: "linear-gradient(135deg, rgba(30,64,175,0.2), rgba(2,6,23,0.75))",
-                            padding: "12px 14px",
-                        }}
-                    >
-                        <p style={{ margin: 0, fontSize: "0.72rem", letterSpacing: "0.08em", color: "#93c5fd", fontWeight: 700 }}>
-                            ACCESO RAPIDO
-                        </p>
-                        <p style={{ margin: "6px 0 0", fontSize: "0.9rem", color: "#e2e8f0" }}>
-                            Tu proxima clase en vivo aparece primero. Solo toca <strong>Entrar a Clase en Vivo</strong>.
-                        </p>
-                    </section>
-                    <NextSessionCard />
-                    <section
-                        aria-label="Recordatorio legal"
-                        style={{
-                            borderRadius: 12,
-                            border: "1px solid rgba(59,130,246,0.25)",
-                            background: "rgba(15,23,42,0.75)",
-                            padding: "10px 12px",
-                        }}
-                    >
-                        <p style={{ margin: 0, fontSize: "0.8rem", color: "#cbd5e1" }}>
-                            Recordatorio: este programa es unicamente educativo y no constituye asesoria financiera
-                            personalizada.
-                        </p>
-                    </section>
-                    <details
-                        style={{
-                            borderRadius: 12,
-                            border: "1px solid rgba(59,130,246,0.2)",
-                            background: "rgba(15,23,42,0.6)",
-                            padding: "10px 12px",
-                        }}
-                    >
-                        <summary style={{ cursor: "pointer", fontWeight: 700, color: "#cbd5e1" }}>
-                            Ver mas opciones
-                        </summary>
-                        <div style={{ display: "grid", gap: "var(--ds-4)", marginTop: "var(--ds-3)" }}>
-                            <StudentNotificationsSection />
-                            <MyBookingsSection />
-                            <ResourcesSection />
-                        </div>
-                    </details>
-                    <BookSessionSection />
+            <main className="flex-1 ml-0 lg:ml-64 p-8 space-y-6">
+                <DashboardHeader welcomeName={welcomeName} sectionTitle={sectionTitles[activeView]} />
+
+                <div key={activeView} className={`${dashboardTheme.contentMax} ${dashboardTheme.viewEnter}`}>
+                    {activeView === "dashboard" ? (
+                        <DashboardHome
+                            userName={welcomeName}
+                            onWatchNow={() => setActiveView("classes")}
+                            activeView={activeView}
+                            setActiveView={setActiveView}
+                        />
+                    ) : null}
+                    {activeView === "classes" ? <ClassesView /> : null}
+                    {activeView === "reserve" ? <ReserveSession /> : null}
+                    {activeView === "my-reservations" ? <MyReservations /> : null}
+                    {activeView === "resources" ? <Resources /> : null}
+                    {activeView === "settings" ? (
+                        <Settings
+                            showCancelSubscription={showCancelButton}
+                            onCancelSubscription={() => setCancelModalOpen(true)}
+                            onLogout={handleLogout}
+                            isCancellingSubscription={isCancelling}
+                        />
+                    ) : null}
                 </div>
             </main>
             <CancelSessionConfirmModal
