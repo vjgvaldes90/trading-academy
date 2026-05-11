@@ -37,16 +37,18 @@ export default function AdminDashboardClient({
             <AdminSidebar activeView={activeView} setActiveView={setActiveView} />
 
             <main className="flex-1 ml-0 lg:ml-64 p-6 lg:p-8">
-                <header className="mb-6 border-b border-white/10 pb-4">
-                    <h1 className="text-lg font-bold tracking-tight text-slate-100 lg:text-xl">
-                        {SECTION_TITLES[activeView]}
-                    </h1>
-                </header>
+                {activeView !== "sessions" ? (
+                    <header className="mb-6 border-b border-white/10 pb-4">
+                        <h1 className="text-lg font-bold tracking-tight text-slate-100 lg:text-xl">
+                            {SECTION_TITLES[activeView]}
+                        </h1>
+                    </header>
+                ) : null}
 
-                <div key={activeView} className={`${dashboardTheme.viewEnter} max-w-6xl`}>
+                <div key={activeView} className={`${dashboardTheme.viewEnter} ${activeView === "sessions" ? "max-w-7xl" : "max-w-6xl"}`}>
                     {activeView === "overview" ? <AdminOverview setActiveView={setActiveView} /> : null}
                     {activeView === "classes" ? <AdminClasses /> : null}
-                    {activeView === "sessions" ? <AdminSessions setActiveView={setActiveView} /> : null}
+                    {activeView === "sessions" ? <AdminSessions /> : null}
                     {activeView === "students" ? <AdminStudents /> : null}
                     {activeView === "subscriptions" ? <AdminSubscriptions /> : null}
                     {activeView === "analytics" ? <AdminAnalytics /> : null}

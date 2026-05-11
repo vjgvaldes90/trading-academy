@@ -1,45 +1,24 @@
 "use client"
 
-import type { AdminDashboardView } from "@/components/admin/AdminSidebar"
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react"
+/**
+ * Admin Live Sessions — scheduling & capacity operations only.
+ * Extension points: add attendance / waitlists / Zoom host tools under `liveSessions/`
+ * or compose new panels beside SessionCardsGrid below.
+ */
+
+import type { AdminSessionRow } from "@/components/admin/liveSessions/types"
+import LiveSessionCard from "@/components/admin/liveSessions/LiveSessionCard"
 import CancelSessionConfirmModal from "@/app/admin/CancelSessionConfirmModal"
 import CreateSessionModal from "@/app/admin/CreateSessionModal"
 import EditSessionModal from "@/app/admin/EditSessionModal"
 import SessionBookingsModal from "@/app/admin/SessionBookingsModal"
 import { fetchSecureAdminStartUrl } from "@/lib/secureJoinClient"
-import { isWithinAdminHostWindow, type DbSession } from "@/lib/sessions"
-
-type AdminSessionRow = {
-    id: string
-    title?: string | null
-    date: string | null
-    time: string | null
-    capacity: number | null
-    booked: number | null
-    status?: string
-    starts_soon?: boolean
-    is_live?: boolean
-}
-
-function adminRowToDbSession(r: AdminSessionRow): DbSession {
-    const cap = typeof r.capacity === "number" ? r.capacity : 0
-    const booked = typeof r.booked === "number" ? r.booked : 0
-    return {
-        id: r.id,
-        day: null,
-        date: r.date,
-        time: r.time,
-        max_slots: cap,
-        booked_slots: booked,
-        link: null,
-    }
-}
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react"
 
 function startOfLocalDay(d: Date): Date {
     return new Date(d.getFullYear(), d.getMonth(), d.getDate())
 }
 
-/** Parse session date (YYYY-MM-DD or ISO) to local midnight, or null. */
 function parseSessionDate(raw: string | null): Date | null {
     if (!raw || typeof raw !== "string") return null
     const trimmed = raw.trim()
@@ -56,7 +35,6 @@ function parseSessionDate(raw: string | null): Date | null {
     return startOfLocalDay(d)
 }
 
-/** Days from `from` (local date) until next Sunday on or after `from` (0 = Sunday). */
 function daysUntilSunday(from: Date): number {
     const dow = from.getDay()
     return dow === 0 ? 0 : 7 - dow
@@ -77,10 +55,6 @@ function parseSessionDateTime(dateRaw: string | null, timeRaw: string | null): D
     return Number.isNaN(dt.getTime()) ? null : dt
 }
 
-/**
- * Current week: today → Sunday of the same calendar week (inclusive).
- * Next week: Monday after that Sunday → following Sunday (inclusive).
- */
 function getWeekBoundaries(now = new Date()) {
     const today = startOfLocalDay(now)
     const endCurrentWeek = addDays(today, daysUntilSunday(today))
@@ -115,37 +89,7 @@ function splitSessionsByWeek(rows: AdminSessionRow[]) {
     return { currentWeekSessions, nextWeekSessions }
 }
 
-/** Green &gt;5, yellow 1–5, red at 0 (≤0 treated as full / over-capacity). */
-function availableIndicatorColor(available: number): string {
-    if (available <= 0) return "#f87171"
-    if (available <= 5) return "#fbbf24"
-    return "#4ade80"
-}
-
-function availabilityLabel(available: number): { text: string; color: string } | null {
-    if (available === 0) return { text: "FULL", color: "#fca5a5" }
-    if (available > 0 && available <= 2) return { text: "⚠️ Almost full", color: "#fcd34d" }
-    return null
-}
-
-function occupancyPercentRounded(booked: number, capacity: number): number | null {
-    if (!Number.isFinite(capacity) || capacity <= 0) return null
-    return Math.round((booked / capacity) * 100)
-}
-
-/** Bar fill: green &lt;70%, yellow 70–99%, red at 100%+ (over-capacity uses red). */
-function fillBarColor(percent: number): string {
-    if (percent >= 100) return "#f87171"
-    if (percent >= 70) return "#fbbf24"
-    return "#4ade80"
-}
-
-function clampFillWidthPercent(percent: number): number {
-    if (!Number.isFinite(percent)) return 0
-    return Math.min(100, Math.max(0, percent))
-}
-
-function AdminSessionsTable({
+function SessionCardsGrid({
     rows,
     highlightedIds,
     onOpenBookings,
@@ -164,250 +108,80 @@ function AdminSessionsTable({
 }) {
     if (rows.length === 0) {
         return (
-            <p style={{ margin: 0, padding: "16px", color: "#9ca3af" }}>No sessions in this period.</p>
+            <p className="px-4 py-8 text-center text-sm text-slate-500">
+                No hay sesiones en este periodo.
+            </p>
         )
     }
 
     return (
-        <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 1040 }}>
-                <thead>
-                    <tr style={{ background: "rgba(15,23,42,0.7)" }}>
-                        {[
-                            { h: "Date", align: "left" as const },
-                            { h: "Time", align: "left" as const },
-                            { h: "Capacity", align: "left" as const },
-                            { h: "Booked", align: "left" as const },
-                            { h: "Available", align: "left" as const },
-                            { h: "Fill %", align: "left" as const },
-                            { h: "Actions", align: "right" as const },
-                        ].map(({ h, align }) => (
-                            <th
-                                key={h}
-                                style={{
-                                    textAlign: align,
-                                    padding: "12px 14px",
-                                    color: "#cbd5e1",
-                                    fontSize: "0.8rem",
-                                    letterSpacing: "0.02em",
-                                    textTransform: "uppercase",
-                                    borderBottom: "1px solid rgba(59,130,246,0.2)",
-                                }}
-                            >
-                                {h}
-                            </th>
-                        ))}
-                    </tr>
-                </thead>
-                <tbody>
-                    {rows.map((r) => {
-                        const capacity = typeof r.capacity === "number" ? r.capacity : 0
-                        const booked = typeof r.booked === "number" ? r.booked : 0
-                        const available = capacity - booked
-                        const availColor = availableIndicatorColor(available)
-                        const pct = occupancyPercentRounded(booked, capacity)
-                        const availLabel = availabilityLabel(available)
-                        const hostAllowed =
-                            (r.status ?? "active") === "active" &&
-                            isWithinAdminHostWindow(adminRowToDbSession(r), now)
-                        return (
-                            <tr
-                                key={r.id}
-                                style={{
-                                    borderBottom: "1px solid rgba(148,163,184,0.12)",
-                                    background: highlightedIds.has(r.id)
-                                        ? "rgba(234,179,8,0.08)"
-                                        : "transparent",
-                                }}
-                            >
-                                <td style={{ padding: "12px 14px", color: "#e5e7eb" }}>{r.date ?? "—"}</td>
-                                <td style={{ padding: "12px 14px", color: "#e5e7eb" }}>{r.time ?? "—"}</td>
-                                <td style={{ padding: "12px 14px", color: "#e5e7eb" }}>{capacity}</td>
-                                <td style={{ padding: "12px 14px", color: "#e5e7eb" }}>{booked}</td>
-                                <td style={{ padding: "12px 14px", verticalAlign: "middle" }}>
-                                    <div
-                                        style={{
-                                            display: "flex",
-                                            flexWrap: "wrap",
-                                            alignItems: "center",
-                                            gap: "8px 10px",
-                                            lineHeight: 1.25,
-                                        }}
-                                    >
-                                        <span
-                                            style={{
-                                                color: availColor,
-                                                fontWeight: 800,
-                                                fontSize: "1.05rem",
-                                                fontVariantNumeric: "tabular-nums",
-                                            }}
-                                        >
-                                            {available}
-                                        </span>
-                                        {availLabel ? (
-                                            <span
-                                                style={{
-                                                    fontSize: "0.72rem",
-                                                    fontWeight: 800,
-                                                    letterSpacing: "0.03em",
-                                                    textTransform: availLabel.text === "FULL" ? "uppercase" : "none",
-                                                    color: availLabel.color,
-                                                    whiteSpace: "nowrap",
-                                                }}
-                                            >
-                                                {availLabel.text}
-                                            </span>
-                                        ) : null}
-                                    </div>
-                                </td>
-                                <td
-                                    style={{
-                                        padding: "12px 14px",
-                                        verticalAlign: "middle",
-                                        minWidth: 112,
-                                        maxWidth: 140,
-                                    }}
-                                >
-                                    {pct === null ? (
-                                        <span style={{ color: "#64748b", fontWeight: 600 }}>—</span>
-                                    ) : (
-                                        <div style={{ width: "100%", maxWidth: 128 }}>
-                                            <div
-                                                style={{
-                                                    fontWeight: 800,
-                                                    fontSize: "0.875rem",
-                                                    color: "#e2e8f0",
-                                                    fontVariantNumeric: "tabular-nums",
-                                                    marginBottom: 6,
-                                                }}
-                                            >
-                                                {pct}%
-                                            </div>
-                                            <div
-                                                role="presentation"
-                                                style={{
-                                                    height: 9,
-                                                    borderRadius: 9999,
-                                                    background: "rgba(51,65,85,0.9)",
-                                                    boxShadow: "inset 0 1px 2px rgba(0,0,0,0.35)",
-                                                    overflow: "hidden",
-                                                }}
-                                            >
-                                                <div
-                                                    style={{
-                                                        height: "100%",
-                                                        width: `${clampFillWidthPercent(pct)}%`,
-                                                        borderRadius: 9999,
-                                                        background: fillBarColor(pct),
-                                                        boxShadow: "0 0 12px rgba(255,255,255,0.08)",
-                                                        transition: "width 0.45s cubic-bezier(0.4, 0, 0.2, 1), background 0.3s ease",
-                                                    }}
-                                                />
-                                            </div>
-                                        </div>
-                                    )}
-                                </td>
-                                <td style={{ padding: "12px 14px", textAlign: "right" }}>
-                                    <div
-                                        style={{
-                                            display: "flex",
-                                            flexWrap: "wrap",
-                                            gap: 8,
-                                            justifyContent: "flex-end",
-                                        }}
-                                    >
-                                        <button
-                                            type="button"
-                                            onClick={() => onEditSession(r)}
-                                            style={{
-                                                padding: "8px 14px",
-                                                borderRadius: 10,
-                                                border: "1px solid rgba(148,163,184,0.4)",
-                                                background: "rgba(15,23,42,0.75)",
-                                                color: "#e2e8f0",
-                                                fontWeight: 700,
-                                                fontSize: "0.8125rem",
-                                                cursor: "pointer",
-                                                transition: "all 0.2s ease",
-                                            }}
-                                        >
-                                            Editar
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => onRequestCancelSession(r)}
-                                            style={{
-                                                padding: "8px 14px",
-                                                borderRadius: 10,
-                                                border: "1px solid rgba(248,113,113,0.45)",
-                                                background: "rgba(127,29,29,0.35)",
-                                                color: "#fecaca",
-                                                fontWeight: 700,
-                                                fontSize: "0.8125rem",
-                                                cursor: "pointer",
-                                                transition: "all 0.2s ease",
-                                            }}
-                                        >
-                                            Cancelar sesión
-                                        </button>
-                                        <button
-                                            type="button"
-                                            disabled={!hostAllowed}
-                                            onClick={() => void onHostStart(r.id)}
-                                            style={{
-                                                padding: "8px 14px",
-                                                borderRadius: 10,
-                                                border: "1px solid rgba(59,130,246,0.45)",
-                                                background: "rgba(30,64,175,0.35)",
-                                                color: "#bfdbfe",
-                                                fontWeight: 700,
-                                                fontSize: "0.8125rem",
-                                                cursor: hostAllowed ? "pointer" : "not-allowed",
-                                                opacity: hostAllowed ? 1 : 0.55,
-                                                transition: "all 0.2s ease",
-                                            }}
-                                        >
-                                            Entrar como anfitrión (Zoom)
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => onOpenBookings(r.id)}
-                                            style={{
-                                                padding: "8px 14px",
-                                                borderRadius: 10,
-                                                border: "1px solid rgba(250,204,21,0.45)",
-                                                background: "linear-gradient(180deg, #facc15 0%, #ca8a04 100%)",
-                                                color: "#0f172a",
-                                                fontWeight: 800,
-                                                fontSize: "0.8125rem",
-                                                cursor: "pointer",
-                                                boxShadow: "0 4px 14px rgba(250,204,21,0.25)",
-                                                transition: "all 0.2s ease",
-                                            }}
-                                        >
-                                            Ver inscritos
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                        )
-                    })}
-                </tbody>
-            </table>
+        <div className="grid gap-4 p-4 sm:grid-cols-2 xl:grid-cols-3">
+            {rows.map((r) => (
+                <LiveSessionCard
+                    key={r.id}
+                    row={r}
+                    highlighted={highlightedIds.has(r.id)}
+                    now={now}
+                    onOpenBookings={onOpenBookings}
+                    onEditSession={onEditSession}
+                    onRequestCancelSession={onRequestCancelSession}
+                    onHostStart={onHostStart}
+                />
+            ))}
         </div>
     )
 }
 
-export default function AdminSessions({
-    setActiveView,
+function AccordionWeek({
+    id,
+    label,
+    count,
+    open,
+    onToggle,
+    children,
 }: {
-    setActiveView: (view: AdminDashboardView) => void
+    id: string
+    label: string
+    count: number
+    open: boolean
+    onToggle: () => void
+    children: ReactNode
 }) {
+    return (
+        <div className="border-b border-sky-500/15 last:border-b-0">
+            <button
+                type="button"
+                id={`${id}-trigger`}
+                aria-expanded={open}
+                aria-controls={`${id}-panel`}
+                onClick={onToggle}
+                className="flex w-full items-center justify-between gap-3 px-4 py-4 text-left transition hover:bg-sky-500/[0.06]"
+            >
+                <span className="flex items-center gap-3">
+                    <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-sky-400">
+                        {open ? "▼" : "▶"}
+                    </span>
+                    <span>
+                        <span className="block text-base font-bold tracking-tight text-slate-100">{label}</span>
+                        <span className="text-xs font-medium text-slate-500">
+                            {count} sesión{count === 1 ? "" : "es"}
+                        </span>
+                    </span>
+                </span>
+            </button>
+            <div id={`${id}-panel`} role="region" aria-labelledby={`${id}-trigger`} hidden={!open}>
+                {open ? children : null}
+            </div>
+        </div>
+    )
+}
+
+export default function AdminSessions() {
     const [rows, setRows] = useState<AdminSessionRow[]>([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
     const [selectedSession, setSelectedSession] = useState<string | null>(null)
-    const [isThisWeekOpen, setIsThisWeekOpen] = useState(false)
+    const [isThisWeekOpen, setIsThisWeekOpen] = useState(true)
     const [isNextWeekOpen, setIsNextWeekOpen] = useState(false)
     const [createModalOpen, setCreateModalOpen] = useState(false)
     const [editSession, setEditSession] = useState<AdminSessionRow | null>(null)
@@ -464,6 +238,7 @@ export default function AdminSessions({
     )
 
     const { currentWeekSessions, nextWeekSessions } = useMemo(() => splitSessionsByWeek(rows), [rows])
+
     const soonSessions = useMemo(() => {
         return rows.filter((r) => {
             const at = parseSessionDateTime(r.date, r.time)
@@ -473,11 +248,7 @@ export default function AdminSessions({
         })
     }, [rows, now])
 
-    const highlightedSessionIds = useMemo(
-        () => new Set(soonSessions.map((s) => s.id)),
-        [soonSessions]
-    )
-
+    const highlightedSessionIds = useMemo(() => new Set(soonSessions.map((s) => s.id)), [soonSessions])
     const upcomingSoonSession = useMemo(() => soonSessions[0] ?? null, [soonSessions])
 
     const adminEmailFromCookie = useMemo(() => {
@@ -491,14 +262,17 @@ export default function AdminSessions({
         return decodeURIComponent(hit.slice(key.length)).trim().toLowerCase()
     }, [])
 
-    const handleAdminHostStart = useCallback(async (sessionId: string) => {
-        const r = await fetchSecureAdminStartUrl(sessionId, adminEmailFromCookie)
-        if (r.ok) {
-            window.open(r.zoom_start_url, "_blank", "noopener,noreferrer")
-        } else {
-            window.alert(r.message)
-        }
-    }, [adminEmailFromCookie])
+    const handleAdminHostStart = useCallback(
+        async (sessionId: string) => {
+            const r = await fetchSecureAdminStartUrl(sessionId, adminEmailFromCookie)
+            if (r.ok) {
+                window.open(r.zoom_start_url, "_blank", "noopener,noreferrer")
+            } else {
+                window.alert(r.message)
+            }
+        },
+        [adminEmailFromCookie]
+    )
 
     const handleBookingCancelled = (sessionId: string) => {
         setRows((prev) =>
@@ -510,239 +284,121 @@ export default function AdminSessions({
         )
     }
 
-    const navBtn: CSSProperties = {
-        padding: "8px 14px",
-        borderRadius: 10,
-        border: "1px solid rgba(59,130,246,0.4)",
-        background: "rgba(15,23,42,0.6)",
-        color: "#93c5fd",
-        fontWeight: 800,
-        fontSize: "0.8125rem",
-        cursor: "pointer",
-    }
-
     return (
-        <div className="space-y-6 text-[#e5e7eb]">
-            <div style={{ maxWidth: 1100, margin: "0 auto" }}>
-                <p style={{ margin: "0 0 18px", color: "#9ca3af", fontSize: "0.95rem" }}>
+        <div className="mx-auto max-w-7xl space-y-8 text-[#e5e7eb]">
+            <header className="border-b border-white/10 pb-8">
+                <h1 className="text-2xl font-bold tracking-tight text-slate-50 lg:text-[1.65rem]">Live Sessions</h1>
+                <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-400">
                     Real-time capacity overview — this week and next.
                 </p>
-                {upcomingSoonSession ? (
-                    <div
-                        style={{
-                            marginBottom: 14,
-                            borderRadius: 12,
-                            border: "1px solid rgba(250,204,21,0.45)",
-                            background: "rgba(120,53,15,0.25)",
-                            color: "#fde68a",
-                            padding: "10px 12px",
-                            display: "flex",
-                            justifyContent: "space-between",
-                            gap: 12,
-                            alignItems: "center",
-                            flexWrap: "wrap",
-                        }}
+            </header>
+
+            <div className="flex flex-col gap-4 rounded-2xl border border-white/[0.08] bg-[#0c1222]/90 px-4 py-4 shadow-[0_24px_48px_-28px_rgba(0,0,0,0.65)] sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-y-3">
+                <div className="flex flex-wrap items-center gap-3">
+                    <button
+                        type="button"
+                        onClick={() => setCreateModalOpen(true)}
+                        className="rounded-lg border border-amber-400/40 bg-[#0f172a]/90 px-4 py-2.5 text-sm font-bold text-amber-300 transition hover:border-amber-300/60 hover:bg-[#0f172a]"
                     >
-                        <span style={{ fontWeight: 700 }}>
-                            ⚠️ Tu sesión comienza en menos de 10 minutos
-                        </span>
-                        <button
-                            type="button"
-                            onClick={() => void handleAdminHostStart(upcomingSoonSession.id)}
-                            style={{
-                                borderRadius: 10,
-                                border: "1px solid rgba(250,204,21,0.55)",
-                                background: "rgba(250,204,21,0.18)",
-                                color: "#fde68a",
-                                fontWeight: 700,
-                                fontSize: "0.8rem",
-                                padding: "8px 12px",
-                                cursor: "pointer",
-                            }}
-                        >
-                            Entrar a la sesión
-                        </button>
+                        + Nueva sesión
+                    </button>
+                    <div className="rounded-lg border border-white/10 bg-white/[0.03] px-4 py-2.5">
+                        <p className="text-[0.65rem] font-semibold uppercase tracking-wider text-slate-500">
+                            Total booked
+                        </p>
+                        <p className="text-lg font-bold tabular-nums text-slate-100">{totalBooked}</p>
                     </div>
-                ) : null}
+                </div>
 
-                <section
-                    style={{
-                        border: "1px solid rgba(59,130,246,0.25)",
-                        background: "linear-gradient(145deg, #111827 0%, #0B0F1A 100%)",
-                        borderRadius: 16,
-                        boxShadow: "0 20px 30px -20px rgba(37,99,235,0.35)",
-                        overflow: "hidden",
-                    }}
-                >
-                    <div
-                        style={{
-                            display: "flex",
-                            flexWrap: "wrap",
-                            justifyContent: "space-between",
-                            alignItems: "center",
-                            gap: 12,
-                            padding: "14px 16px",
-                            borderBottom: "1px solid rgba(59,130,246,0.2)",
-                            background: "rgba(2,6,23,0.45)",
-                        }}
+                <div className="flex flex-wrap items-center gap-2 border-t border-white/5 pt-4 sm:border-t-0 sm:pt-0">
+                    <span className="text-[0.65rem] font-semibold uppercase tracking-wider text-slate-600">
+                        Filtros
+                    </span>
+                    <button
+                        type="button"
+                        disabled
+                        className="cursor-not-allowed rounded-md border border-dashed border-white/10 bg-transparent px-3 py-1.5 text-xs text-slate-600"
+                        title="Próximamente"
                     >
-                        <span style={{ fontWeight: 700, color: "#93c5fd" }}>Sessions Dashboard</span>
-                        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 12 }}>
-                            <button type="button" onClick={() => setActiveView("students")} style={navBtn}>
-                                Students · access
-                            </button>
-                            <button type="button" onClick={() => setActiveView("classes")} style={navBtn}>
-                                Recorded Classes
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setCreateModalOpen(true)}
-                                style={{
-                                    padding: "8px 14px",
-                                    borderRadius: 10,
-                                    border: "1px solid rgba(250,204,21,0.45)",
-                                    background: "rgba(15,23,42,0.6)",
-                                    color: "#facc15",
-                                    fontWeight: 800,
-                                    fontSize: "0.8125rem",
-                                    cursor: "pointer",
-                                    transition: "background 0.2s ease, color 0.2s ease",
-                                }}
-                            >
-                                + Nueva sesión
-                            </button>
-                            <span style={{ fontSize: "0.85rem", color: "#9ca3af" }}>
-                                Total booked: <strong style={{ color: "#f8fafc" }}>{totalBooked}</strong>
-                            </span>
-                        </div>
-                    </div>
-
-                    {loading ? (
-                        <p style={{ margin: 0, padding: "16px", color: "#9ca3af" }}>Loading…</p>
-                    ) : error ? (
-                        <p style={{ margin: 0, padding: "16px", color: "#ef4444" }}>{error}</p>
-                    ) : rows.length === 0 ? (
-                        <p style={{ margin: 0, padding: "16px", color: "#9ca3af" }}>No sessions found.</p>
-                    ) : (
-                        <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
-                            <button
-                                type="button"
-                                onClick={() => setIsThisWeekOpen((v) => !v)}
-                                aria-expanded={isThisWeekOpen}
-                                style={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: 10,
-                                    width: "100%",
-                                    margin: 0,
-                                    padding: "12px 16px",
-                                    border: "none",
-                                    borderBottom: "1px solid rgba(59,130,246,0.12)",
-                                    background: "transparent",
-                                    cursor: "pointer",
-                                    textAlign: "left",
-                                    fontSize: "1rem",
-                                    fontWeight: 800,
-                                    color: "#e2e8f0",
-                                    letterSpacing: "0.02em",
-                                    transition:
-                                        "background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease",
-                                }}
-                                onMouseEnter={(e) => {
-                                    e.currentTarget.style.background = "rgba(59,130,246,0.08)"
-                                    e.currentTarget.style.color = "#f8fafc"
-                                }}
-                                onMouseLeave={(e) => {
-                                    e.currentTarget.style.background = "transparent"
-                                    e.currentTarget.style.color = "#e2e8f0"
-                                }}
-                            >
-                                <span
-                                    aria-hidden
-                                    style={{
-                                        display: "inline-block",
-                                        width: "1.1em",
-                                        color: "#93c5fd",
-                                        transition: "color 0.2s ease",
-                                    }}
-                                >
-                                    {isThisWeekOpen ? "▼" : "▶"}
-                                </span>
-                                This Week
-                            </button>
-                            {isThisWeekOpen ? (
-                                <AdminSessionsTable
-                                    rows={currentWeekSessions}
-                                    highlightedIds={highlightedSessionIds}
-                                    onOpenBookings={setSelectedSession}
-                                    onEditSession={setEditSession}
-                                    onRequestCancelSession={setCancelTarget}
-                                    now={now}
-                                    onHostStart={handleAdminHostStart}
-                                />
-                            ) : null}
-
-                            <button
-                                type="button"
-                                onClick={() => setIsNextWeekOpen((v) => !v)}
-                                aria-expanded={isNextWeekOpen}
-                                style={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: 10,
-                                    width: "100%",
-                                    margin: 0,
-                                    padding: "14px 16px 12px",
-                                    border: "none",
-                                    borderTop: "1px solid rgba(59,130,246,0.15)",
-                                    borderBottom: "1px solid rgba(59,130,246,0.12)",
-                                    background: "transparent",
-                                    cursor: "pointer",
-                                    textAlign: "left",
-                                    fontSize: "1rem",
-                                    fontWeight: 800,
-                                    color: "#e2e8f0",
-                                    letterSpacing: "0.02em",
-                                    transition:
-                                        "background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease",
-                                }}
-                                onMouseEnter={(e) => {
-                                    e.currentTarget.style.background = "rgba(59,130,246,0.08)"
-                                    e.currentTarget.style.color = "#f8fafc"
-                                }}
-                                onMouseLeave={(e) => {
-                                    e.currentTarget.style.background = "transparent"
-                                    e.currentTarget.style.color = "#e2e8f0"
-                                }}
-                            >
-                                <span
-                                    aria-hidden
-                                    style={{
-                                        display: "inline-block",
-                                        width: "1.1em",
-                                        color: "#93c5fd",
-                                        transition: "transform 0.2s ease",
-                                    }}
-                                >
-                                    {isNextWeekOpen ? "▼" : "▶"}
-                                </span>
-                                Next Week
-                            </button>
-                            {isNextWeekOpen ? (
-                                <AdminSessionsTable
-                                    rows={nextWeekSessions}
-                                    highlightedIds={highlightedSessionIds}
-                                    onOpenBookings={setSelectedSession}
-                                    onEditSession={setEditSession}
-                                    onRequestCancelSession={setCancelTarget}
-                                    now={now}
-                                    onHostStart={handleAdminHostStart}
-                                />
-                            ) : null}
-                        </div>
-                    )}
-                </section>
+                        Fecha
+                    </button>
+                    <button
+                        type="button"
+                        disabled
+                        className="cursor-not-allowed rounded-md border border-dashed border-white/10 bg-transparent px-3 py-1.5 text-xs text-slate-600"
+                        title="Próximamente"
+                    >
+                        Estado
+                    </button>
+                </div>
             </div>
+
+            {upcomingSoonSession ? (
+                <div
+                    className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-400/35 bg-amber-950/25 px-4 py-3 text-amber-100"
+                    role="status"
+                >
+                    <span className="text-sm font-semibold">
+                        Tu sesión comienza en menos de 10 minutos
+                    </span>
+                    <button
+                        type="button"
+                        onClick={() => void handleAdminHostStart(upcomingSoonSession.id)}
+                        className="rounded-lg border border-amber-400/50 bg-amber-400/15 px-3 py-2 text-xs font-semibold text-amber-100 transition hover:bg-amber-400/25"
+                    >
+                        Entrar a la sesión
+                    </button>
+                </div>
+            ) : null}
+
+            <section className="overflow-hidden rounded-2xl border border-sky-500/20 bg-gradient-to-br from-[#111827] to-[#0a0f1a] shadow-[0_28px_56px_-32px_rgba(37,99,235,0.45)]">
+                {loading ? (
+                    <p className="px-4 py-12 text-center text-sm text-slate-500">Cargando sesiones…</p>
+                ) : error ? (
+                    <p className="px-4 py-12 text-center text-sm text-red-400">{error}</p>
+                ) : rows.length === 0 ? (
+                    <p className="px-4 py-12 text-center text-sm text-slate-500">
+                        No hay sesiones programadas. Cree una con «Nueva sesión».
+                    </p>
+                ) : (
+                    <>
+                        <AccordionWeek
+                            id="week-this"
+                            label="Esta semana"
+                            count={currentWeekSessions.length}
+                            open={isThisWeekOpen}
+                            onToggle={() => setIsThisWeekOpen((v) => !v)}
+                        >
+                            <SessionCardsGrid
+                                rows={currentWeekSessions}
+                                highlightedIds={highlightedSessionIds}
+                                onOpenBookings={setSelectedSession}
+                                onEditSession={setEditSession}
+                                onRequestCancelSession={setCancelTarget}
+                                now={now}
+                                onHostStart={handleAdminHostStart}
+                            />
+                        </AccordionWeek>
+                        <AccordionWeek
+                            id="week-next"
+                            label="Próxima semana"
+                            count={nextWeekSessions.length}
+                            open={isNextWeekOpen}
+                            onToggle={() => setIsNextWeekOpen((v) => !v)}
+                        >
+                            <SessionCardsGrid
+                                rows={nextWeekSessions}
+                                highlightedIds={highlightedSessionIds}
+                                onOpenBookings={setSelectedSession}
+                                onEditSession={setEditSession}
+                                onRequestCancelSession={setCancelTarget}
+                                now={now}
+                                onHostStart={handleAdminHostStart}
+                            />
+                        </AccordionWeek>
+                    </>
+                )}
+            </section>
 
             <CreateSessionModal
                 open={createModalOpen}
@@ -765,9 +421,7 @@ export default function AdminSessions({
             <CancelSessionConfirmModal
                 open={cancelTarget !== null}
                 sessionSummary={
-                    cancelTarget
-                        ? `${cancelTarget.date ?? "—"} · ${cancelTarget.time ?? "—"}`
-                        : ""
+                    cancelTarget ? `${cancelTarget.date ?? "—"} · ${cancelTarget.time ?? "—"}` : ""
                 }
                 onClose={() => setCancelTarget(null)}
                 onConfirm={async () => {
