@@ -1,26 +1,27 @@
 import { NextResponse } from "next/server"
-import Stripe from "stripe"
+import { createStripeClient, getStripePriceId, getStripeSecretKey } from "@/lib/stripe-server"
 
 export const runtime = "nodejs"
 
 // IMPORTANT:
 // Do NOT reserve seats here.
-// Booking must only happen from dashboard.
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-    apiVersion: "2026-02-25.clover",
-})
-
-/** Stripe Dashboard recurring price (monthly subscription). */
-const MONTHLY_SUBSCRIPTION_PRICE_ID = "price_1TNLRdCM6zKu8aLu2HxK3w2W"
+// Booking must only happen from the dashboard.
 
 function appOrigin(): string {
-    const raw = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"
+    const raw = process.env.NEXT_PUBLIC_APP_URL?.trim() ?? "http://localhost:3000"
     return raw.replace(/\/$/, "")
 }
 
 export async function POST(req: Request) {
+    console.log("Stripe key exists:", !!getStripeSecretKey())
+    console.log("Price ID:", getStripePriceId())
+
     try {
+        const priceId = getStripePriceId()
+        if (!priceId) {
+            return NextResponse.json({ error: "STRIPE_PRICE_ID is not configured" }, { status: 500 })
+        }
+
         const body = (await req.json().catch(() => null)) as {
             email?: unknown
             userId?: unknown
@@ -54,6 +55,8 @@ export async function POST(req: Request) {
             metadata.trading_session_id = sessionId
         }
 
+        const stripe = createStripeClient()
+
         const session = await stripe.checkout.sessions.create({
             payment_method_types: ["card"],
             mode: "subscription",
@@ -61,7 +64,7 @@ export async function POST(req: Request) {
             metadata,
             line_items: [
                 {
-                    price: MONTHLY_SUBSCRIPTION_PRICE_ID,
+                    price: priceId,
                     quantity: 1,
                 },
             ],
@@ -83,8 +86,9 @@ export async function POST(req: Request) {
             }
         )
     } catch (error) {
-        console.error("❌ Stripe error:", error)
+        console.error("Stripe full error:", error)
 
-        return NextResponse.json({ error: "Error creando checkout" }, { status: 500 })
+        const message = error instanceof Error ? error.message : "Error creando checkout"
+        return NextResponse.json({ error: message }, { status: 500 })
     }
 }

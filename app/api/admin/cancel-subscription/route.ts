@@ -1,17 +1,15 @@
 import { NextResponse } from "next/server"
-import Stripe from "stripe"
+import type Stripe from "stripe"
 import { requireAuthorizedAdminFromCookies } from "@/lib/adminAuth"
 import { createSupabaseServiceRoleClient } from "@/lib/access"
 import { computeRefundPreviewFromSubscription } from "@/lib/adminSubscriptionRefundPreview"
+import { createStripeClient } from "@/lib/stripe-server"
 
 export const runtime = "nodejs"
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-    apiVersion: "2026-02-25.clover",
-})
-
 export async function POST(req: Request) {
     try {
+        const stripe = createStripeClient()
         const auth = await requireAuthorizedAdminFromCookies()
         if (!auth.ok) return auth.response
 

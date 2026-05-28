@@ -1,10 +1,8 @@
 import { NextResponse } from "next/server"
-import Stripe from "stripe"
 import { createSupabaseServiceRoleClient } from "@/lib/access"
+import { createStripeClient } from "@/lib/stripe-server"
 
 export const runtime = "nodejs"
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
 
 export async function POST(req: Request) {
     try {
@@ -36,6 +34,7 @@ export async function POST(req: Request) {
             return NextResponse.json({ ok: false, error: "No subscription_id found" }, { status: 400 })
         }
 
+        const stripe = createStripeClient()
         await stripe.subscriptions.cancel(subscriptionId)
 
         const { error: updateErr } = await supabase

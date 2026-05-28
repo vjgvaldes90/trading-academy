@@ -1,13 +1,10 @@
 import { NextResponse } from "next/server"
-import Stripe from "stripe"
+import type Stripe from "stripe"
 import { createClient } from "@supabase/supabase-js"
 import { requireAuthorizedAdminFromCookies } from "@/lib/adminAuth"
+import { createStripeClient } from "@/lib/stripe-server"
 
 export const runtime = "nodejs"
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-    apiVersion: "2026-02-25.clover",
-})
 
 function formatRefundDisplay(cents: number, currency: string): string {
     const cur = (currency || "usd").trim().toUpperCase() || "USD"
@@ -54,6 +51,7 @@ function okJson(
 
 export async function GET(req: Request) {
     try {
+        const stripe = createStripeClient()
         const auth = await requireAuthorizedAdminFromCookies()
         if (!auth.ok) return auth.response
 

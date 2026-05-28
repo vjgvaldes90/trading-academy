@@ -1,18 +1,14 @@
 import { NextResponse } from "next/server"
-import Stripe from "stripe"
 import { createClient } from "@supabase/supabase-js"
+import { createStripeClient, getStripeSecretKey } from "@/lib/stripe-server"
 import { setAuthCookiesForPaidUser } from "@/lib/authCookies"
 import { attachSingleDeviceSessionCookies } from "@/lib/studentSingleSession"
 import { computeRenewalAccessExpiresAtIso } from "@/lib/studentSubscriptionRenewal"
 
 export const runtime = "nodejs"
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-    apiVersion: "2026-02-25.clover",
-})
-
 export async function POST(req: Request) {
-    const stripeSecretKey = process.env.STRIPE_SECRET_KEY
+    const stripeSecretKey = getStripeSecretKey()
     const supabaseUrl = process.env.SUPABASE_URL
     const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
@@ -32,6 +28,7 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "Missing session_id" }, { status: 400 })
     }
 
+    const stripe = createStripeClient()
     const session = await stripe.checkout.sessions.retrieve(sessionId)
     const raw =
         session.customer_details?.email?.trim() ||

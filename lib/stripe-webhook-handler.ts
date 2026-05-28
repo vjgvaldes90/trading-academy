@@ -1,4 +1,5 @@
 import Stripe from "stripe"
+import { createStripeClient, getStripeSecretKey, getStripeWebhookSecret } from "@/lib/stripe-server"
 import { createSupabaseServiceRoleClient } from "@/lib/access"
 import { sendEmail } from "@/lib/sendEmail"
 import { computeRenewalAccessExpiresAtIso } from "@/lib/studentSubscriptionRenewal"
@@ -132,8 +133,8 @@ async function fulfillPaidAccessAndSendWelcomeEmail(args: {
 export async function handleStripeWebhook(req: Request): Promise<Response> {
     console.log("🔥 WEBHOOK START")
 
-    const stripeSecretKey = process.env.STRIPE_SECRET_KEY
-    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
+    const stripeSecretKey = getStripeSecretKey()
+    const webhookSecret = getStripeWebhookSecret()
     const resendApiKey = process.env.RESEND_API_KEY
 
     if (!stripeSecretKey || !webhookSecret) {
@@ -154,9 +155,7 @@ export async function handleStripeWebhook(req: Request): Promise<Response> {
         return new Response("Missing stripe-signature", { status: 400 })
     }
 
-    const stripe = new Stripe(stripeSecretKey, {
-        apiVersion: "2026-02-25.clover",
-    })
+    const stripe = createStripeClient()
 
     let event: Stripe.Event
     try {
