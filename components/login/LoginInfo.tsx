@@ -12,7 +12,7 @@ export default function LoginInfo() {
                 </div>
 
                 <h2 className="mb-6 text-4xl font-bold leading-tight text-slate-100">
-                    Accede a mentoría institucional en tiempo real
+                   Aprende a invertir en la bolsa de valores en tiempo real
                 </h2>
 
                 <p className="mb-8 text-slate-300">
