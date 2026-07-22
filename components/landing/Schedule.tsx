@@ -43,7 +43,7 @@ export default function Schedule() {
 
         {/* 💬 SUBTEXTO */}
         <p className="mb-12 text-slate-300">
-          Opciones, stocks y ETFs con mentoría en vivo y proceso estructurado frente al mercado real.
+            Acciones,ETFS y Opciones con mentoría en vivo y proceso estructurado frente al mercado real.
         </p>
 
         {/* 🧱 GRID */}

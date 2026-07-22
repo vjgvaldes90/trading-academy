@@ -17,7 +17,7 @@ export default function ChartSection() {
                 </p>
 
                 <h2 className="mb-3 text-3xl font-bold leading-tight md:text-4xl">
-                    Stocks • Options • ETFs
+                    Acciones • ETFS • Opciones
                 </h2>
 
                 <p className="mx-auto mb-7 max-w-xl text-base text-slate-300 md:text-lg">

@@ -37,15 +37,15 @@ export default function Instructor() {
                     </h2>
 
                     <p className="mb-4 text-lg text-slate-300">
-                        Tony forma inversionistas con estándar profesional: análisis fundamentado, opciones, acciones y ETFs, y control del riesgo.
+                        Tony forma inversionistas con estándar profesional: análisis fundamentado, Acciones-ETFS-Opciones, y control del riesgo.
                     </p>
 
                     <p className="mb-4 text-lg text-slate-300">
-                        Priorizamos metodología clara: ves el análisis técnico, la lógica del trade y la gestión de riesgo aplicada paso a paso.
+                        Priorizamos metodología clara: ves el análisis técnico, la lógica del trading y la gestión de riesgo aplicada paso a paso.
                     </p>
 
                     <p className="text-lg text-slate-300">
-                        En vivo recibes preguntas, feedback y frameworks que usan inversionistas institucionalmente disciplinados.
+                        En vivo recibes preguntas, feedback y frameworks que usan inversionistas profesionales.
                     </p>
 
                     {/* 💰 CTA */}

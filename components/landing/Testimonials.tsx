@@ -13,7 +13,7 @@ const testimonials = [
     },
     {
         name: "Andrea R.",
-        text: "Entendí por fin cómo proteger capital y aplicar metodología antes de escalar tamaño de posición.",
+        text: "Entendí por fin cómo proteger capital y aplicar metodología antes de escalar el tamaño de posición.",
     },
 ]
 
@@ -30,7 +30,7 @@ export default function Testimonials() {
 
                 {/* 🔥 TITULO */}
                 <h2 className="mb-4 text-4xl font-bold text-slate-100">
-                    Educación elite con compañeros exigentes como tú
+                    Educación elite con profesionales exigentes como tú
                 </h2>
 
                 {/* 💬 SUBTEXTO */}

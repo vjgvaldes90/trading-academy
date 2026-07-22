@@ -21,7 +21,7 @@ export default function Pricing() {
                     </h2>
 
                     <p className="mb-10 text-lg text-slate-300">
-                        Opciones, stocks y ETFs con metodología profesional, análisis técnico y gestión de riesgo frente al mercado en tiempo real.
+                         Acciones,ETFS y Opciones con metodología profesional, análisis técnico y gestión de riesgo frente al mercado en tiempo real.
                     </p>
 
                     <div className="space-y-4 text-slate-300">
@@ -30,7 +30,7 @@ export default function Pricing() {
                         <p>✔ Análisis técnico y lectura del mercado en tiempo real</p>
                         <p>✔ Estructura de alto rendimiento y gestión del riesgo</p>
                         <p>✔ Metodología profesional repetible paso a paso</p>
-                        <p>✔ Acceso privado para cohortes enfocadas en excelencia</p>
+                        <p>✔ Acceso privado para miembros enfocados en la excelencia.</p>
 
                     </div>
                 </div>

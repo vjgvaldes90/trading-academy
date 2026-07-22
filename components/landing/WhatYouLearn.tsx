@@ -6,7 +6,7 @@ import { BarChart3, Shield, BookOpenCheck, ClipboardList } from "lucide-react"
 const items = [
   {
     icon: BarChart3,
-    title: "Domina análisis técnico",
+    title: "Domina el análisis técnico",
     text: "Lee el mercado con criterio profesional antes de ejecutar cualquier estrategia con capital real.",
   },
   {

@@ -9,10 +9,10 @@ const steps = [
   },
   {
     title: "Gráficos y mercado en tiempo real",
-    text: "Aprende a analizar gráficos en tiempo real dentro de mentoría en vivo y metodología estructurada.",
+    text: "Aprende a analizar gráficos en tiempo real con mentoría en vivo y metodología estructurada.",
   },
   {
-    title: "Opciones, stocks y ETFs",
+    title: "Acciones,ETFS y Opciones",
     text: "Domina la compra y venta de opciones con fundamentos institucionales y gestión profesional del riesgo.",
   },
   {

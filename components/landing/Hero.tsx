@@ -44,7 +44,7 @@ export default function Hero() {
             La bolsa de valores no es una apuesta, es una profesión que tú también puedes aprender.
           </span>
           <span className="mt-4 block text-base md:text-lg">
-            Genera ingresos diarios aprendiendo opciones financieras,Calls-Puts- Covered Calls and Cash secured puts.
+            Genera ingresos diarios aprendiendo opciones financieras, Calls-Puts- Covered Calls and Cash secured puts.
           </span>
         </motion.p>
 
