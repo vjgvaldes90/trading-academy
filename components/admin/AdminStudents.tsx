@@ -1,6 +1,9 @@
 "use client"
 
 import CancelSessionConfirmModal from "@/app/admin/CancelSessionConfirmModal"
+import CreateStudentModal, {
+    type CreateStudentFormValues,
+} from "@/components/admin/CreateStudentModal"
 import { useCallback, useEffect, useState } from "react"
 
 type TradingStudentListRow = {
@@ -31,6 +34,12 @@ export default function AdminStudents() {
     const [busyEmail, setBusyEmail] = useState<string | null>(null)
     const [refundModal, setRefundModal] = useState<RefundModalTarget | null>(null)
     const [busyRefundUserId, setBusyRefundUserId] = useState<string | null>(null)
+    const [createModalOpen, setCreateModalOpen] = useState(false)
+
+    const handleCreateStudent = (values: CreateStudentFormValues) => {
+        console.table(values)
+        setCreateModalOpen(false)
+    }
 
     const load = useCallback(async () => {
         setLoading(true)
@@ -160,9 +169,33 @@ export default function AdminStudents() {
     return (
         <div className="space-y-6 text-[#e5e7eb]">
             <div style={{ maxWidth: 1100, margin: "0 auto" }}>
-                <p style={{ margin: "0 0 18px", color: "#9ca3af", fontSize: "0.95rem" }}>
-                    Manage access type and activation. Changes apply immediately.
-                </p>
+                <div
+                    style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: 16,
+                        marginBottom: 18,
+                        flexWrap: "wrap",
+                    }}
+                >
+                    <p style={{ margin: 0, color: "#9ca3af", fontSize: "0.95rem", flex: "1 1 240px" }}>
+                        Manage access type and activation. Changes apply immediately.
+                    </p>
+                    <button
+                        type="button"
+                        onClick={() => setCreateModalOpen(true)}
+                        className="rounded-lg border border-amber-400/40 bg-[#0f172a]/90 px-4 py-2.5 text-sm font-bold text-amber-300 transition hover:border-amber-300/60 hover:bg-[#0f172a]"
+                    >
+                        + New Student
+                    </button>
+                </div>
+
+                <CreateStudentModal
+                    open={createModalOpen}
+                    onClose={() => setCreateModalOpen(false)}
+                    onSubmit={handleCreateStudent}
+                />
 
                 <section
                     style={{
