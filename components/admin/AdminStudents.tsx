@@ -37,32 +37,39 @@ export default function AdminStudents() {
     const [createModalOpen, setCreateModalOpen] = useState(false)
 
     const handleCreateStudent = async (values: CreateStudentFormValues) => {
-        const res = await fetch("/api/admin/students/create", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            credentials: "include",
-            cache: "no-store",
-            body: JSON.stringify({
-                firstName: values.firstName,
-                lastName: values.lastName,
-                email: values.email,
-                phone: values.phone,
-                accessType: values.accessType,
-            }),
-        })
-        const response = (await res.json().catch(() => ({}))) as {
-            success?: boolean
-            error?: string
-            received?: unknown
-        }
+        try {
+            console.log("Submitting student...", values)
+            const res = await fetch("/api/admin/students/create", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                cache: "no-store",
+                body: JSON.stringify({
+                    firstName: values.firstName,
+                    lastName: values.lastName,
+                    email: values.email,
+                    phone: values.phone,
+                    accessType: values.accessType,
+                }),
+            })
+            console.log("HTTP Status:", res.status)
+            const response = (await res.json().catch(() => ({}))) as {
+                success?: boolean
+                error?: string
+                received?: unknown
+            }
+            console.log("API Response:", response)
 
-        if (response.success === true) {
-            console.log("Student payload accepted", response)
-            setCreateModalOpen(false)
-            return
-        }
+            if (response.success === true) {
+                console.log("Student payload accepted", response)
+                setCreateModalOpen(false)
+                return
+            }
 
-        console.error(response.error)
+            console.error(response.error)
+        } catch (error) {
+            console.error("Create student failed:", error)
+        }
     }
 
     const load = useCallback(async () => {
