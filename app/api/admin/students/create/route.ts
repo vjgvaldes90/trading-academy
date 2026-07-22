@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { provisionAcademyStudent } from "@/lib/provisionAcademyStudent"
 
 export const runtime = "nodejs"
 
@@ -70,5 +71,22 @@ export async function POST(req: Request) {
         )
     }
 
-    return NextResponse.json({ success: true, received: body })
+    try {
+        const result = await provisionAcademyStudent({
+            firstName,
+            lastName,
+            email,
+            phone: trimString(b.phone),
+            accessType: accessType as (typeof ACCESS_TYPES)[number],
+        })
+        return NextResponse.json(result)
+    } catch (error) {
+        return NextResponse.json(
+            {
+                success: false,
+                error: error instanceof Error ? error.message : "Unknown error",
+            },
+            { status: 500 }
+        )
+    }
 }
