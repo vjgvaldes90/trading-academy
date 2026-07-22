@@ -53,7 +53,7 @@ export default function CreateStudentModal({ open, onClose, onSubmit }: CreateSt
     const [lastName, setLastName] = useState("")
     const [email, setEmail] = useState("")
     const [phone, setPhone] = useState("")
-    const [accessType, setAccessType] = useState<CreateStudentAccessType>("paid")
+    const [accessType, setAccessType] = useState<CreateStudentAccessType>("free")
 
     useEffect(() => {
         if (!open) return
@@ -61,7 +61,7 @@ export default function CreateStudentModal({ open, onClose, onSubmit }: CreateSt
         setLastName("")
         setEmail("")
         setPhone("")
-        setAccessType("paid")
+        setAccessType("free")
     }, [open])
 
     if (!open) return null
