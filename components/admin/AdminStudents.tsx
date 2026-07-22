@@ -36,9 +36,33 @@ export default function AdminStudents() {
     const [busyRefundUserId, setBusyRefundUserId] = useState<string | null>(null)
     const [createModalOpen, setCreateModalOpen] = useState(false)
 
-    const handleCreateStudent = (values: CreateStudentFormValues) => {
-        console.table(values)
-        setCreateModalOpen(false)
+    const handleCreateStudent = async (values: CreateStudentFormValues) => {
+        const res = await fetch("/api/admin/students/create", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            cache: "no-store",
+            body: JSON.stringify({
+                firstName: values.firstName,
+                lastName: values.lastName,
+                email: values.email,
+                phone: values.phone,
+                accessType: values.accessType,
+            }),
+        })
+        const response = (await res.json().catch(() => ({}))) as {
+            success?: boolean
+            error?: string
+            received?: unknown
+        }
+
+        if (response.success === true) {
+            console.log("Student payload accepted", response)
+            setCreateModalOpen(false)
+            return
+        }
+
+        console.error(response.error)
     }
 
     const load = useCallback(async () => {
