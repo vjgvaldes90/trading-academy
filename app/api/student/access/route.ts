@@ -44,7 +44,12 @@ export async function GET(req: Request) {
             )
         }
 
+        console.log("EMAIL:", userEmail)
+        console.log("ROW:", row)
+
         const ev = evaluateAcademyAccess(row as TradingStudentAccessRow | null)
+
+        console.log("RESULT:", ev)
         if (!ev.ok) {
             return NextResponse.json({
                 ok: false,

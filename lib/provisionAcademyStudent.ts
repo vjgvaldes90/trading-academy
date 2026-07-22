@@ -58,7 +58,7 @@ export async function provisionAcademyStudent(
     const { data: savedRow, error: dbErr } = await supabase
         .from("trading_students")
         .upsert(row, { onConflict: "email" })
-        .select("email, access_code")
+        .select("email, access_code, access_expires_at, access_type")
         .single()
 
     if (dbErr) {
@@ -69,6 +69,8 @@ export async function provisionAcademyStudent(
         console.error("[provisionAcademyStudent] upsert row mismatch", { savedRow, accessCode })
         throw new Error("Failed to save access code")
     }
+
+    console.log(savedRow)
 
     const sendResult = await sendEmail(email, accessCode, name || undefined)
     if (!sendResult.ok) {
