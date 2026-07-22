@@ -39,22 +39,25 @@ export async function provisionAcademyStudent(
 
     const supabase = createSupabaseServiceRoleClient()
 
+    const row: Record<string, unknown> = {
+        first_name: firstName,
+        last_name: lastName,
+        name,
+        email,
+        phone: phone || null,
+        access_code: accessCode,
+        access_type: accessType,
+        is_active: true,
+        subscription_status: "active",
+    }
+
+    if (accessType === "free") {
+        row.access_expires_at = null
+    }
+
     const { data: savedRow, error: dbErr } = await supabase
         .from("trading_students")
-        .upsert(
-            {
-                first_name: firstName,
-                last_name: lastName,
-                name,
-                email,
-                phone: phone || null,
-                access_code: accessCode,
-                access_type: accessType,
-                is_active: true,
-                subscription_status: "active",
-            },
-            { onConflict: "email" }
-        )
+        .upsert(row, { onConflict: "email" })
         .select("email, access_code")
         .single()
 
