@@ -1,0 +1,52 @@
+---
+description: Core standards for all Trading Academy code generation — architecture, reuse, design, and integrations
+alwaysApply: true
+---
+
+# Trading Academy — Code Generation Standards
+
+Apply these rules to every change in this repository.
+
+## Before You Code
+
+1. **Analyze first** — Find existing components, hooks, utilities, API routes, and patterns that can be reused.
+2. **Extend, don't duplicate** — Prefer extending or composing existing code over creating parallel versions.
+3. **Impact check** — If a change could alter existing behavior, explain the impact and get confirmation before implementing.
+
+## Architecture & Structure
+
+- Follow the current project architecture and folder structure. Do not invent new layout conventions.
+- Keep API routes consistent with existing patterns (handlers, auth, error shapes, response formats).
+- Use **Supabase** only through the project's current client/server architecture and helpers.
+- Keep **Stripe** changes compatible with the existing payment/checkout/webhook flow. Do not redesign billing unless asked.
+
+## Code Quality
+
+- Never break existing functionality.
+- Prefer **small, incremental changes** over large refactors.
+- Keep TypeScript **strict** — no `any` escapes, no loosening of existing types.
+- Write clean, production-ready code.
+- **Do not introduce new libraries** unless the user explicitly requests them.
+
+## UI & Design
+
+- Reuse existing UI components whenever possible.
+- Maintain the current **dark academy** design and styling (colors, typography, spacing, motion). Do not introduce a competing visual language.
+
+## After Completing a Task
+
+Summarize which files were modified and why (brief, file-by-file).
+
+## Examples
+
+```typescript
+// ❌ BAD — new parallel component / new dependency / loose types
+import { Something } from 'brand-new-ui-lib';
+export function NewButton(props: any) { /* duplicate of existing Button */ }
+
+// ✅ GOOD — extend existing patterns
+import { Button } from '@/components/ui/button';
+export function EnrollButton(props: ButtonProps) {
+  return <Button variant="primary" {...props} />;
+}
+```
