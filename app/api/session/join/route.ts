@@ -57,6 +57,11 @@ export async function POST(req: Request) {
         }
 
         const accessEv = evaluateAcademyAccess(accessRow as TradingStudentAccessRow | null)
+        console.log("[JOIN ACCESS]", {
+            verifiedEmail,
+            accessRow,
+            accessEv,
+        })
         if (!accessEv.ok) {
             denyReason = accessEv.reason === "unpaid" ? "not_paid" : "access_denied"
             console.log("[SECURE JOIN DENIED]", { reason: denyReason, session_id: sessionId })
