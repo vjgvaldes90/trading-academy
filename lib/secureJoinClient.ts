@@ -4,17 +4,13 @@ export type SecureJoinResult =
     | { ok: true; join_url: string }
     | { ok: false; message: string; code?: string }
 
-export async function fetchSecureStudentJoinUrl(
-    sessionId: string,
-    userEmail: string
-): Promise<SecureJoinResult> {
+export async function fetchSecureStudentJoinUrl(sessionId: string): Promise<SecureJoinResult> {
     const res = await fetch("/api/session/join", {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
             session_id: sessionId,
-            user_email: userEmail.trim().toLowerCase(),
         }),
     })
     const data = (await res.json().catch(() => ({}))) as {

@@ -117,11 +117,11 @@ export default function StudentClassroomPage() {
     const zoomVideoHref = zoomTutorialVideoUrl()
 
     const prepareJoin = async (): Promise<string | null> => {
-        if (!studentEmail || !sessionId || loadingJoin) return null
+        if (!sessionId || loadingJoin) return null
         setError("")
         setLoadingJoin(true)
         try {
-            const result = await fetchSecureStudentJoinUrl(sessionId, studentEmail)
+            const result = await fetchSecureStudentJoinUrl(sessionId)
             if (!result.ok) {
                 setError(result.message)
                 return null
@@ -143,8 +143,8 @@ export default function StudentClassroomPage() {
         if (!url) {
             url = await prepareJoin()
         }
-        if (!url && studentEmail && sessionId) {
-            const result = await fetchSecureStudentJoinUrl(sessionId, studentEmail)
+        if (!url && sessionId) {
+            const result = await fetchSecureStudentJoinUrl(sessionId)
             if (!result.ok) {
                 setError(result.message)
                 return
@@ -162,10 +162,10 @@ export default function StudentClassroomPage() {
     }
 
     useEffect(() => {
-        if (!studentEmail || !sessionId) return
+        if (!sessionId) return
         void prepareJoin()
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [studentEmail, sessionId, studentJoinName])
+    }, [sessionId, studentJoinName])
 
     return (
         <div className="min-h-screen bg-[#020617] text-white">

@@ -11,11 +11,9 @@ import { isWithinStudentSecureJoinWindow } from "@/lib/sessions"
 export const runtime = "nodejs"
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 type JoinBody = {
     session_id?: unknown
-    user_email?: unknown
 }
 
 export async function POST(req: Request) {
@@ -38,28 +36,11 @@ export async function POST(req: Request) {
         }
 
         const sessionId = typeof body.session_id === "string" ? body.session_id.trim() : ""
-        const bodyEmail =
-            typeof body.user_email === "string" ? body.user_email.trim().toLowerCase() : ""
 
         if (!sessionId || !UUID_RE.test(sessionId)) {
             denyReason = "invalid_session_id"
             console.log("[SECURE JOIN DENIED]", { reason: denyReason })
             return NextResponse.json({ error: "Invalid session_id" }, { status: 400 })
-        }
-
-        if (!bodyEmail || !EMAIL_RE.test(bodyEmail)) {
-            denyReason = "invalid_user_email"
-            console.log("[SECURE JOIN DENIED]", { reason: denyReason })
-            return NextResponse.json({ error: "Invalid user_email" }, { status: 400 })
-        }
-
-        if (bodyEmail !== verifiedEmail) {
-            denyReason = "email_mismatch"
-            console.log("[SECURE JOIN DENIED]", { reason: denyReason, session_id: sessionId })
-            return NextResponse.json(
-                { error: "user_email does not match authenticated session", code: denyReason },
-                { status: 403 }
-            )
         }
 
         const supabase = createSupabaseServiceRoleClient()
