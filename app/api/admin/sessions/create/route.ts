@@ -107,17 +107,42 @@ export async function POST(req: Request) {
         const supabase = createSupabaseServiceRoleClient()
 
         const day = spanishWeekdayFromIsoDate(dateRaw)
-        const insertRow = {
-            day,
-            date: dateRaw,
-            time: timeRaw,
+        const zoomFields = {
             link: zoom.join_url,
+            zoom_meeting_id: zoom.meeting_id,
+            zoom_start_url: zoom.start_url,
+            zoom_password: zoom.password || null,
             status: "active" as const,
             created_by_admin_email: adminEmail,
             last_edited_by_admin_email: adminEmail,
         }
 
-        const { data, error } = await supabase.from("sessions").insert(insertRow).select("*").single()
+        // Prefer renamed columns (post session_date migration); fall back to legacy date/time/day.
+        let { data, error } = await supabase
+            .from("sessions")
+            .insert({
+                session_day: day,
+                session_date: dateRaw,
+                session_hour: timeRaw,
+                ...zoomFields,
+            })
+            .select("*")
+            .single()
+
+        if (error) {
+            const retry = await supabase
+                .from("sessions")
+                .insert({
+                    day,
+                    date: dateRaw,
+                    time: timeRaw,
+                    ...zoomFields,
+                })
+                .select("*")
+                .single()
+            data = retry.data
+            error = retry.error
+        }
 
         if (error) {
             console.error("[api/admin/sessions/create] insert error", error)
