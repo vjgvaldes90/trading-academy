@@ -5,6 +5,7 @@ import {
     buildZoomStartTime,
     createZoomMeeting,
     deleteZoomMeeting,
+    extractZoomMeetingIdFromUrl,
     updateZoomMeeting,
     ZoomApiError,
     ZoomConfigError,
@@ -15,18 +16,19 @@ export const runtime = "nodejs"
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
 type RouteCtx = { params: Promise<{ id: string }> }
-type ServiceClient = ReturnType<typeof createSupabaseServiceRoleClient>
 
 function sessionRowDate(row: Record<string, unknown>): string | null {
-    const a = row.session_date ?? row.date
+    const a = row.date
     return typeof a === "string" && a.trim() !== "" ? a.trim() : null
 }
 
-function sessionRowZoomMeetingId(row: Record<string, unknown>): string {
-    const raw = row.zoom_meeting_id
-    if (typeof raw === "string" && raw.trim() !== "") return raw.trim()
-    if (typeof raw === "number" && Number.isFinite(raw)) return String(raw)
-    return ""
+function sessionRowLink(row: Record<string, unknown>): string {
+    return typeof row.link === "string" ? row.link.trim() : ""
+}
+
+/** Meeting id comes from `sessions.link` (e.g. zoom.us/j/{id}) — not from a DB column. */
+function resolveZoomMeetingIdFromLink(row: Record<string, unknown>): string {
+    return extractZoomMeetingIdFromUrl(sessionRowLink(row)) ?? ""
 }
 
 async function zoomDeleteIfPresent(zoomMeetingId: string | null | undefined): Promise<void> {
@@ -34,61 +36,12 @@ async function zoomDeleteIfPresent(zoomMeetingId: string | null | undefined): Pr
     await deleteZoomMeeting(zoomMeetingId.trim())
 }
 
-const SESSION_CLEAR_CANCEL: Record<string, unknown> = {
-    status: "cancelled",
-    link: null,
-    zoom_meeting_id: null,
-    zoom_start_url: null,
-    zoom_password: null,
-}
-
-/** Only write time onto columns that exist on the loaded row (legacy `time` vs `session_hour`). */
-function buildTimeUpdateFields(existing: Record<string, unknown>, timeRaw: string): Record<string, unknown> {
-    const hasSessionHour = Object.prototype.hasOwnProperty.call(existing, "session_hour")
-    const hasTime = Object.prototype.hasOwnProperty.call(existing, "time")
-    if (hasSessionHour && hasTime) return { session_hour: timeRaw, time: timeRaw }
-    if (hasSessionHour) return { session_hour: timeRaw }
-    if (hasTime) return { time: timeRaw }
-    // Fallback: try canonical name first; applySessionUpdate retries the other.
-    return { session_hour: timeRaw }
-}
-
-async function applySessionUpdate(supabase: ServiceClient, id: string, patch: Record<string, unknown>) {
-    const primary = await supabase.from("sessions").update(patch).eq("id", id).select("*").single()
-    if (!primary.error) return primary
-
-    const timeVal =
-        typeof patch.session_hour === "string"
-            ? patch.session_hour
-            : typeof patch.time === "string"
-              ? patch.time
-              : undefined
-
-    const {
-        session_hour: _sh,
-        time: _t,
-        date: _d,
-        session_date: _sd,
-        day: _day,
-        session_day: _sday,
-        ...rest
-    } = patch
-
-    const attempts: Record<string, unknown>[] = []
-    if (typeof timeVal === "string") {
-        attempts.push({ ...rest, session_hour: timeVal })
-        attempts.push({ ...rest, time: timeVal })
-    } else {
-        attempts.push(rest)
-    }
-
-    let last = primary
-    for (const attempt of attempts) {
-        const res = await supabase.from("sessions").update(attempt).eq("id", id).select("*").single()
-        if (!res.error) return res
-        last = res
-    }
-    return last
+function defaultMeetingDurationMinutes(): number {
+    const raw = process.env.ZOOM_DEFAULT_MEETING_DURATION_MINUTES?.trim()
+    if (!raw) return 120
+    const n = Number.parseInt(raw, 10)
+    if (!Number.isFinite(n) || n <= 0) return 120
+    return Math.min(n, 1440)
 }
 
 export async function PATCH(req: Request, context: RouteCtx) {
@@ -149,7 +102,8 @@ export async function PATCH(req: Request, context: RouteCtx) {
                 return NextResponse.json({ error: "Session not found" }, { status: 404 })
             }
 
-            const zm = sessionRowZoomMeetingId(row as Record<string, unknown>)
+            const rec = row as Record<string, unknown>
+            const zm = resolveZoomMeetingIdFromLink(rec)
 
             try {
                 await zoomDeleteIfPresent(zm || null)
@@ -166,10 +120,17 @@ export async function PATCH(req: Request, context: RouteCtx) {
                 throw e
             }
 
-            const { data, error } = await applySessionUpdate(supabase, id, {
-                ...SESSION_CLEAR_CANCEL,
-                last_edited_by_admin_email: adminEmail,
-            })
+            // Only columns that exist on public.sessions — never zoom_*.
+            const { data, error } = await supabase
+                .from("sessions")
+                .update({
+                    status: "cancelled",
+                    link: null,
+                    last_edited_by_admin_email: adminEmail,
+                })
+                .eq("id", id)
+                .select("*")
+                .single()
 
             if (error) {
                 console.error("[api/admin/sessions/[id]] PATCH soft-cancel update error", error)
@@ -202,7 +163,7 @@ export async function PATCH(req: Request, context: RouteCtx) {
 
         const rec = existing as Record<string, unknown>
         const day = sessionRowDate(rec)
-        let zoomMeetingId = sessionRowZoomMeetingId(rec)
+        let zoomMeetingId = resolveZoomMeetingIdFromLink(rec)
 
         if (!day) {
             return NextResponse.json(
@@ -230,21 +191,11 @@ export async function PATCH(req: Request, context: RouteCtx) {
             if (zoomMeetingId) {
                 zoomUrls = await updateZoomMeeting(zoomMeetingId, { start_time: startZoom })
             } else {
-                // Self-heal rows created when Zoom meeting ids were not persisted.
-                const topic =
-                    typeof rec.title === "string" && rec.title.trim()
-                        ? rec.title.trim()
-                        : `Smart Option Academy — ${day} ${timeRaw}`
-                const durationEnv = process.env.ZOOM_DEFAULT_MEETING_DURATION_MINUTES?.trim()
-                const durationParsed = durationEnv ? Number.parseInt(durationEnv, 10) : NaN
-                const duration =
-                    Number.isFinite(durationParsed) && durationParsed > 0
-                        ? Math.min(durationParsed, 1440)
-                        : 120
+                const topic = `Smart Option Academy — ${day} ${timeRaw}`
                 zoomUrls = await createZoomMeeting({
                     topic,
                     start_time: startZoom,
-                    duration,
+                    duration: defaultMeetingDurationMinutes(),
                 })
                 zoomMeetingId = zoomUrls.meeting_id
             }
@@ -266,14 +217,17 @@ export async function PATCH(req: Request, context: RouteCtx) {
             throw e
         }
 
-        const { data, error } = await applySessionUpdate(supabase, id, {
-            ...buildTimeUpdateFields(rec, timeRaw),
-            last_edited_by_admin_email: adminEmail,
-            link: zoomUrls.join_url,
-            zoom_meeting_id: zoomUrls.meeting_id,
-            zoom_start_url: zoomUrls.start_url,
-            zoom_password: zoomUrls.password || null,
-        })
+        // Source of truth: `link` holds the Zoom join URL. Do not write zoom_* columns.
+        const { data, error } = await supabase
+            .from("sessions")
+            .update({
+                time: timeRaw,
+                link: zoomUrls.join_url,
+                last_edited_by_admin_email: adminEmail,
+            })
+            .eq("id", id)
+            .select("*")
+            .single()
 
         if (error) {
             console.error("[api/admin/sessions/[id]] PATCH time update error", error)
@@ -318,7 +272,8 @@ export async function DELETE(_req: Request, context: RouteCtx) {
             return NextResponse.json({ error: "Session not found" }, { status: 404 })
         }
 
-        const zm = sessionRowZoomMeetingId(row as Record<string, unknown>)
+        const rec = row as Record<string, unknown>
+        const zm = resolveZoomMeetingIdFromLink(rec)
 
         try {
             await zoomDeleteIfPresent(zm || null)
@@ -335,10 +290,16 @@ export async function DELETE(_req: Request, context: RouteCtx) {
             throw e
         }
 
-        const { data, error } = await applySessionUpdate(supabase, id, {
-            ...SESSION_CLEAR_CANCEL,
-            last_edited_by_admin_email: adminEmail,
-        })
+        const { data, error } = await supabase
+            .from("sessions")
+            .update({
+                status: "cancelled",
+                link: null,
+                last_edited_by_admin_email: adminEmail,
+            })
+            .eq("id", id)
+            .select("*")
+            .single()
 
         if (error) {
             if (error.code === "PGRST116") {

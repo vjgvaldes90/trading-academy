@@ -186,6 +186,24 @@ export function buildZoomStartTime(dateYmd: string, timeRaw: string): string {
     return `${date}T${clock}`
 }
 
+/**
+ * Extract Zoom's numeric meeting id from a join/start URL stored in `sessions.link`.
+ * Supports `/j/{id}`, `/s/{id}`, and `/wc/join/{id}` path shapes.
+ */
+export function extractZoomMeetingIdFromUrl(raw: string | null | undefined): string | null {
+    if (typeof raw !== "string" || raw.trim() === "") return null
+    const trimmed = raw.trim()
+    try {
+        const u = new URL(trimmed)
+        const m = /\/(?:j|s|wc\/join)\/(\d{8,15})\b/i.exec(u.pathname)
+        if (m?.[1]) return m[1]
+    } catch {
+        // fall through to loose match
+    }
+    const loose = /(?:zoom\.us|zoom\.com)\/(?:j|s|wc\/join)\/(\d{8,15})\b/i.exec(trimmed)
+    return loose?.[1] ?? null
+}
+
 function mapMeetingResponse(data: ZoomMeetingCreateResponse): ZoomMeetingDetails {
     const id = data.id
     const meeting_id =

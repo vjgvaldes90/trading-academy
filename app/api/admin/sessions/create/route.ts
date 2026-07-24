@@ -107,36 +107,31 @@ export async function POST(req: Request) {
         const supabase = createSupabaseServiceRoleClient()
 
         const day = spanishWeekdayFromIsoDate(dateRaw)
-        const zoomFields = {
+        // Live `sessions` schema stores Zoom join URL in `link` only (no zoom_* columns).
+        const baseRow = {
+            day,
+            date: dateRaw,
+            time: timeRaw,
             link: zoom.join_url,
-            zoom_meeting_id: zoom.meeting_id,
-            zoom_start_url: zoom.start_url,
-            zoom_password: zoom.password || null,
             status: "active" as const,
             created_by_admin_email: adminEmail,
             last_edited_by_admin_email: adminEmail,
         }
 
-        // Prefer renamed columns (post session_date migration); fall back to legacy date/time/day.
-        let { data, error } = await supabase
-            .from("sessions")
-            .insert({
-                session_day: day,
-                session_date: dateRaw,
-                session_hour: timeRaw,
-                ...zoomFields,
-            })
-            .select("*")
-            .single()
+        let { data, error } = await supabase.from("sessions").insert(baseRow).select("*").single()
 
+        // Environments that renamed date/time/day → session_*.
         if (error) {
             const retry = await supabase
                 .from("sessions")
                 .insert({
-                    day,
-                    date: dateRaw,
-                    time: timeRaw,
-                    ...zoomFields,
+                    session_day: day,
+                    session_date: dateRaw,
+                    session_hour: timeRaw,
+                    link: zoom.join_url,
+                    status: "active" as const,
+                    created_by_admin_email: adminEmail,
+                    last_edited_by_admin_email: adminEmail,
                 })
                 .select("*")
                 .single()
