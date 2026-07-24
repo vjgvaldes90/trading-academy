@@ -120,12 +120,11 @@ export async function PATCH(req: Request, context: RouteCtx) {
                 throw e
             }
 
-            // Only columns that exist on public.sessions — never zoom_*.
+            // Soft-cancel only. `link` is NOT NULL on live schema — do not null it.
             const { data, error } = await supabase
                 .from("sessions")
                 .update({
                     status: "cancelled",
-                    link: null,
                     last_edited_by_admin_email: adminEmail,
                 })
                 .eq("id", id)
@@ -290,11 +289,11 @@ export async function DELETE(_req: Request, context: RouteCtx) {
             throw e
         }
 
+        // Soft-cancel only. `link` is NOT NULL on live schema — do not null it.
         const { data, error } = await supabase
             .from("sessions")
             .update({
                 status: "cancelled",
-                link: null,
                 last_edited_by_admin_email: adminEmail,
             })
             .eq("id", id)
