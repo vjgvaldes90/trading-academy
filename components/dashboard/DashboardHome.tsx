@@ -3,7 +3,7 @@
 import { useSession } from "@/context/SessionContext"
 import {
     canShowStudentLiveJoinButton,
-    getNextBookedSession,
+    getNextUpcomingSession,
     isStudentJoinTooEarly,
     isStudentSecureJoinWindowClosed,
     sessionDisplayDay,
@@ -49,7 +49,7 @@ export default function DashboardHome({
     activeView: StudentDashboardView
     setActiveView: (view: StudentDashboardView) => void
 }) {
-    const { sessions, bookingAccess, userEmail } = useSession()
+    const { sessions, academyAccess, userEmail } = useSession()
     const [now, setNow] = useState(() => new Date())
 
     const [lessons, setLessons] = useState<Lesson[]>([])
@@ -97,18 +97,17 @@ export default function DashboardHome({
         }
     }, [])
 
-    const nextBooked = useMemo(() => getNextBookedSession(sessions, now), [sessions, now])
+    const nextBooked = useMemo(() => getNextUpcomingSession(sessions, now), [sessions, now])
     const joinAllowed =
         nextBooked != null &&
         Boolean(userEmail) &&
         canShowStudentLiveJoinButton(nextBooked, now, {
-            hasPaid: bookingAccess.canBook,
-            hasReservation: true,
+            hasPaid: academyAccess.canAccess,
         })
 
     const nextClosed =
         nextBooked != null &&
-        bookingAccess.canBook &&
+        academyAccess.canAccess &&
         isStudentSecureJoinWindowClosed(nextBooked, now) &&
         !isStudentJoinTooEarly(nextBooked, now)
 

@@ -2,54 +2,30 @@
 
 import type { TabKey } from "@/context/SessionContext"
 import { useSession } from "@/context/SessionContext"
-import { useBooking } from "@/hooks/useBooking"
 import {
     canShowStudentLiveJoinButton,
     DbSession,
-    getSessionAvailableSeats,
     isStudentJoinTooEarly,
     isStudentSecureJoinWindowClosed,
     sessionDisplayDay,
     sessionDisplayHour,
 } from "@/lib/sessions"
-import BookingInsertTestButton from "@/components/debug/BookingInsertTestButton"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 
 function SlotRow({ session }: { session: DbSession }) {
-    const { bookingAccess, userEmail, myBookings, cancelMyBooking } = useSession()
+    const { academyAccess, userEmail } = useSession()
     const router = useRouter()
     const now = new Date()
-    const canBook = bookingAccess.canBook
-    const myBooking =
-        userEmail != null
-            ? myBookings.find((b) => b.session_id === session.id && b.email === userEmail)
-            : undefined
-    const isMine = Boolean(myBooking)
-    const available = getSessionAvailableSeats(session)
-    const isFull = available === 0
-    const lockedOutForReserve = isFull || !canBook || isMine || !userEmail
-
-    const { isLoading, bookSession } = useBooking()
-
-    const [cancelLoading, setCancelLoading] = useState(false)
-    const [cancelError, setCancelError] = useState<string | null>(null)
+    const canAccess = academyAccess.canAccess
     const [joining, setJoining] = useState(false)
 
     const label = `${sessionDisplayDay(session)} · ${sessionDisplayHour(session) || "—"}`
 
-    const reserveDisabled = lockedOutForReserve || isLoading
-    const sessionFullForJoin = available === 0 && !isMine
     const mayOpenLiveJoin = canShowStudentLiveJoinButton(session, now, {
-        hasPaid: canBook,
-        hasReservation: isMine,
+        hasPaid: canAccess,
     })
-
-    let reserveLabel = "Reservar"
-    if (isLoading) reserveLabel = "Reservando…"
-    else if (!canBook) reserveLabel = "Acceso no disponible"
-    else if (isFull) reserveLabel = "Full"
 
     const handleSecureJoin = async () => {
         if (!userEmail || joining) return
@@ -62,24 +38,9 @@ function SlotRow({ session }: { session: DbSession }) {
     }
 
     const sessionClosed =
-        canBook &&
-        isMine &&
+        canAccess &&
         isStudentSecureJoinWindowClosed(session, now) &&
         !isStudentJoinTooEarly(session, now)
-
-    const handleCancel = async () => {
-        if (cancelLoading || !myBooking?.id) return
-        setCancelError(null)
-        setCancelLoading(true)
-        try {
-            const r = await cancelMyBooking(myBooking.id, session.id)
-            if (!r.ok) setCancelError(r.error ?? "No se pudo cancelar")
-        } catch (err) {
-            console.error(err)
-        } finally {
-            setCancelLoading(false)
-        }
-    }
 
     return (
         <div className="flex flex-col gap-[var(--ds-2)] rounded-2xl border border-blue-500/20 bg-gradient-to-br from-[#111827] to-[#0B0F1A] p-[var(--ds-3)] shadow-xl shadow-blue-500/10 transition-all duration-200 hover:scale-[1.02]">
@@ -92,46 +53,21 @@ function SlotRow({ session }: { session: DbSession }) {
             >
                 {label}
             </div>
-            {isMine ? (
-                <button
-                    type="button"
-                    disabled={cancelLoading}
-                    onClick={() => void handleCancel()}
-                    className="w-full rounded-xl border border-gray-600 bg-gray-700 px-4 py-2.5 text-sm font-bold text-gray-100 transition-all duration-200 hover:bg-gray-600 active:scale-95 disabled:cursor-not-allowed disabled:opacity-70"
-                >
-                    {cancelLoading ? "Cancelando…" : "Cancelar"}
-                </button>
-            ) : null}
-            {isMine && cancelError ? (
-                <p style={{ margin: 0, fontSize: "0.75rem", color: "#b91c1c" }} role="alert">
-                    {cancelError}
-                </p>
-            ) : null}
-            {!isMine ? (
-                <button
-                    type="button"
-                    disabled={reserveDisabled}
-                    onClick={() =>
-                        void bookSession(session.id, userEmail ?? "").catch(() => {})
-                    }
-                    className={[
-                        "w-full rounded-xl px-4 py-2.5 text-sm font-bold transition-all duration-200 active:scale-95",
-                        isFull || reserveDisabled
-                            ? "cursor-not-allowed bg-gray-800 text-gray-500"
-                            : "bg-gradient-to-r from-blue-500 to-blue-700 text-white shadow-lg shadow-blue-500/30 hover:from-blue-400 hover:to-blue-600",
-                    ].join(" ")}
-                >
-                    {reserveLabel}
-                </button>
-            ) : null}
-            {!canBook ? (
-                <p style={{ margin: 0, fontSize: "0.75rem", color: "#fcd34d" }}>Acceso no disponible</p>
-            ) : sessionFullForJoin ? (
-                <p style={{ margin: 0, fontSize: "0.75rem", fontWeight: 600, color: "#f87171" }}>Sesión llena</p>
-            ) : !isMine ? (
-                <p style={{ margin: 0, fontSize: "0.75rem", color: "#94a3b8" }}>Debes reservar esta sesión</p>
+            <p style={{ margin: 0, fontSize: "0.75rem", color: "#22c55e" }}>Disponible</p>
+            {!canAccess ? (
+                <>
+                    <p style={{ margin: 0, fontSize: "0.75rem", color: "#fcd34d" }}>Acceso no disponible</p>
+                    <Link
+                        href="/pricing"
+                        style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--ds-accent)" }}
+                    >
+                        Obtener acceso →
+                    </Link>
+                </>
             ) : sessionClosed ? (
-                <p style={{ margin: 0, fontSize: "0.75rem", fontWeight: 600, color: "#94a3b8" }}>Sesión cerrada</p>
+                <p style={{ margin: 0, fontSize: "0.75rem", fontWeight: 600, color: "#94a3b8" }}>
+                    Sesión cerrada
+                </p>
             ) : mayOpenLiveJoin ? (
                 <button
                     type="button"
@@ -139,28 +75,15 @@ function SlotRow({ session }: { session: DbSession }) {
                     onClick={() => void handleSecureJoin()}
                     className="inline-flex w-full items-center justify-center rounded-xl bg-red-600 px-4 py-2 text-xs font-bold text-white shadow-lg shadow-red-900/30 hover:bg-red-500 disabled:cursor-wait disabled:opacity-70"
                 >
-                    {joining ? "Abriendo…" : "Unirse a la sesión en vivo"}
+                    {joining ? "Abriendo…" : "Join Live Session"}
                 </button>
             ) : isStudentJoinTooEarly(session, now) ? (
-                <p style={{ margin: 0, fontSize: "0.75rem", color: "#94a3b8" }}>Disponible 10 minutos antes</p>
-            ) : null}
-            <p
-                style={{
-                    margin: 0,
-                    fontSize: "0.75rem",
-                    color: available === 0 ? "#ef4444" : available <= 5 ? "#facc15" : "#22c55e",
-                }}
-            >
-                {available === 0 ? "Full" : `${available} cupos disponibles`}
-            </p>
-            {!canBook ? (
-                <Link
-                    href="/pricing"
-                    style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--ds-accent)" }}
-                >
-                    Obtener acceso →
-                </Link>
-            ) : null}
+                <p style={{ margin: 0, fontSize: "0.75rem", color: "#94a3b8" }}>
+                    Disponible 10 minutos antes
+                </p>
+            ) : (
+                <p style={{ margin: 0, fontSize: "0.75rem", color: "#94a3b8" }}>Live Session</p>
+            )}
         </div>
     )
 }
@@ -172,19 +95,12 @@ const TAB_LABELS: { key: TabKey; label: string }[] = [
 ]
 
 export default function BookSessionSection() {
-    const {
-        activeTab,
-        setActiveTab,
-        filteredSessions,
-        sessions,
-        sessionBookingError,
-        sessionBookingSuccess,
-    } = useSession()
+    const { activeTab, setActiveTab, filteredSessions, sessions } = useSession()
 
     return (
-        <section id="reservar-sesion" aria-labelledby="reservar-sesion-title">
+        <section id="sesiones-en-vivo" aria-labelledby="sesiones-en-vivo-title">
             <h2
-                id="reservar-sesion-title"
+                id="sesiones-en-vivo-title"
                 style={{
                     margin: "0 0 var(--ds-3)",
                     color: "#93c5fd",
@@ -193,34 +109,8 @@ export default function BookSessionSection() {
                     fontWeight: 700,
                 }}
             >
-                Reservar Sesión
+                Sesiones en vivo
             </h2>
-
-            {sessionBookingError ? (
-                <p
-                    role="alert"
-                    style={{
-                        margin: "0 0 var(--ds-3)",
-                        fontSize: "0.875rem",
-                        fontWeight: 600,
-                        color: "#b91c1c",
-                    }}
-                >
-                    {sessionBookingError}
-                </p>
-            ) : null}
-            {sessionBookingSuccess ? (
-                <p
-                    style={{
-                        margin: "0 0 var(--ds-3)",
-                        fontSize: "0.875rem",
-                        fontWeight: 600,
-                        color: "#15803d",
-                    }}
-                >
-                    {sessionBookingSuccess}
-                </p>
-            ) : null}
 
             <div
                 style={{
@@ -276,7 +166,6 @@ export default function BookSessionSection() {
                     ))}
                 </div>
             )}
-            <BookingInsertTestButton />
         </section>
     )
 }

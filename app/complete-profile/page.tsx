@@ -1,11 +1,11 @@
 import { redirect } from "next/navigation"
-import { resolveBookingActor } from "@/lib/bookingAccess"
+import { resolveAcademyActor } from "@/lib/academyAccess"
 import { createSupabaseServiceRoleClient } from "@/lib/access"
 import { ensureTradingStudentByEmail, isDashboardProfileComplete } from "@/lib/tradingStudents"
 import CompleteProfileForm from "./CompleteProfileForm"
 
 export default async function CompleteProfilePage() {
-    const actor = await resolveBookingActor()
+    const actor = await resolveAcademyActor()
     if (!actor.email) {
         redirect("/login?redirect=/complete-profile")
     }

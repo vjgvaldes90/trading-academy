@@ -1,7 +1,7 @@
 "use client"
 
 /**
- * Admin Live Sessions — scheduling & capacity operations only.
+ * Admin Live Sessions — scheduling operations.
  * Extension points: add attendance / waitlists / Zoom host tools under `liveSessions/`
  * or compose new panels beside SessionCardsGrid below.
  */
@@ -11,7 +11,6 @@ import LiveSessionCard from "@/components/admin/liveSessions/LiveSessionCard"
 import CancelSessionConfirmModal from "@/app/admin/CancelSessionConfirmModal"
 import CreateSessionModal from "@/app/admin/CreateSessionModal"
 import EditSessionModal from "@/app/admin/EditSessionModal"
-import SessionBookingsModal from "@/app/admin/SessionBookingsModal"
 import { fetchSecureAdminStartUrl } from "@/lib/secureJoinClient"
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react"
 
@@ -92,7 +91,6 @@ function splitSessionsByWeek(rows: AdminSessionRow[]) {
 function SessionCardsGrid({
     rows,
     highlightedIds,
-    onOpenBookings,
     onEditSession,
     onRequestCancelSession,
     now,
@@ -100,7 +98,6 @@ function SessionCardsGrid({
 }: {
     rows: AdminSessionRow[]
     highlightedIds: Set<string>
-    onOpenBookings: (sessionId: string) => void
     onEditSession: (row: AdminSessionRow) => void
     onRequestCancelSession: (row: AdminSessionRow) => void
     now: Date
@@ -122,7 +119,6 @@ function SessionCardsGrid({
                     row={r}
                     highlighted={highlightedIds.has(r.id)}
                     now={now}
-                    onOpenBookings={onOpenBookings}
                     onEditSession={onEditSession}
                     onRequestCancelSession={onRequestCancelSession}
                     onHostStart={onHostStart}
@@ -180,7 +176,6 @@ export default function AdminSessions() {
     const [rows, setRows] = useState<AdminSessionRow[]>([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
-    const [selectedSession, setSelectedSession] = useState<string | null>(null)
     const [isThisWeekOpen, setIsThisWeekOpen] = useState(true)
     const [isNextWeekOpen, setIsNextWeekOpen] = useState(false)
     const [createModalOpen, setCreateModalOpen] = useState(false)
@@ -232,11 +227,6 @@ export default function AdminSessions() {
         return () => window.clearInterval(t)
     }, [])
 
-    const totalBooked = useMemo(
-        () => rows.reduce((acc, r) => acc + (typeof r.booked === "number" ? r.booked : 0), 0),
-        [rows]
-    )
-
     const { currentWeekSessions, nextWeekSessions } = useMemo(() => splitSessionsByWeek(rows), [rows])
 
     const soonSessions = useMemo(() => {
@@ -274,22 +264,12 @@ export default function AdminSessions() {
         [adminEmailFromCookie]
     )
 
-    const handleBookingCancelled = (sessionId: string) => {
-        setRows((prev) =>
-            prev.map((r) =>
-                r.id === sessionId && typeof r.booked === "number" && r.booked > 0
-                    ? { ...r, booked: r.booked - 1 }
-                    : r
-            )
-        )
-    }
-
     return (
         <div className="mx-auto max-w-7xl space-y-8 text-[#e5e7eb]">
             <header className="border-b border-white/10 pb-8">
                 <h1 className="text-2xl font-bold tracking-tight text-slate-50 lg:text-[1.65rem]">Live Sessions</h1>
                 <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-400">
-                    Real-time capacity overview — this week and next.
+                    Live sessions overview — this week and next.
                 </p>
             </header>
 
@@ -302,12 +282,6 @@ export default function AdminSessions() {
                     >
                         + Nueva sesión
                     </button>
-                    <div className="rounded-lg border border-white/10 bg-white/[0.03] px-4 py-2.5">
-                        <p className="text-[0.65rem] font-semibold uppercase tracking-wider text-slate-500">
-                            Total booked
-                        </p>
-                        <p className="text-lg font-bold tabular-nums text-slate-100">{totalBooked}</p>
-                    </div>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2 border-t border-white/5 pt-4 sm:border-t-0 sm:pt-0">
@@ -372,7 +346,6 @@ export default function AdminSessions() {
                             <SessionCardsGrid
                                 rows={currentWeekSessions}
                                 highlightedIds={highlightedSessionIds}
-                                onOpenBookings={setSelectedSession}
                                 onEditSession={setEditSession}
                                 onRequestCancelSession={setCancelTarget}
                                 now={now}
@@ -389,7 +362,6 @@ export default function AdminSessions() {
                             <SessionCardsGrid
                                 rows={nextWeekSessions}
                                 highlightedIds={highlightedSessionIds}
-                                onOpenBookings={setSelectedSession}
                                 onEditSession={setEditSession}
                                 onRequestCancelSession={setCancelTarget}
                                 now={now}
@@ -440,14 +412,6 @@ export default function AdminSessions() {
                     await loadSessions({ silent: true })
                 }}
             />
-
-            {selectedSession ? (
-                <SessionBookingsModal
-                    sessionId={selectedSession}
-                    onClose={() => setSelectedSession(null)}
-                    onBookingCancelled={handleBookingCancelled}
-                />
-            ) : null}
         </div>
     )
 }

@@ -6,8 +6,7 @@ import { BookOpen, GraduationCap, Home, Settings as SettingsIcon, Video } from "
 export type StudentDashboardView =
     | "dashboard"
     | "classes"
-    | "reserve"
-    | "my-reservations"
+    | "live"
     | "resources"
     | "settings"
 
@@ -20,8 +19,7 @@ type NavItem = {
 const NAV_ITEMS: NavItem[] = [
     { label: "Dashboard", view: "dashboard", icon: Home },
     { label: "Mis Clases", view: "classes", icon: BookOpen },
-    { label: "Reservar Sesión", view: "reserve", icon: Video },
-    { label: "Mis Reservas", view: "my-reservations", icon: GraduationCap },
+    { label: "Sesiones en vivo", view: "live", icon: Video },
     { label: "Recursos", view: "resources", icon: BookOpen },
     { label: "Configuración", view: "settings", icon: SettingsIcon },
 ]
@@ -82,21 +80,21 @@ export default function Sidebar({
                             onClick={() => setActiveView(item.view)}
                             className={[itemBase, isActive ? itemActive : itemNormal].join(" ")}
                         >
-                            <Icon size={18} className="opacity-80 shrink-0" />
+                            <Icon size={18} className={isActive ? "text-blue-400" : "text-slate-300"} />
                             <span>{item.label}</span>
                         </button>
                     )
                 })}
             </nav>
 
-            <div className="mt-auto pt-4">
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-4 flex items-center gap-3">
+            <div className="mt-auto rounded-xl border border-white/10 bg-white/5 p-3">
+                <div className="flex items-center gap-3">
                     <div className="h-10 w-10 rounded-full bg-blue-600/20 border border-white/10 flex items-center justify-center text-blue-200 font-extrabold">
                         {initialsFromName(userName)}
                     </div>
                     <div className="min-w-0">
-                        <div className="text-slate-100 font-bold text-sm truncate">{userName}</div>
-                        <div className="text-white/60 text-xs">{roleLabel}</div>
+                        <div className="truncate text-sm font-bold text-slate-100">{userName}</div>
+                        <div className="text-xs text-white/50">{roleLabel}</div>
                     </div>
                 </div>
             </div>

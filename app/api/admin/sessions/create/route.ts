@@ -14,17 +14,6 @@ export const runtime = "nodejs"
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 
-function parseCapacity(value: unknown): number | null {
-    if (typeof value === "number" && Number.isFinite(value) && Number.isInteger(value)) {
-        return value
-    }
-    if (typeof value === "string" && value.trim() !== "") {
-        const n = Number.parseInt(value.trim(), 10)
-        if (Number.isFinite(n) && String(n) === value.trim()) return n
-    }
-    return null
-}
-
 function parseDurationMinutes(value: unknown): number | null {
     if (typeof value === "number" && Number.isFinite(value) && Number.isInteger(value) && value > 0) {
         return Math.min(value, 1440)
@@ -61,7 +50,6 @@ export async function POST(req: Request) {
         const b = body as Record<string, unknown>
         const dateRaw = typeof b.date === "string" ? b.date.trim() : ""
         const timeRaw = typeof b.time === "string" ? b.time.trim() : ""
-        const parsedCapacity = parseCapacity(b.capacity)
         const parsedDuration = parseDurationMinutes(b.duration ?? b.duration_minutes)
 
         if (!dateRaw || !timeRaw) {
@@ -77,14 +65,6 @@ export async function POST(req: Request) {
                 { status: 400 }
             )
         }
-
-        const capacity: number =
-            typeof parsedCapacity === "number" &&
-            Number.isFinite(parsedCapacity) &&
-            Number.isInteger(parsedCapacity) &&
-            parsedCapacity > 0
-                ? parsedCapacity
-                : 10
 
         const duration = parsedDuration ?? defaultMeetingDurationMinutes()
 
@@ -131,9 +111,6 @@ export async function POST(req: Request) {
             day,
             date: dateRaw,
             time: timeRaw,
-            capacity,
-            max_slots: capacity,
-            booked_slots: 0,
             link: zoom.join_url,
             status: "active" as const,
             created_by_admin_email: adminEmail,

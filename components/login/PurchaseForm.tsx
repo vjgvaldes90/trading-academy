@@ -4,8 +4,8 @@ import { useState } from "react"
 import { supabase } from "@/lib/supabase"
 
 // IMPORTANT:
-// Do NOT reserve seats here.
-// Booking must happen only from the dashboard.
+// Do NOT create live-session reservations here.
+// Live join happens only from the dashboard via secure join.
 
 type PurchaseFormProps = {
     email: string

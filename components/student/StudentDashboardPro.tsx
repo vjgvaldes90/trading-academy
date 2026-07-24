@@ -1,13 +1,12 @@
 "use client"
 
 import BookSessionSection from "@/components/dashboard/focused/BookSessionSection"
-import MyBookingsSection from "@/components/dashboard/focused/MyBookingsSection"
 import ResourcesSection from "@/components/dashboard/focused/ResourcesSection"
 import StudentNotificationsSection from "@/components/dashboard/focused/StudentNotificationsSection"
 import { useSession } from "@/context/SessionContext"
 import {
     canShowStudentLiveJoinButton,
-    getNextBookedSession,
+    getNextUpcomingSession,
     isStudentJoinTooEarly,
     isStudentSecureJoinWindowClosed,
     sessionDisplayDay,
@@ -49,7 +48,7 @@ function thumbUrl(lesson: Lesson): string | null {
 
 export default function StudentDashboardPro({ userName }: { userName: string }) {
     const router = useRouter()
-    const { sessions, bookingAccess, userEmail } = useSession()
+    const { sessions, academyAccess, userEmail } = useSession()
     const [now, setNow] = useState(() => new Date())
 
     const [lessons, setLessons] = useState<Lesson[]>([])
@@ -102,18 +101,17 @@ export default function StudentDashboardPro({ userName }: { userName: string }) 
         }
     }, [])
 
-    const nextBooked = useMemo(() => getNextBookedSession(sessions, now), [sessions, now])
+    const nextBooked = useMemo(() => getNextUpcomingSession(sessions, now), [sessions, now])
     const canJoinNext =
         Boolean(userEmail) &&
         Boolean(nextBooked) &&
         canShowStudentLiveJoinButton(nextBooked!, now, {
-            hasPaid: bookingAccess.canBook,
-            hasReservation: true,
+            hasPaid: academyAccess.canAccess,
         })
 
     const nextClosed =
         Boolean(nextBooked) &&
-        bookingAccess.canBook &&
+        academyAccess.canAccess &&
         isStudentSecureJoinWindowClosed(nextBooked!, now) &&
         !isStudentJoinTooEarly(nextBooked!, now)
 
@@ -190,28 +188,16 @@ export default function StudentDashboardPro({ userName }: { userName: string }) 
                             </div>
                             <button
                                 type="button"
-                                disabled={
-                                    !(
-                                        Boolean(userEmail) &&
-                                        canShowStudentLiveJoinButton(nextBooked, now, {
-                                            hasPaid: bookingAccess.canBook,
-                                            hasReservation: true,
-                                        })
-                                    )
-                                }
+                                disabled={!canJoinNext}
                                 onClick={() => router.push(`/student/classroom/${nextBooked.id}`)}
                                 className={[
                                     "rounded-xl px-4 py-2.5 font-extrabold transition",
-                                    Boolean(userEmail) &&
-                                    canShowStudentLiveJoinButton(nextBooked, now, {
-                                        hasPaid: bookingAccess.canBook,
-                                        hasReservation: true,
-                                    })
+                                    canJoinNext
                                         ? "bg-blue-600/20 text-blue-300 border border-white/10 hover:bg-white/10"
                                         : "cursor-not-allowed bg-white/5 text-white/40 border border-white/10",
                                 ].join(" ")}
                             >
-                                Unirse ahora
+                                Join Live Session
                             </button>
                             {nextClosed ? (
                                 <div className="text-white/60 text-xs">Sesión cerrada</div>
@@ -305,18 +291,14 @@ export default function StudentDashboardPro({ userName }: { userName: string }) 
 
             {/* QUICK ACTIONS */}
             <section aria-label="Quick actions">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <a href="#reservar-sesion" className="bg-[#111827] p-4 rounded-xl border border-white/10 hover:bg-white/10 transition">
-                        <div className="font-extrabold">Reservar sesión</div>
-                        <div className="text-white/60 text-sm mt-1">Elige tu próxima clase en vivo</div>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    <a href="#sesiones-en-vivo" className="bg-[#111827] p-4 rounded-xl border border-white/10 hover:bg-white/10 transition">
+                        <div className="font-extrabold">Sesiones en vivo</div>
+                        <div className="text-white/60 text-sm mt-1">Únete a la próxima clase</div>
                     </a>
                     <a href="#mis-clases" className="bg-[#111827] p-4 rounded-xl border border-white/10 hover:bg-white/10 transition">
                         <div className="font-extrabold">Ver clases</div>
                         <div className="text-white/60 text-sm mt-1">Continúa tu aprendizaje</div>
-                    </a>
-                    <a href="#mis-reservas" className="bg-[#111827] p-4 rounded-xl border border-white/10 hover:bg-white/10 transition">
-                        <div className="font-extrabold">Mis reservas</div>
-                        <div className="text-white/60 text-sm mt-1">Revisa tus sesiones</div>
                     </a>
                     <div className="bg-[#111827] p-4 rounded-xl border border-white/10 hover:bg-white/10 transition">
                         <div className="font-extrabold">Comunidad</div>
@@ -325,19 +307,16 @@ export default function StudentDashboardPro({ userName }: { userName: string }) 
                 </div>
             </section>
 
-            {/* RESERVE SECTION (existing, wrapped as a card) */}
-            <section id="reservar-sesion-card" className="rounded-2xl p-6 bg-[#111827] border border-white/10 shadow-sm">
+            <section id="sesiones-en-vivo-card" className="rounded-2xl p-6 bg-[#111827] border border-white/10 shadow-sm">
                 <BookSessionSection />
             </section>
 
-            {/* KEEP EXISTING SECTIONS (no feature loss) */}
             <section className="rounded-2xl p-6 bg-[#111827] border border-white/10 shadow-sm">
-                <div id="mis-reservas" className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <StudentNotificationsSection />
-                    <MyBookingsSection />
-                </div>
-                <div id="recursos" className="mt-6">
-                    <ResourcesSection />
+                    <div id="recursos">
+                        <ResourcesSection />
+                    </div>
                 </div>
             </section>
         </div>

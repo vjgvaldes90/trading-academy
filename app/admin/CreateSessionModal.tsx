@@ -34,7 +34,6 @@ type CreateSessionModalProps = {
 export default function CreateSessionModal({ open, onClose, onSuccess }: CreateSessionModalProps) {
     const [date, setDate] = useState("")
     const [time, setTime] = useState("")
-    const [capacity, setCapacity] = useState("")
     const [submitError, setSubmitError] = useState<string | null>(null)
     const [submitting, setSubmitting] = useState(false)
 
@@ -42,7 +41,6 @@ export default function CreateSessionModal({ open, onClose, onSuccess }: CreateS
         if (!open) return
         setDate("")
         setTime("")
-        setCapacity("")
         setSubmitError(null)
         setSubmitting(false)
     }, [open])
@@ -61,15 +59,6 @@ export default function CreateSessionModal({ open, onClose, onSuccess }: CreateS
             setSubmitError("La hora es obligatoria.")
             return
         }
-        const cap = Number.parseInt(capacity.trim(), 10)
-        if (capacity.trim() === "" || !Number.isFinite(cap) || !Number.isInteger(cap)) {
-            setSubmitError("El cupo debe ser un número entero.")
-            return
-        }
-        if (cap <= 0) {
-            setSubmitError("El cupo debe ser mayor que 0.")
-            return
-        }
 
         setSubmitting(true)
         try {
@@ -80,7 +69,6 @@ export default function CreateSessionModal({ open, onClose, onSuccess }: CreateS
                 body: JSON.stringify({
                     date: date.trim(),
                     time: time.trim(),
-                    capacity: cap,
                 }),
                 cache: "no-store",
             })
@@ -189,7 +177,7 @@ export default function CreateSessionModal({ open, onClose, onSuccess }: CreateS
                             style={inputStyle}
                         />
                     </div>
-                    <div style={{ marginBottom: 16 }}>
+                    <div style={{ marginBottom: 18 }}>
                         <label htmlFor="create-session-time" style={labelStyle}>
                             Hora
                         </label>
@@ -200,24 +188,6 @@ export default function CreateSessionModal({ open, onClose, onSuccess }: CreateS
                             value={time}
                             onChange={(e) => setTime(e.target.value)}
                             disabled={submitting}
-                            style={inputStyle}
-                        />
-                    </div>
-                    <div style={{ marginBottom: 18 }}>
-                        <label htmlFor="create-session-capacity" style={labelStyle}>
-                            Cupo (plazas)
-                        </label>
-                        <input
-                            id="create-session-capacity"
-                            type="number"
-                            inputMode="numeric"
-                            min={1}
-                            step={1}
-                            required
-                            value={capacity}
-                            onChange={(e) => setCapacity(e.target.value)}
-                            disabled={submitting}
-                            placeholder="Ej. 12"
                             style={inputStyle}
                         />
                     </div>

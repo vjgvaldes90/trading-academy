@@ -32,8 +32,8 @@ export default function Schedule() {
       <div className="max-w-5xl mx-auto px-8 text-center">
 
         {/* 🔥 URGENCIA */}
-        <p className="mb-4 font-semibold text-red-400">
-          ⚠️ Cupos limitados en cada sesión en vivo
+        <p className="mb-4 font-semibold text-blue-300">
+          Sesiones en vivo disponibles
         </p>
 
         {/* 🧠 TITULO */}

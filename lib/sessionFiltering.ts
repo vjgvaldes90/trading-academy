@@ -28,8 +28,8 @@ function sessionLocalMidnight(session: DbSession): Date | null {
     return d
 }
 
-/** Today onward (availability is controlled by capacity/bookings in UI/API). */
-export function filterBookableSessionsFromToday(sessions: DbSession[], ref: Date): DbSession[] {
+/** Today onward (join eligibility is controlled by academy access + session window). */
+export function filterUpcomingSessionsFromToday(sessions: DbSession[], ref: Date): DbSession[] {
     const today0 = localDayStart(ref)
     const filtered = sessions.filter((s) => {
         const d = sessionLocalMidnight(s)

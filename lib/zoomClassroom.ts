@@ -16,7 +16,7 @@ function normalizeJoinName(value: string): string {
 }
 
 /**
- * Prefill participant display name for Zoom links when URL-based params are supported.
+ * Prefill display name for Zoom links when URL-based params are supported.
  * Keeps non-Zoom links unchanged.
  */
 export function buildJoinUrlWithPreferredName(rawUrl: string, preferredName: string): string {

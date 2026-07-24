@@ -25,29 +25,6 @@ export async function GET() {
             )
         }
 
-        const { data: bookings, error: bookingsErr } = await supabase
-            .from("bookings")
-            .select("session_id")
-            .eq("status", "confirmed")
-
-        if (bookingsErr) {
-            console.error("[api/admin/sessions] bookings query error", bookingsErr)
-            return NextResponse.json(
-                { error: "Failed to load admin sessions", details: bookingsErr.message },
-                { status: 500 }
-            )
-        }
-
-        const bookedCountBySession = new Map<string, number>()
-        for (const row of bookings ?? []) {
-            const sessionId =
-                typeof (row as { session_id?: unknown }).session_id === "string"
-                    ? (row as { session_id: string }).session_id
-                    : null
-            if (!sessionId) continue
-            bookedCountBySession.set(sessionId, (bookedCountBySession.get(sessionId) ?? 0) + 1)
-        }
-
         const now = new Date()
         const payload = (sessions ?? []).map((row) => {
             const r = row as Record<string, unknown>
@@ -69,8 +46,6 @@ export async function GET() {
                 day: null,
                 date,
                 time,
-                max_slots: 0,
-                booked_slots: 0,
                 link: null,
                 is_live: r.is_live === true,
             }
@@ -82,8 +57,6 @@ export async function GET() {
                 title: typeof r.title === "string" ? r.title : null,
                 date,
                 time,
-                capacity: typeof r.capacity === "number" ? r.capacity : 0,
-                booked: bookedCountBySession.get(id) ?? 0,
                 status: typeof r.status === "string" ? r.status : "active",
                 is_live: started || r.is_live === true,
                 starts_at: startsAt ? startsAt.toISOString() : null,
@@ -107,4 +80,3 @@ export async function GET() {
         )
     }
 }
-

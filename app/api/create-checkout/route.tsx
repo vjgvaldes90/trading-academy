@@ -4,8 +4,8 @@ import { createStripeClient, getStripePriceId, getStripeSecretKey } from "@/lib/
 export const runtime = "nodejs"
 
 // IMPORTANT:
-// Do NOT reserve seats here.
-// Booking must only happen from the dashboard.
+// Do NOT create live-session reservations here.
+// Live join happens only from the dashboard via secure join.
 
 function appOrigin(): string {
     const raw = process.env.NEXT_PUBLIC_APP_URL?.trim() ?? "http://localhost:3000"

@@ -1,5 +1,5 @@
 /**
- * Academy-wide access (trading_students), independent of per-session bookings.
+ * Academy-wide access (trading_students), independent of live-session join windows.
  * Supported access_type values for admin / product: paid, free, discounted, discount, vip.
  */
 export const ACADEMY_ACCESS_TYPES = ["paid", "free", "discounted", "discount", "vip"] as const

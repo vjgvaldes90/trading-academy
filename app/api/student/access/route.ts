@@ -14,8 +14,8 @@ function normalizeEmail(raw: string | null): string | null {
 }
 
 /**
- * GET ?user_email=… — whether this email may use the academy (dashboard / booking gate).
- * Same trust model as /api/my-bookings (caller supplies email).
+ * GET ?user_email=… — whether this email may use the academy (dashboard / live join gate).
+ * Same trust model as other student calendar APIs (caller supplies email).
  */
 export async function GET(req: Request) {
     try {

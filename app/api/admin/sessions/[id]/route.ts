@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server"
 import { requireAuthorizedAdminFromCookies } from "@/lib/adminAuth"
 import { createSupabaseServiceRoleClient } from "@/lib/access"
-import { notifyConfirmedBookingsOfSessionChange } from "@/lib/notifySessionBookingStudents"
 import {
     buildZoomStartTime,
     deleteZoomMeeting,
@@ -14,18 +13,10 @@ export const runtime = "nodejs"
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
-type RouteCtx = { params: Promise<{ id: string }> }
+const SESSION_SELECT =
+    "id, session_date, session_hour, date, time, link, status, zoom_meeting_id, zoom_start_url"
 
-function parseCapacity(value: unknown): number | null {
-    if (typeof value === "number" && Number.isFinite(value) && Number.isInteger(value)) {
-        return value
-    }
-    if (typeof value === "string" && value.trim() !== "") {
-        const n = Number.parseInt(value.trim(), 10)
-        if (Number.isFinite(n) && String(n) === value.trim()) return n
-    }
-    return null
-}
+type RouteCtx = { params: Promise<{ id: string }> }
 
 function sessionRowDate(row: Record<string, unknown>): string | null {
     const a = row.session_date ?? row.date
@@ -65,53 +56,16 @@ export async function PATCH(req: Request, context: RouteCtx) {
 
         const b = body as Record<string, unknown>
         const hasTime = Object.prototype.hasOwnProperty.call(b, "time")
-        const hasCapacity = Object.prototype.hasOwnProperty.call(b, "capacity")
         const hasStatus = Object.prototype.hasOwnProperty.call(b, "status")
 
-        if (!hasTime && !hasCapacity && !hasStatus) {
+        if (!hasTime && !hasStatus) {
             return NextResponse.json(
-                { error: "Provide at least one of: time, capacity, status" },
+                { error: "Provide at least one of: time, status" },
                 { status: 400 }
             )
         }
 
         const supabase = createSupabaseServiceRoleClient()
-
-        if (hasCapacity && !hasTime && !hasStatus) {
-            const cap = parseCapacity(b.capacity)
-            if (cap === null) {
-                return NextResponse.json({ error: "capacity must be an integer" }, { status: 400 })
-            }
-            if (cap < 0) {
-                return NextResponse.json({ error: "capacity must be non-negative" }, { status: 400 })
-            }
-
-            const { data, error } = await supabase
-                .from("sessions")
-                .update({ capacity: cap, last_edited_by_admin_email: adminEmail })
-                .eq("id", id)
-                .select("id, session_date, session_hour, date, time, capacity, link, status, zoom_meeting_id, zoom_start_url")
-                .single()
-
-            if (error) {
-                if (error.code === "PGRST116") {
-                    return NextResponse.json({ error: "Session not found" }, { status: 404 })
-                }
-                console.error("[api/admin/sessions/[id]] PATCH capacity-only update error", error)
-                return NextResponse.json(
-                    { error: "Failed to update session", details: error.message },
-                    { status: 500 }
-                )
-            }
-
-            await notifyConfirmedBookingsOfSessionChange(
-                supabase,
-                id,
-                "Una sesión en la que estabas inscrito ha sido actualizada (hora o cupo). Revisa el calendario."
-            )
-
-            return NextResponse.json(data)
-        }
 
         if (hasStatus) {
             const raw = b.status
@@ -140,9 +94,10 @@ export async function PATCH(req: Request, context: RouteCtx) {
                 return NextResponse.json({ error: "Session not found" }, { status: 404 })
             }
 
-            const zm = typeof (row as { zoom_meeting_id?: unknown }).zoom_meeting_id === "string"
-                ? (row as { zoom_meeting_id: string }).zoom_meeting_id
-                : null
+            const zm =
+                typeof (row as { zoom_meeting_id?: unknown }).zoom_meeting_id === "string"
+                    ? (row as { zoom_meeting_id: string }).zoom_meeting_id
+                    : null
 
             try {
                 await zoomDeleteIfPresent(zm)
@@ -163,7 +118,7 @@ export async function PATCH(req: Request, context: RouteCtx) {
                 .from("sessions")
                 .update({ ...SESSION_CLEAR_CANCEL, last_edited_by_admin_email: adminEmail })
                 .eq("id", id)
-                .select("id, session_date, session_hour, date, time, capacity, link, status, zoom_meeting_id, zoom_start_url")
+                .select(SESSION_SELECT)
                 .single()
 
             if (error) {
@@ -174,30 +129,12 @@ export async function PATCH(req: Request, context: RouteCtx) {
                 )
             }
 
-            await notifyConfirmedBookingsOfSessionChange(
-                supabase,
-                id,
-                "Una sesión en la que estabas inscrito ha sido cancelada. Revisa «Tus reservas»."
-            )
-
             return NextResponse.json(data)
         }
 
         const timeRaw = typeof b.time === "string" ? b.time.trim() : ""
         if (!timeRaw) {
             return NextResponse.json({ error: "time must be a non-empty string" }, { status: 400 })
-        }
-
-        const capPatch = parseCapacity(b.capacity)
-        let capacityNum: number | undefined
-        if (hasCapacity) {
-            if (capPatch === null) {
-                return NextResponse.json({ error: "capacity must be an integer" }, { status: 400 })
-            }
-            if (capPatch < 0) {
-                return NextResponse.json({ error: "capacity must be non-negative" }, { status: 400 })
-            }
-            capacityNum = capPatch
         }
 
         const { data: existing, error: exErr } = await supabase.from("sessions").select("*").eq("id", id).maybeSingle()
@@ -210,7 +147,7 @@ export async function PATCH(req: Request, context: RouteCtx) {
             )
         }
         if (!existing || typeof existing !== "object") {
-            return NextResponse.json({ error: "Session not found" }, { status: 404 })
+            return NextResponse.json({ error: "Session not found", }, { status: 404 })
         }
 
         const rec = existing as Record<string, unknown>
@@ -227,36 +164,7 @@ export async function PATCH(req: Request, context: RouteCtx) {
             )
         }
 
-        let zoomUrls: {
-            join_url: string
-            start_url: string
-            password: string
-            meeting_id: string
-        } | null = null
-
-        if (zoomMeetingId) {
-            let startZoom: string
-            try {
-                startZoom = buildZoomStartTime(day, timeRaw)
-            } catch (e: unknown) {
-                const msg = e instanceof Error ? e.message : "Invalid time"
-                return NextResponse.json({ error: "Invalid session time", details: msg }, { status: 400 })
-            }
-            try {
-                zoomUrls = await updateZoomMeeting(zoomMeetingId, { start_time: startZoom })
-            } catch (e: unknown) {
-                if (e instanceof ZoomApiError) {
-                    return NextResponse.json(
-                        { error: "Could not update Zoom meeting; session hours were not saved", details: e.message },
-                        { status: 502 }
-                    )
-                }
-                if (e instanceof ZoomConfigError) {
-                    return NextResponse.json({ error: "Zoom is not configured", details: e.message }, { status: 500 })
-                }
-                throw e
-            }
-        } else {
+        if (!zoomMeetingId) {
             return NextResponse.json(
                 {
                     error: "This session has no Zoom meeting id; create a new session instead of editing the link manually.",
@@ -266,26 +174,47 @@ export async function PATCH(req: Request, context: RouteCtx) {
             )
         }
 
-        const dbUpdate: Record<string, unknown> = {
-            session_hour: timeRaw,
-            last_edited_by_admin_email: adminEmail,
+        let startZoom: string
+        try {
+            startZoom = buildZoomStartTime(day, timeRaw)
+        } catch (e: unknown) {
+            const msg = e instanceof Error ? e.message : "Invalid time"
+            return NextResponse.json({ error: "Invalid session time", details: msg }, { status: 400 })
         }
 
-        if (capacityNum !== undefined) {
-            dbUpdate.capacity = capacityNum
+        let zoomUrls: {
+            join_url: string
+            start_url: string
+            password: string
+            meeting_id: string
         }
-        if (zoomUrls) {
-            dbUpdate.link = zoomUrls.join_url
-            dbUpdate.zoom_meeting_id = zoomUrls.meeting_id
-            dbUpdate.zoom_start_url = zoomUrls.start_url
-            dbUpdate.zoom_password = zoomUrls.password || null
+        try {
+            zoomUrls = await updateZoomMeeting(zoomMeetingId, { start_time: startZoom })
+        } catch (e: unknown) {
+            if (e instanceof ZoomApiError) {
+                return NextResponse.json(
+                    { error: "Could not update Zoom meeting; session hours were not saved", details: e.message },
+                    { status: 502 }
+                )
+            }
+            if (e instanceof ZoomConfigError) {
+                return NextResponse.json({ error: "Zoom is not configured", details: e.message }, { status: 500 })
+            }
+            throw e
         }
 
         const { data, error } = await supabase
             .from("sessions")
-            .update(dbUpdate)
+            .update({
+                session_hour: timeRaw,
+                last_edited_by_admin_email: adminEmail,
+                link: zoomUrls.join_url,
+                zoom_meeting_id: zoomUrls.meeting_id,
+                zoom_start_url: zoomUrls.start_url,
+                zoom_password: zoomUrls.password || null,
+            })
             .eq("id", id)
-            .select("id, session_date, session_hour, date, time, capacity, link, status, zoom_meeting_id, zoom_start_url")
+            .select(SESSION_SELECT)
             .single()
 
         if (error) {
@@ -295,12 +224,6 @@ export async function PATCH(req: Request, context: RouteCtx) {
                 { status: 500 }
             )
         }
-
-        await notifyConfirmedBookingsOfSessionChange(
-            supabase,
-            id,
-            "Una sesión en la que estabas inscrito ha sido actualizada (hora o cupo). Revisa el calendario."
-        )
 
         return NextResponse.json(data)
     } catch (err: unknown) {
@@ -337,9 +260,10 @@ export async function DELETE(_req: Request, context: RouteCtx) {
             return NextResponse.json({ error: "Session not found" }, { status: 404 })
         }
 
-        const zm = typeof (row as { zoom_meeting_id?: unknown }).zoom_meeting_id === "string"
-            ? (row as { zoom_meeting_id: string }).zoom_meeting_id
-            : null
+        const zm =
+            typeof (row as { zoom_meeting_id?: unknown }).zoom_meeting_id === "string"
+                ? (row as { zoom_meeting_id: string }).zoom_meeting_id
+                : null
 
         try {
             await zoomDeleteIfPresent(zm)
@@ -360,7 +284,7 @@ export async function DELETE(_req: Request, context: RouteCtx) {
             .from("sessions")
             .update({ ...SESSION_CLEAR_CANCEL, last_edited_by_admin_email: adminEmail })
             .eq("id", id)
-            .select("id, session_date, session_hour, date, time, capacity, status, link")
+            .select(SESSION_SELECT)
             .single()
 
         if (error) {
@@ -373,12 +297,6 @@ export async function DELETE(_req: Request, context: RouteCtx) {
                 { status: 500 }
             )
         }
-
-        await notifyConfirmedBookingsOfSessionChange(
-            supabase,
-            id,
-            "Una sesión en la que estabas inscrito ha sido cancelada. Revisa «Tus reservas»."
-        )
 
         return NextResponse.json(data)
     } catch (err: unknown) {

@@ -7,8 +7,7 @@ import dashboardTheme from "@/components/dashboard/dashboardTheme.module.css"
 import type { StudentDashboardView } from "@/components/student/Sidebar"
 import DashboardHome from "@/components/dashboard/DashboardHome"
 import ClassesView from "@/components/dashboard/ClassesView"
-import ReserveSession from "@/components/dashboard/ReserveSession"
-import MyReservations from "@/components/dashboard/MyReservations"
+import LiveSessionsView from "@/components/dashboard/LiveSessionsView"
 import Resources from "@/components/dashboard/Resources"
 import Settings from "@/components/dashboard/Settings"
 import { SessionProvider, useSession } from "@/context/SessionContext"
@@ -56,8 +55,7 @@ function DashboardShell({
     const sectionTitles: Record<StudentDashboardView, string> = {
         dashboard: "Dashboard",
         classes: "Mis Clases",
-        reserve: "Reservar Sesión",
-        "my-reservations": "Mis Reservas",
+        live: "Sesiones en vivo",
         resources: "Recursos",
         settings: "Configuración",
     }
@@ -116,8 +114,7 @@ function DashboardShell({
                         />
                     ) : null}
                     {activeView === "classes" ? <ClassesView /> : null}
-                    {activeView === "reserve" ? <ReserveSession /> : null}
-                    {activeView === "my-reservations" ? <MyReservations /> : null}
+                    {activeView === "live" ? <LiveSessionsView /> : null}
                     {activeView === "resources" ? <Resources /> : null}
                     {activeView === "settings" ? (
                         <Settings
@@ -142,7 +139,7 @@ function DashboardShell({
 }
 
 /**
- * Entire dashboard + booking UI: no RSC, no `/api/student-self`, no server Supabase for this tree.
+ * Entire dashboard UI: no RSC, no `/api/student-self`, no server Supabase for this tree.
  */
 export default function DashboardPageClient() {
     const router = useRouter()
@@ -241,13 +238,12 @@ export default function DashboardPageClient() {
     return (
         <SessionProvider
             initialSessions={[]}
-            initialBookingAccess={{
-                canBook: false,
+            initialAcademyAccess={{
+                canAccess: false,
                 message: null,
                 actor: { email: userEmail },
             }}
             initialUserEmail={userEmail}
-            initialMyBookings={[]}
         >
             <DashboardShell welcomeName={welcomeName} user={user} />
         </SessionProvider>

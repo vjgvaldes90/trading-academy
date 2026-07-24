@@ -2,42 +2,38 @@ import type { SupabaseClient } from "@supabase/supabase-js"
 import { createClient } from "@supabase/supabase-js"
 import { emailHasAcademyAccess } from "@/lib/hasPaid"
 
-export type BookingActor = {
+export type AcademyActor = {
     email: string | null
 }
 
-export type CanBookResult = { ok: true } | { ok: false; reason: string }
+export type AcademyAccessCheckResult = { ok: true } | { ok: false; reason: string }
 
 /**
  * Business rules (server-side):
  * Access via `trading_students` (is_active, access_type, optional expiry; paid needs access_code).
- *
- * Extend `subscriptions` when you sync Stripe customer_subscription webhooks.
  */
-export async function canUserBook(
+export async function canAccessAcademy(
     admin: SupabaseClient,
-    _ignoredActorEmailKey: string | null,
+    _ignored: string | null,
     email: string | null
-): Promise<CanBookResult> {
+): Promise<AcademyAccessCheckResult> {
     const normalizedEmail = email?.trim().toLowerCase() || null
 
     if (!normalizedEmail) {
-        return { ok: false, reason: "Debes iniciar sesión para reservar." }
+        return { ok: false, reason: "Debes iniciar sesión para continuar." }
     }
 
-    if (normalizedEmail) {
-        try {
-            const allowed = await emailHasAcademyAccess(admin, normalizedEmail)
-            if (allowed) return { ok: true }
-        } catch (e) {
-            console.error("[canUserBook] access check failed", e)
-            return { ok: false, reason: "No pudimos verificar tu acceso. Intenta más tarde." }
-        }
+    try {
+        const allowed = await emailHasAcademyAccess(admin, normalizedEmail)
+        if (allowed) return { ok: true }
+    } catch (e) {
+        console.error("[canAccessAcademy] access check failed", e)
+        return { ok: false, reason: "No pudimos verificar tu acceso. Intenta más tarde." }
     }
 
     return {
         ok: false,
-        reason: "No tienes acceso activo. Compra acceso para reservar cupos.",
+        reason: "No tienes acceso activo. Compra acceso para unirte a sesiones.",
     }
 }
 

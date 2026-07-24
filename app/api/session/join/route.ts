@@ -66,27 +66,6 @@ export async function POST(req: Request) {
             )
         }
 
-        const { data: booking, error: bookErr } = await supabase
-            .from("bookings")
-            .select("id")
-            .eq("session_id", sessionId)
-            .eq("user_email", verifiedEmail)
-            .eq("status", "confirmed")
-            .maybeSingle()
-
-        if (bookErr) {
-            console.error("[api/session/join] booking lookup", bookErr)
-            return NextResponse.json({ error: "Failed to verify reservation" }, { status: 500 })
-        }
-        if (!booking?.id) {
-            denyReason = "not_reserved"
-            console.log("[SECURE JOIN DENIED]", { reason: denyReason, session_id: sessionId })
-            return NextResponse.json(
-                { error: "No confirmed reservation for this session", code: denyReason },
-                { status: 403 }
-            )
-        }
-
         const { data: row, error: sessErr } = await supabase
             .from("sessions")
             .select("*")
@@ -110,20 +89,6 @@ export async function POST(req: Request) {
             console.log("[SECURE JOIN DENIED]", { reason: denyReason, session_id: sessionId })
             return NextResponse.json(
                 { error: "Session is not available", code: denyReason },
-                { status: 403 }
-            )
-        }
-
-        const bookedSlotsRaw = rec.booked_slots ?? rec.seats_taken
-        const bookedSlots =
-            typeof bookedSlotsRaw === "number" && Number.isFinite(bookedSlotsRaw)
-                ? bookedSlotsRaw
-                : 0
-        if (bookedSlots <= 0) {
-            denyReason = "no_bookings_on_session"
-            console.log("[SECURE JOIN DENIED]", { reason: denyReason, session_id: sessionId })
-            return NextResponse.json(
-                { error: "Session has no active bookings", code: denyReason },
                 { status: 403 }
             )
         }

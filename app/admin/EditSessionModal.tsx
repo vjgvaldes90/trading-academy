@@ -39,9 +39,6 @@ function toTimeInputValue(raw: string | null): string {
 export type EditSessionTarget = {
     id: string
     time: string | null
-    capacity: number | null
-    /** Current confirmed bookings; used to block capacity below booked. */
-    booked?: number | null
     date?: string | null
 }
 
@@ -54,22 +51,12 @@ type EditSessionModalProps = {
 
 export default function EditSessionModal({ open, session, onClose, onSuccess }: EditSessionModalProps) {
     const [time, setTime] = useState(() => toTimeInputValue(session?.time ?? null))
-    const [capacity, setCapacity] = useState(() =>
-        typeof session?.capacity === "number" && Number.isFinite(session.capacity)
-            ? String(session.capacity)
-            : ""
-    )
     const [submitError, setSubmitError] = useState<string | null>(null)
     const [submitting, setSubmitting] = useState(false)
 
     useEffect(() => {
         if (!open || !session) return
         setTime(toTimeInputValue(session.time))
-        setCapacity(
-            typeof session.capacity === "number" && Number.isFinite(session.capacity)
-                ? String(session.capacity)
-                : ""
-        )
         setSubmitError(null)
         setSubmitting(false)
     }, [open, session])
@@ -86,23 +73,6 @@ export default function EditSessionModal({ open, session, onClose, onSuccess }: 
             setSubmitError("La hora es obligatoria.")
             return
         }
-        const cap = Number.parseInt(capacity.trim(), 10)
-        if (capacity.trim() === "" || !Number.isFinite(cap) || !Number.isInteger(cap)) {
-            setSubmitError("El cupo debe ser un número entero.")
-            return
-        }
-        if (cap <= 0) {
-            setSubmitError("El cupo debe ser mayor que 0.")
-            return
-        }
-
-        const booked = typeof session.booked === "number" && Number.isFinite(session.booked) ? session.booked : 0
-        if (cap < booked) {
-            setSubmitError(
-                `El cupo no puede ser menor que las reservas confirmadas (${booked}). Reduce reservas o elige un cupo mayor o igual.`
-            )
-            return
-        }
 
         setSubmitting(true)
         try {
@@ -112,7 +82,6 @@ export default function EditSessionModal({ open, session, onClose, onSuccess }: 
                 credentials: "include",
                 body: JSON.stringify({
                     time: time.trim(),
-                    capacity: cap,
                 }),
                 cache: "no-store",
             })
@@ -207,7 +176,7 @@ export default function EditSessionModal({ open, session, onClose, onSuccess }: 
                 </p>
 
                 <form onSubmit={(e) => void handleSubmit(e)} style={{ padding: "14px 18px 20px" }}>
-                    <div style={{ marginBottom: 16 }}>
+                    <div style={{ marginBottom: 18 }}>
                         <label htmlFor="edit-session-time" style={labelStyle}>
                             Hora
                         </label>
@@ -217,35 +186,6 @@ export default function EditSessionModal({ open, session, onClose, onSuccess }: 
                             required
                             value={time}
                             onChange={(e) => setTime(e.target.value)}
-                            disabled={submitting}
-                            style={inputStyle}
-                        />
-                    </div>
-                    <div style={{ marginBottom: 18 }}>
-                        <label htmlFor="edit-session-capacity" style={labelStyle}>
-                            Cupo (plazas)
-                        </label>
-                        {typeof session.booked === "number" && session.booked >= 0 ? (
-                            <p style={{ margin: "0 0 8px", fontSize: "0.78rem", color: "#64748b" }}>
-                                Reservas confirmadas:{" "}
-                                <strong style={{ color: "#cbd5e1" }}>{session.booked}</strong> — el cupo no puede ser
-                                inferior.
-                            </p>
-                        ) : null}
-                        <input
-                            id="edit-session-capacity"
-                            type="number"
-                            inputMode="numeric"
-                            min={Math.max(
-                                1,
-                                typeof session.booked === "number" && Number.isFinite(session.booked)
-                                    ? session.booked
-                                    : 1
-                            )}
-                            step={1}
-                            required
-                            value={capacity}
-                            onChange={(e) => setCapacity(e.target.value)}
                             disabled={submitting}
                             style={inputStyle}
                         />

@@ -7,16 +7,8 @@ export type DbSession = {
     date: string | null
     /** Display time label; maps from `session_hour`. */
     time: string | null
-    max_slots: number | null
-    booked_slots: number | null
-    /** Backend-computed real-time availability from /api/sessions. */
-    available_spots?: number | null
     link: string | null
     is_live?: boolean
-    /** Row closed / not offered; excluded from booking lists. */
-    is_booked?: boolean
-    /** Cupo reservado por el usuario actual (hydrate en dashboard + tras reserva en cliente). */
-    isBookedByUser?: boolean
 }
 
 export type SessionStatus = "live" | "today" | "next"
@@ -215,18 +207,16 @@ export function shouldHideStudentDashboardSession(s: DbSession, now: Date): bool
 }
 
 export type StudentLiveJoinOptions = {
+    /** Active academy access (FREE or PAID via evaluateAcademyAccess). */
     hasPaid: boolean
-    /** Confirmed booking for this session (required to open the live link). */
-    hasReservation: boolean
 }
 
 /**
- * Paid user with a reservation may request the join URL during the secure window
+ * Students with academy access may request the join URL during the secure window
  * ({@link isWithinStudentSecureJoinWindow}). URLs are not exposed in list payloads; use POST `/api/session/join`.
  */
 export function canShowStudentLiveJoinButton(s: DbSession, now: Date, options: StudentLiveJoinOptions): boolean {
     if (!options.hasPaid) return false
-    if (!options.hasReservation) return false
     return isWithinStudentSecureJoinWindow(s, now)
 }
 
@@ -324,11 +314,10 @@ export function sortSessionsForAgenda(list: DbSession[]): DbSession[] {
     })
 }
 
-/** Próxima sesión ya reservada por el usuario (en vivo o la siguiente futura). */
-export function getNextBookedSession(sessions: DbSession[], now: Date): DbSession | null {
+/** Próxima sesión disponible (en vivo o la siguiente futura). */
+export function getNextUpcomingSession(sessions: DbSession[], now: Date): DbSession | null {
     const liveMs = LIVE_WINDOW_MINUTES * 60 * 1000
     const items = sessions
-        .filter((s) => s.isBookedByUser)
         .map((s) => ({ s, at: startAt(s) }))
         .filter((x): x is { s: DbSession; at: Date } => x.at != null)
         .sort((a, b) => a.at.getTime() - b.at.getTime())
@@ -376,16 +365,15 @@ export function getNextSessionFromDB(
 export function buildNextSessionTicker(
     sessionState: { status: SessionStatus; session: DbSession } | null,
     now: Date,
-    opts: { hasPaid: boolean; hasReservation: boolean }
+    opts: { hasPaid: boolean }
 ): { line: string; joinHref: string } {
     if (!sessionState) return { line: "Sin próxima sesión programada.", joinHref: "#weekly-schedule" }
 
     const { status, session } = sessionState
     const joinHref = canShowStudentLiveJoinButton(session, now, {
         hasPaid: opts.hasPaid,
-        hasReservation: opts.hasReservation,
     })
-        ? "#reservar-sesion"
+        ? "#sesiones-en-vivo"
         : "#weekly-schedule"
     const wd = weekdayLabel(session)
     const tm = formatTimeLabel(session) || "--"
@@ -403,28 +391,4 @@ export function buildNextSessionTicker(
     const m = Math.floor((ms % 3_600_000) / 60_000)
     const countdown = h > 0 ? `${h}h ${m}m` : `${m}m`
     return { line: `🟢 Próxima sesión en ${countdown} → ${wd} ${tm}`, joinHref }
-}
-
-/** DB `capacity` / `seats_taken` are exposed as `max_slots` / `booked_slots` on `DbSession`. */
-export function getSessionCapacityAndTaken(session: DbSession): { capacity: number; seatsTaken: number } {
-    const capacity = session.max_slots ?? 0
-    const seatsTaken = session.booked_slots ?? 0
-    return { capacity, seatsTaken }
-}
-
-/** Free seats = capacity − seats_taken (never negative). */
-export function getSessionAvailableSeats(session: DbSession): number {
-    if (typeof session.available_spots === "number") {
-        return Math.max(0, session.available_spots)
-    }
-    const { capacity, seatsTaken } = getSessionCapacityAndTaken(session)
-    return Math.max(0, capacity - seatsTaken)
-}
-
-export function getSessionMeta(session: DbSession) {
-    const available = getSessionAvailableSeats(session)
-    const isFull = available <= 0
-    const status = isFull ? "Completo" : available <= 2 ? "Últimos cupos" : "Disponible"
-    const statusColor = isFull ? "#fca5a5" : available <= 2 ? "#fbbf24" : "#a7f3d0"
-    return { available, isFull, status, statusColor }
 }

@@ -4,7 +4,7 @@ import { useSession } from "@/context/SessionContext"
 import {
     canShowStudentLiveJoinButton,
     getMinutesUntilSessionStart,
-    getNextBookedSession,
+    getNextUpcomingSession,
     isStudentJoinTooEarly,
     isStudentSecureJoinWindowClosed,
     sessionDisplayDay,
@@ -16,7 +16,7 @@ import type { CSSProperties } from "react"
 import { useEffect, useMemo, useState } from "react"
 
 export default function NextSessionCard() {
-    const { sessions, bookingAccess, userEmail } = useSession()
+    const { sessions, academyAccess, userEmail } = useSession()
     const router = useRouter()
     const [now, setNow] = useState(() => new Date())
     const [joining, setJoining] = useState(false)
@@ -26,33 +26,32 @@ export default function NextSessionCard() {
         return () => clearInterval(t)
     }, [])
 
-    const nextBooked = useMemo(() => getNextBookedSession(sessions, now), [sessions, now])
+    const nextSession = useMemo(() => getNextUpcomingSession(sessions, now), [sessions, now])
 
-    if (!nextBooked) return null
+    if (!nextSession) return null
 
-    const label = `Próxima sesión: ${sessionDisplayDay(nextBooked)} ${sessionDisplayHour(nextBooked)}`.trim()
+    const label = `Próxima sesión: ${sessionDisplayDay(nextSession)} ${sessionDisplayHour(nextSession)}`.trim()
 
     const canJoin =
         Boolean(userEmail) &&
-        canShowStudentLiveJoinButton(nextBooked, now, {
-            hasPaid: bookingAccess.canBook,
-            hasReservation: true,
+        canShowStudentLiveJoinButton(nextSession, now, {
+            hasPaid: academyAccess.canAccess,
         })
 
     const sessionClosed =
-        bookingAccess.canBook &&
-        isStudentSecureJoinWindowClosed(nextBooked, now) &&
-        !isStudentJoinTooEarly(nextBooked, now)
+        academyAccess.canAccess &&
+        isStudentSecureJoinWindowClosed(nextSession, now) &&
+        !isStudentJoinTooEarly(nextSession, now)
 
-    const scrollToBooking = () => {
-        document.getElementById("reservar-sesion")?.scrollIntoView({ behavior: "smooth", block: "start" })
+    const scrollToSessions = () => {
+        document.getElementById("sesiones-en-vivo")?.scrollIntoView({ behavior: "smooth", block: "start" })
     }
 
     const handleSecureJoin = async () => {
         if (!userEmail || joining) return
         setJoining(true)
         try {
-            router.push(`/student/classroom/${nextBooked.id}`)
+            router.push(`/student/classroom/${nextSession.id}`)
         } finally {
             setJoining(false)
         }
@@ -127,9 +126,9 @@ export default function NextSessionCard() {
                             transition: "all 0.2s ease",
                         }}
                     >
-                        {joining ? "Abriendo..." : "Entrar a Clase en Vivo"}
+                        {joining ? "Abriendo..." : "Join Live Session"}
                     </button>
-                ) : !bookingAccess.canBook ? (
+                ) : !academyAccess.canAccess ? (
                     <div style={{ display: "grid", gap: 8 }}>
                         <p style={{ margin: 0, fontSize: "0.8125rem", color: "#fcd34d", textAlign: "center" }}>
                             Acceso no disponible
@@ -152,15 +151,15 @@ export default function NextSessionCard() {
                     </p>
                 ) : (
                     <div style={{ display: "grid", gap: 8 }}>
-                        <button type="button" onClick={scrollToBooking} style={secondaryButtonStyle}>
-                            Ver y reservar horarios
+                        <button type="button" onClick={scrollToSessions} style={secondaryButtonStyle}>
+                            Ver sesiones
                         </button>
                         <p style={{ margin: 0, fontSize: "0.78rem", color: "#94a3b8", textAlign: "center" }}>
-                            {isStudentJoinTooEarly(nextBooked, now)
+                            {isStudentJoinTooEarly(nextSession, now)
                                 ? "Disponible 10 minutos antes"
-                                : getMinutesUntilSessionStart(nextBooked, now) === null
+                                : getMinutesUntilSessionStart(nextSession, now) === null
                                   ? "Horario no disponible"
-                                  : "Sesión llena"}
+                                  : "Live Session"}
                         </p>
                     </div>
                 )}

@@ -8,7 +8,7 @@ export default function ExpiredAccessPage() {
             </p>
             <h1 className="mt-3 text-2xl font-semibold text-white sm:text-3xl">Tu acceso ha caducado</h1>
             <p className="mt-4 max-w-md text-sm leading-relaxed text-slate-400">
-                Renueva tu suscripción para seguir usando el dashboard y reservar sesiones. Si acabas de
+                Renueva tu suscripción para seguir usando el dashboard y unirte a las sesiones en vivo. Si acabas de
                 pagar, espera unos segundos e intenta de nuevo.
             </p>
             <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:gap-4">

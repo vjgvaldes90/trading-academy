@@ -1,9 +1,9 @@
 "use client"
 
 import type { StudentDashboardView } from "@/components/student/Sidebar"
-import { BookOpen, CalendarCheck, FileText, PlayCircle } from "lucide-react"
+import { BookOpen, FileText, PlayCircle, Video } from "lucide-react"
 
-type QuickActionView = Extract<StudentDashboardView, "reserve" | "classes" | "my-reservations" | "resources">
+type QuickActionView = Extract<StudentDashboardView, "live" | "classes" | "resources">
 
 const ACTIONS: {
     Icon: typeof BookOpen
@@ -12,22 +12,16 @@ const ACTIONS: {
     view: QuickActionView
 }[] = [
     {
-        Icon: BookOpen,
-        title: "Reservar sesión",
-        description: "Elige tu próxima clase",
-        view: "reserve",
+        Icon: Video,
+        title: "Sesiones en vivo",
+        description: "Únete a la próxima clase",
+        view: "live",
     },
     {
         Icon: PlayCircle,
         title: "Ver clases",
         description: "Continúa aprendiendo",
         view: "classes",
-    },
-    {
-        Icon: CalendarCheck,
-        title: "Mis reservas",
-        description: "Revisa tus sesiones",
-        view: "my-reservations",
     },
     {
         Icon: FileText,
@@ -47,7 +41,7 @@ export default function QuickActions({
     return (
         <div className="lg:col-span-2 rounded-2xl p-6 bg-[#111827] border border-white/10 shadow-sm">
             <div className="text-slate-50 font-extrabold">Quick Actions</div>
-            <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="mt-4 grid grid-cols-2 md:grid-cols-3 gap-4">
                 {ACTIONS.map(({ Icon, title, description, view }) => {
                     const isActive = activeView === view
                     return (

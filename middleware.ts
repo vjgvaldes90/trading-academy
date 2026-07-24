@@ -42,7 +42,6 @@ function requiresSingleSessionCheck(pathname: string): boolean {
     if (pathname.startsWith("/dashboard")) return true
     if (pathname.startsWith("/complete-profile")) return true
     if (pathname.startsWith("/sessions")) return true
-    if (pathname.startsWith("/bookings")) return true
     if (pathname.startsWith("/api/")) return !isSingleSessionExemptApiPath(pathname)
     return false
 }
@@ -107,7 +106,6 @@ export const config = {
         "/dashboard/:path*",
         "/complete-profile/:path*",
         "/sessions/:path*",
-        "/bookings/:path*",
         "/api/:path*",
     ],
 }

@@ -4,8 +4,6 @@ export type AdminSessionRow = {
     title?: string | null
     date: string | null
     time: string | null
-    capacity: number | null
-    booked: number | null
     status?: string
     starts_soon?: boolean
     is_live?: boolean

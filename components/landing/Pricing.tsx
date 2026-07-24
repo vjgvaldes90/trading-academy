@@ -62,8 +62,8 @@ export default function Pricing() {
                         </div>
 
                         {/* URGENCIA */}
-                        <p className="text-red-400 text-sm mb-4">
-                            ⚠️ Cupos limitados para mantener calidad en las sesiones
+                        <p className="text-blue-300 text-sm mb-4">
+                            Sesiones en vivo disponibles
                         </p>
 
                         {/* SUBTEXTO MEJORADO */}
