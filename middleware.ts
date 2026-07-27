@@ -29,6 +29,7 @@ function isSingleSessionExemptApiPath(pathname: string): boolean {
         "/api/send-code",
         "/api/auth/establish-from-supabase",
         "/api/magic-login",
+        "/api/debug/stripe",
     ]
 
     for (const base of exactOrPrefix) {
