@@ -1,50 +1,76 @@
 "use client"
 
-import { Suspense, useEffect, useRef } from "react"
+import { Suspense, useCallback, useEffect, useRef, useState } from "react"
 import { useSearchParams } from "next/navigation"
 
-const REDIRECT_MS = 2800
+type SyncState = "loading" | "success" | "error"
 
 function SuccessPageContent() {
     const searchParams = useSearchParams()
     const sessionId = searchParams.get("session_id")?.trim() ?? ""
-    const isError = sessionId.length === 0
-    const errorMessage = isError
-        ? "No se encontró la sesión de pago. Vuelve a intentar o contacta soporte."
-        : ""
-    const didRedirect = useRef(false)
+    const isMissingSessionId = sessionId.length === 0
+
+    const [syncState, setSyncState] = useState<SyncState>(isMissingSessionId ? "error" : "loading")
+    const [errorMessage, setErrorMessage] = useState(
+        isMissingSessionId
+            ? "No se encontró la sesión de pago. Vuelve a intentar o contacta soporte."
+            : ""
+    )
+    const redirectedRef = useRef(false)
+
+    const prepareSession = useCallback(async () => {
+        if (!sessionId || redirectedRef.current) return
+
+        setSyncState("loading")
+        setErrorMessage("")
+
+        try {
+            const res = await fetch("/api/get-session", {
+                method: "POST",
+                credentials: "include",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ session_id: sessionId }),
+            })
+            const data = (await res.json().catch(() => ({}))) as {
+                ok?: unknown
+                email?: unknown
+                session_ready?: unknown
+                error?: unknown
+            }
+
+            if (!res.ok || data.ok !== true || data.session_ready !== true) {
+                const msg =
+                    typeof data.error === "string" && data.error.trim()
+                        ? data.error
+                        : "Hubo un problema preparando tu sesión. Intenta de nuevo."
+                setErrorMessage(msg)
+                setSyncState("error")
+                return
+            }
+
+            if (typeof data.email !== "string" || !data.email.trim()) {
+                setErrorMessage("La sesión se creó sin email. Intenta de nuevo o contacta soporte.")
+                setSyncState("error")
+                return
+            }
+
+            setSyncState("success")
+            redirectedRef.current = true
+            console.log("[success] session ready, redirecting to /complete-profile", {
+                email: data.email,
+            })
+            window.location.assign("/complete-profile?from=payment")
+        } catch (e) {
+            console.warn("[success] get-session failed", e)
+            setErrorMessage("Hubo un problema preparando tu sesión. Intenta de nuevo.")
+            setSyncState("error")
+        }
+    }, [sessionId])
 
     useEffect(() => {
-        if (!sessionId) return
-
-        void (async () => {
-            try {
-                const res = await fetch("/api/get-session", {
-                    method: "POST",
-                    credentials: "include",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ session_id: sessionId }),
-                })
-                const data = await res.json().catch(() => ({}))
-                if (!res.ok) {
-                    console.warn("[success] get-session warning", data?.error ?? res.status)
-                } else {
-                    console.log("[success] access synced", { email: data?.email })
-                }
-            } catch (e) {
-                console.warn("[success] get-session failed (non-blocking)", e)
-            }
-        })()
-
-        const timer = window.setTimeout(() => {
-            if (didRedirect.current) return
-            didRedirect.current = true
-            console.log("[success] redirecting to /complete-profile?from=payment after payment")
-            window.location.href = "/complete-profile?from=payment"
-        }, REDIRECT_MS)
-
-        return () => window.clearTimeout(timer)
-    }, [sessionId])
+        if (isMissingSessionId) return
+        void prepareSession()
+    }, [isMissingSessionId, prepareSession])
 
     return (
         <div
@@ -69,7 +95,7 @@ function SuccessPageContent() {
                     boxShadow: "0 25px 50px -12px rgba(0,0,0,0.35)",
                 }}
             >
-                {!isError && (
+                {syncState === "loading" || syncState === "success" ? (
                     <div
                         style={{
                             width: "40px",
@@ -81,7 +107,8 @@ function SuccessPageContent() {
                             animation: "spin 0.9s linear infinite",
                         }}
                     />
-                )}
+                ) : null}
+
                 <h1
                     style={{
                         margin: "0 0 12px 0",
@@ -90,18 +117,53 @@ function SuccessPageContent() {
                         lineHeight: 1.35,
                     }}
                 >
-                    {isError ? "Algo salió mal" : "✅ Payment successful. Preparing your access..."}
+                    {syncState === "error"
+                        ? "No pudimos preparar tu acceso"
+                        : "✅ Payment successful"}
                 </h1>
-                {!isError && (
+
+                {syncState === "loading" || syncState === "success" ? (
                     <p style={{ color: "#94a3b8", fontSize: "0.95rem", margin: 0, lineHeight: 1.6 }}>
-                        Te llevamos a completar tu perfil en unos segundos.
+                        Preparando tu cuenta…
                     </p>
-                )}
-                {isError && errorMessage && (
-                    <p style={{ color: "#cbd5e1", lineHeight: 1.6, fontSize: "0.9rem", margin: "16px 0 0 0" }}>
-                        {errorMessage}
-                    </p>
-                )}
+                ) : null}
+
+                {syncState === "error" ? (
+                    <>
+                        <p
+                            style={{
+                                color: "#cbd5e1",
+                                lineHeight: 1.6,
+                                fontSize: "0.9rem",
+                                margin: "0 0 20px 0",
+                            }}
+                        >
+                            {errorMessage}
+                        </p>
+                        {!isMissingSessionId ? (
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    redirectedRef.current = false
+                                    void prepareSession()
+                                }}
+                                style={{
+                                    padding: "12px 20px",
+                                    borderRadius: 10,
+                                    border: "1px solid rgba(59,130,246,0.45)",
+                                    background: "#2563eb",
+                                    color: "#fff",
+                                    fontWeight: 700,
+                                    fontSize: "0.875rem",
+                                    cursor: "pointer",
+                                }}
+                            >
+                                Reintentar
+                            </button>
+                        ) : null}
+                    </>
+                ) : null}
+
                 <style>{`
                   @keyframes spin {
                     from { transform: rotate(0deg); }
@@ -127,7 +189,7 @@ export default function SuccessPage() {
                         color: "white",
                     }}
                 >
-                    Cargando…
+                    Preparando tu cuenta…
                 </div>
             }
         >
