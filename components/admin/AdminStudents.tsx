@@ -4,6 +4,7 @@ import CancelSessionConfirmModal from "@/app/admin/CancelSessionConfirmModal"
 import CreateStudentModal, {
     type CreateStudentFormValues,
 } from "@/components/admin/CreateStudentModal"
+import { CANCEL_SUBSCRIPTION_POLICY_MESSAGE } from "@/lib/subscriptionCancellation"
 import { useCallback, useEffect, useState } from "react"
 
 type TradingStudentListRow = {
@@ -15,9 +16,8 @@ type TradingStudentListRow = {
     subscription_status: string | null
 }
 
-type RefundModalTarget = {
+type CancelModalTarget = {
     userId: string
-    refundDisplay: string
 }
 
 /** PATCH body must use values accepted by `/api/admin/students/[email]`. */
@@ -32,8 +32,7 @@ export default function AdminStudents() {
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
     const [busyEmail, setBusyEmail] = useState<string | null>(null)
-    const [refundModal, setRefundModal] = useState<RefundModalTarget | null>(null)
-    const [busyRefundUserId, setBusyRefundUserId] = useState<string | null>(null)
+    const [cancelModal, setCancelModal] = useState<CancelModalTarget | null>(null)
     const [createModalOpen, setCreateModalOpen] = useState(false)
 
     const handleCreateStudent = async (values: CreateStudentFormValues) => {
@@ -162,39 +161,9 @@ export default function AdminStudents() {
         }
     }
 
-    const openRefundPreview = async (row: TradingStudentListRow) => {
+    const openCancelModal = (row: TradingStudentListRow) => {
         if (!row.id) return
-        setBusyRefundUserId(row.id)
-        setError(null)
-        try {
-            const res = await fetch(
-                `/api/admin/refund-preview?userId=${encodeURIComponent(row.id)}`,
-                { cache: "no-store", credentials: "include" }
-            )
-            const data = (await res.json().catch(() => ({}))) as {
-                ok?: unknown
-                refund_display?: string
-                error?: string
-            }
-            if (!res.ok || data.ok !== true) {
-                const msg =
-                    typeof data.error === "string" && data.error.trim()
-                        ? data.error
-                        : "Could not load refund preview"
-                throw new Error(msg)
-            }
-            const refundDisplay =
-                typeof data.refund_display === "string" && data.refund_display.trim()
-                    ? data.refund_display.trim()
-                    : "$0.00"
-            setRefundModal({ userId: row.id, refundDisplay })
-        } catch (e: unknown) {
-            const msg = e instanceof Error ? e.message : "Could not load refund preview"
-            setError(msg)
-            alert(msg)
-        } finally {
-            setBusyRefundUserId(null)
-        }
+        setCancelModal({ userId: row.id })
     }
 
     return (
@@ -246,23 +215,19 @@ export default function AdminStudents() {
                     ) : (
                         <div style={{ overflowX: "auto" }}>
                             <CancelSessionConfirmModal
-                                open={refundModal !== null}
+                                open={cancelModal !== null}
                                 title="Cancel subscription?"
-                                description={
-                                    refundModal
-                                        ? `User will be removed immediately. Refund amount: ${refundModal.refundDisplay}`
-                                        : ""
-                                }
+                                description={`${CANCEL_SUBSCRIPTION_POLICY_MESSAGE} Future renewals will stop; the student keeps access until the current billing period ends.`}
                                 confirmText="Yes, cancel subscription"
-                                onClose={() => setRefundModal(null)}
+                                onClose={() => setCancelModal(null)}
                                 onConfirm={async () => {
-                                    if (!refundModal) return
+                                    if (!cancelModal) return
                                     const res = await fetch("/api/admin/cancel-subscription", {
                                         method: "POST",
                                         headers: { "Content-Type": "application/json" },
                                         credentials: "include",
                                         cache: "no-store",
-                                        body: JSON.stringify({ userId: refundModal.userId }),
+                                        body: JSON.stringify({ userId: cancelModal.userId }),
                                     })
                                     const data = (await res.json().catch(() => ({}))) as {
                                         ok?: unknown
@@ -277,7 +242,9 @@ export default function AdminStudents() {
                                     }
                                 }}
                                 onAfterConfirm={async () => {
-                                    alert("Subscription cancelled successfully")
+                                    alert(
+                                        "Subscription scheduled to cancel at period end. No refund was issued."
+                                    )
                                     await load()
                                 }}
                             />
@@ -306,10 +273,10 @@ export default function AdminStudents() {
                                     {rows.map((r) => {
                                         const key = r.email.trim().toLowerCase()
                                         const busy = busyEmail === key
-                                        const refundBusy = busyRefundUserId === r.id
+                                        const cancelBusy = false
                                         const active = r.is_active !== false
                                         const currentType = (r.access_type ?? "paid").toLowerCase()
-                                        const showCancelRefund =
+                                        const showCancelSubscription =
                                             Boolean(r.subscription_id) && r.subscription_status === "active"
                                         const baseOpts = [...ACCESS_TYPE_OPTIONS] as string[]
                                         const typeOptions = baseOpts.includes(currentType)
@@ -330,7 +297,7 @@ export default function AdminStudents() {
                                                 <td style={{ padding: "10px 14px" }}>
                                                     <select
                                                         value={currentType}
-                                                        disabled={busy || refundBusy}
+                                                        disabled={busy || cancelBusy}
                                                         onChange={(e) => {
                                                             const next = e.target.value
                                                             void patchStudent(r.email, { access_type: next })
@@ -370,7 +337,7 @@ export default function AdminStudents() {
                                                                 display: "inline-flex",
                                                                 alignItems: "center",
                                                                 gap: 10,
-                                                                cursor: busy || refundBusy ? "wait" : "pointer",
+                                                                cursor: busy || cancelBusy ? "wait" : "pointer",
                                                                 userSelect: "none",
                                                             }}
                                                         >
@@ -393,7 +360,7 @@ export default function AdminStudents() {
                                                                 <input
                                                                     type="checkbox"
                                                                     checked={active}
-                                                                    disabled={busy || refundBusy}
+                                                                    disabled={busy || cancelBusy}
                                                                     onChange={() => {
                                                                         void patchStudent(r.email, {
                                                                             is_active: !active,
@@ -405,7 +372,7 @@ export default function AdminStudents() {
                                                                         opacity: 0,
                                                                         width: "100%",
                                                                         height: "100%",
-                                                                        cursor: busy || refundBusy ? "wait" : "pointer",
+                                                                        cursor: busy || cancelBusy ? "wait" : "pointer",
                                                                         margin: 0,
                                                                     }}
                                                                 />
@@ -425,25 +392,25 @@ export default function AdminStudents() {
                                                                 />
                                                             </span>
                                                         </label>
-                                                        {showCancelRefund ? (
+                                                        {showCancelSubscription ? (
                                                             <button
                                                                 type="button"
-                                                                disabled={busy || refundBusy}
-                                                                onClick={() => void openRefundPreview(r)}
+                                                                disabled={busy || cancelBusy}
+                                                                onClick={() => openCancelModal(r)}
                                                                 style={{
                                                                     padding: "8px 12px",
                                                                     borderRadius: 10,
                                                                     border: "1px solid rgba(248,113,113,0.45)",
-                                                                    background: refundBusy
+                                                                    background: cancelBusy
                                                                         ? "rgba(100,100,100,0.35)"
                                                                         : "#b91c1c",
                                                                     color: "#fff",
                                                                     fontWeight: 700,
                                                                     fontSize: "0.75rem",
-                                                                    cursor: busy || refundBusy ? "wait" : "pointer",
+                                                                    cursor: busy || cancelBusy ? "wait" : "pointer",
                                                                 }}
                                                             >
-                                                                {refundBusy ? "Loading…" : "Cancel + Refund"}
+                                                                {cancelBusy ? "Loading…" : "Cancel subscription"}
                                                             </button>
                                                         ) : null}
                                                     </div>

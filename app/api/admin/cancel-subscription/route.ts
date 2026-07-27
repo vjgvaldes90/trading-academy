@@ -1,19 +1,20 @@
 import { NextResponse } from "next/server"
-import type Stripe from "stripe"
 import { requireAuthorizedAdminFromCookies } from "@/lib/adminAuth"
 import { createSupabaseServiceRoleClient } from "@/lib/access"
-import { computeRefundPreviewFromSubscription } from "@/lib/adminSubscriptionRefundPreview"
 import { createStripeClient } from "@/lib/stripe-server"
+import {
+    CANCEL_SUBSCRIPTION_POLICY_MESSAGE,
+    SUBSCRIPTION_STATUS_CANCEL_AT_PERIOD_END,
+    scheduleSubscriptionCancelAtPeriodEnd,
+} from "@/lib/subscriptionCancellation"
 
 export const runtime = "nodejs"
 
 export async function POST(req: Request) {
     try {
-        const stripe = createStripeClient()
         const auth = await requireAuthorizedAdminFromCookies()
         if (!auth.ok) return auth.response
 
-        console.log("🔥 ADMIN CANCEL START")
         const body = (await req.json().catch(() => null)) as { userId?: unknown } | null
         const userId = typeof body?.userId === "string" ? body.userId.trim() : ""
 
@@ -24,7 +25,7 @@ export async function POST(req: Request) {
         const supabase = createSupabaseServiceRoleClient()
         const { data: student, error: readErr } = await supabase
             .from("trading_students")
-            .select("subscription_id")
+            .select("subscription_id, subscription_status, access_expires_at")
             .eq("id", userId)
             .maybeSingle()
 
@@ -32,7 +33,6 @@ export async function POST(req: Request) {
             console.error("[admin/cancel-subscription] fetch student", { userId, error: readErr })
             return NextResponse.json({ ok: false, error: "Database read failed" }, { status: 500 })
         }
-        console.log("USER:", student)
 
         const subscriptionId =
             student &&
@@ -45,100 +45,32 @@ export async function POST(req: Request) {
             return NextResponse.json({ ok: false, error: "No subscription_id for user" }, { status: 400 })
         }
 
-        const subscription = (await stripe.subscriptions.retrieve(subscriptionId)) as Stripe.Subscription
-        console.log("SUBSCRIPTION:", subscription)
+        const currentStatus =
+            typeof (student as { subscription_status?: unknown }).subscription_status === "string"
+                ? (student as { subscription_status: string }).subscription_status.trim()
+                : ""
 
-        const invoiceId =
-            typeof subscription.latest_invoice === "string"
-                ? subscription.latest_invoice
-                : subscription.latest_invoice?.id
-
-        if (!invoiceId) {
-            throw new Error("No invoice ID found")
+        if (currentStatus === SUBSCRIPTION_STATUS_CANCEL_AT_PERIOD_END) {
+            const accessUntil =
+                typeof (student as { access_expires_at?: unknown }).access_expires_at === "string" &&
+                (student as { access_expires_at: string }).access_expires_at.trim()
+                    ? (student as { access_expires_at: string }).access_expires_at
+                    : null
+            return NextResponse.json({
+                ok: true,
+                subscription_id: subscriptionId,
+                status: SUBSCRIPTION_STATUS_CANCEL_AT_PERIOD_END,
+                access_until: accessUntil,
+                message: CANCEL_SUBSCRIPTION_POLICY_MESSAGE,
+            })
         }
 
-        const invoice = await stripe.invoices.retrieve(invoiceId, {
-            expand: ["payment_intent"],
-        })
-
-        const preview = computeRefundPreviewFromSubscription(subscription, invoice)
-        const { refund_amount_cents: refundAmount, ratio } = preview
-        console.log("INVOICE:", invoice)
-        console.log("PAYMENT INTENT:", (invoice as Stripe.Invoice & { payment_intent?: unknown }).payment_intent)
-
-        let paymentIntentId: string | null = null
-        if ((invoice as Stripe.Invoice & { payment_intent?: unknown }).payment_intent) {
-            paymentIntentId =
-                typeof (invoice as Stripe.Invoice & { payment_intent?: unknown }).payment_intent === "string"
-                    ? ((invoice as Stripe.Invoice & { payment_intent?: string }).payment_intent ?? null)
-                    : (
-                          invoice as Stripe.Invoice & {
-                              payment_intent?: { id?: string } | null
-                          }
-                      ).payment_intent?.id ?? null
-        }
-
-        if (!invoice.amount_paid || invoice.amount_paid <= 0) {
-            console.log("No amount paid, skipping refund")
-        }
-
-        if (refundAmount > 0) {
-            try {
-                let chargeId: string | undefined
-                if (!paymentIntentId) {
-                    const customerId =
-                        typeof subscription.customer === "string"
-                            ? subscription.customer
-                            : subscription.customer && typeof subscription.customer === "object" && "id" in subscription.customer
-                              ? subscription.customer.id
-                              : null
-                    if (!customerId) {
-                        throw new Error("No charge found")
-                    }
-                    const charges = await stripe.charges.list({
-                        customer: customerId,
-                        limit: 1,
-                    })
-
-                    chargeId = charges.data[0]?.id
-
-                    if (!chargeId) {
-                        throw new Error("No charge found")
-                    }
-                }
-
-                if (paymentIntentId) {
-                    await stripe.refunds.create({
-                        payment_intent: paymentIntentId,
-                        amount: refundAmount,
-                    })
-                } else {
-                    await stripe.refunds.create({
-                        charge: chargeId,
-                        amount: refundAmount,
-                    })
-                }
-            } catch (refundErr) {
-                console.error("[admin/cancel-subscription] stripe.refunds.create failed", {
-                    userId,
-                    subscriptionId,
-                    refundAmount,
-                    paymentIntentId,
-                    error: refundErr,
-                })
-                return NextResponse.json({ ok: false, error: "Refund failed" }, { status: 502 })
-            }
-        }
-
-        await stripe.subscriptions.cancel(subscriptionId)
+        const stripe = createStripeClient()
+        const { periodEndIso } = await scheduleSubscriptionCancelAtPeriodEnd(stripe, subscriptionId)
 
         const { error: updateErr } = await supabase
             .from("trading_students")
-            .update({
-                subscription_status: "cancelled",
-                is_active: false,
-                access_type: "revoked",
-            })
+            .update({ subscription_status: SUBSCRIPTION_STATUS_CANCEL_AT_PERIOD_END })
             .eq("id", userId)
 
         if (updateErr) {
@@ -153,11 +85,12 @@ export async function POST(req: Request) {
         return NextResponse.json({
             ok: true,
             subscription_id: subscriptionId,
-            refund_amount_cents: refundAmount,
-            ratio,
+            status: SUBSCRIPTION_STATUS_CANCEL_AT_PERIOD_END,
+            access_until: periodEndIso,
+            message: CANCEL_SUBSCRIPTION_POLICY_MESSAGE,
         })
     } catch (error) {
-        console.error("❌ ADMIN CANCEL ERROR:", error)
-        return NextResponse.json({ error: String(error) }, { status: 500 })
+        console.error("[admin/cancel-subscription] unexpected error", error)
+        return NextResponse.json({ ok: false, error: "Internal error" }, { status: 500 })
     }
 }

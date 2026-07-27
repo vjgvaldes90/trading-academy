@@ -3,6 +3,9 @@ import { createStripeClient, getStripeSecretKey, getStripeWebhookSecret } from "
 import { createSupabaseServiceRoleClient } from "@/lib/access"
 import { sendEmail } from "@/lib/sendEmail"
 import { computeRenewalAccessExpiresAtIso } from "@/lib/studentSubscriptionRenewal"
+import {
+    SUBSCRIPTION_STATUS_CANCEL_AT_PERIOD_END,
+} from "@/lib/subscriptionCancellation"
 
 function generateAccessCode(): string {
     return Math.random().toString(36).substring(2, 8).toUpperCase()
@@ -73,6 +76,25 @@ async function resolveSubscriptionIdFromPaymentIntent(
         return (sub as { id: string }).id
     }
     return null
+}
+
+async function updateStudentBySubscriptionId(
+    subscriptionId: string,
+    patch: Record<string, unknown>
+): Promise<void> {
+    const supabase = createSupabaseServiceRoleClient()
+    const { error } = await supabase
+        .from("trading_students")
+        .update(patch)
+        .eq("subscription_id", subscriptionId)
+
+    if (error) {
+        console.error("[stripe-webhook] trading_students update by subscription_id failed", {
+            subscriptionId,
+            patch,
+            error,
+        })
+    }
 }
 
 /**
@@ -357,6 +379,42 @@ export async function handleStripeWebhook(req: Request): Promise<Response> {
             }
         } catch (err) {
             console.error("[stripe-webhook] invoice.payment_failed handler:", err)
+        }
+    }
+
+    if (event.type === "customer.subscription.updated") {
+        const subscription = event.data.object as Stripe.Subscription
+        try {
+            const subscriptionId = subscription.id
+            if (subscription.cancel_at_period_end) {
+                await updateStudentBySubscriptionId(subscriptionId, {
+                    subscription_status: SUBSCRIPTION_STATUS_CANCEL_AT_PERIOD_END,
+                })
+                console.log("[stripe-webhook] subscription scheduled to cancel at period end", {
+                    subscriptionId,
+                })
+            } else if (subscription.status === "active") {
+                await updateStudentBySubscriptionId(subscriptionId, {
+                    subscription_status: "active",
+                })
+            }
+        } catch (err) {
+            console.error("[stripe-webhook] customer.subscription.updated handler:", err)
+        }
+    }
+
+    if (event.type === "customer.subscription.deleted") {
+        const subscription = event.data.object as Stripe.Subscription
+        try {
+            const subscriptionId = subscription.id
+            // Period ended — mark subscription cancelled. Do not revoke access here;
+            // `access_expires_at` + evaluateAcademyAccess() control access until expiry.
+            await updateStudentBySubscriptionId(subscriptionId, {
+                subscription_status: "cancelled",
+            })
+            console.log("[stripe-webhook] subscription ended", { subscriptionId })
+        } catch (err) {
+            console.error("[stripe-webhook] customer.subscription.deleted handler:", err)
         }
     }
 

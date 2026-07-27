@@ -10,6 +10,10 @@ import ClassesView from "@/components/dashboard/ClassesView"
 import LiveSessionsView from "@/components/dashboard/LiveSessionsView"
 import Resources from "@/components/dashboard/Resources"
 import Settings from "@/components/dashboard/Settings"
+import {
+    CANCEL_SUBSCRIPTION_POLICY_MESSAGE,
+    SUBSCRIPTION_STATUS_CANCEL_AT_PERIOD_END,
+} from "@/lib/subscriptionCancellation"
 import { SessionProvider, useSession } from "@/context/SessionContext"
 import { supabase } from "@/lib/supabase"
 import {
@@ -50,7 +54,10 @@ function DashboardShell({
         )
     }
 
-    const showCancelButton = Boolean(user?.subscription_id && user.subscription_status === "active")
+    const showCancelButton = Boolean(
+        user?.subscription_id && user.subscription_status === "active"
+    )
+    const subscriptionPendingCancel = user?.subscription_status === SUBSCRIPTION_STATUS_CANCEL_AT_PERIOD_END
 
     const sectionTitles: Record<StudentDashboardView, string> = {
         dashboard: "Dashboard",
@@ -80,12 +87,23 @@ function DashboardShell({
                 alert("Error cancelling subscription")
                 return
             }
-            const data = (await res.json().catch(() => ({}))) as { ok?: unknown }
+            const data = (await res.json().catch(() => ({}))) as {
+                ok?: unknown
+                access_until?: string
+            }
             if (data.ok !== true) {
                 alert("Error cancelling subscription")
                 return
             }
-            alert("Subscription cancelled successfully")
+            const until =
+                typeof data.access_until === "string" && data.access_until.trim()
+                    ? new Date(data.access_until).toLocaleDateString()
+                    : null
+            alert(
+                until
+                    ? `Subscription will end at the close of your current billing period (${until}). ${CANCEL_SUBSCRIPTION_POLICY_MESSAGE}`
+                    : `Subscription will end at the close of your current billing period. ${CANCEL_SUBSCRIPTION_POLICY_MESSAGE}`
+            )
             window.location.reload()
         } catch {
             alert("Error cancelling subscription")
@@ -119,6 +137,7 @@ function DashboardShell({
                     {activeView === "settings" ? (
                         <Settings
                             showCancelSubscription={showCancelButton}
+                            subscriptionPendingCancel={subscriptionPendingCancel}
                             onCancelSubscription={() => setCancelModalOpen(true)}
                             onLogout={handleLogout}
                             isCancellingSubscription={isCancelling}
@@ -131,7 +150,7 @@ function DashboardShell({
                 onClose={() => setCancelModalOpen(false)}
                 onConfirm={handleCancelSubscription}
                 title="Cancel subscription?"
-                description="Are you sure? You will lose access to the academy."
+                description={`${CANCEL_SUBSCRIPTION_POLICY_MESSAGE} Your access stays active until the end of the current paid billing period.`}
                 confirmText="Yes, cancel subscription"
             />
         </div>

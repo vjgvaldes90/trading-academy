@@ -4,11 +4,13 @@ import { CreditCard, LogOut, Shield } from "lucide-react"
 
 export default function Settings({
     showCancelSubscription,
+    subscriptionPendingCancel,
     onCancelSubscription,
     onLogout,
     isCancellingSubscription,
 }: {
     showCancelSubscription: boolean
+    subscriptionPendingCancel?: boolean
     onCancelSubscription: () => void
     onLogout: () => void
     isCancellingSubscription: boolean
@@ -33,6 +35,15 @@ export default function Settings({
                     </div>
                 </div>
 
+                {subscriptionPendingCancel ? (
+                    <div
+                        className="rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-100/90"
+                    >
+                        Tu suscripción está programada para cancelarse al final del periodo de facturación
+                        actual. No se emiten reembolsos; el acceso sigue activo hasta esa fecha.
+                    </div>
+                ) : null}
+
                 {showCancelSubscription ? (
                     <button
                         type="button"
@@ -48,7 +59,7 @@ export default function Settings({
                                 {isCancellingSubscription ? "Cancelando…" : "Cancelar suscripción"}
                             </span>
                             <span className="block text-red-200/70 text-xs mt-0.5">
-                                Perderás el acceso al contenido de la academia.
+                                Sin reembolsos. El acceso continúa hasta el final del periodo pagado.
                             </span>
                         </span>
                     </button>
