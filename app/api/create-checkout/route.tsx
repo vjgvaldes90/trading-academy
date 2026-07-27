@@ -57,17 +57,63 @@ export async function POST(req: Request) {
 
         const stripe = createStripeClient()
 
+        const lineItems = [
+            {
+                price: priceId,
+                quantity: 1,
+            },
+        ]
+
+        // TEMPORARY debug — remove after Price ID diagnosis
+        console.log("[checkout debug] process.env.STRIPE_PRICE_ID:", process.env.STRIPE_PRICE_ID)
+        console.log("[checkout debug] getStripePriceId():", priceId)
+        console.log("[checkout debug] line_items:", JSON.stringify(lineItems))
+        console.log("[checkout debug] Stripe API version:", "2026-02-25.clover")
+
+        try {
+            const retrievedPrice = await stripe.prices.retrieve(priceId)
+            console.log("[checkout debug] prices.retrieve OK:", {
+                id: retrievedPrice.id,
+                active: retrievedPrice.active,
+                type: retrievedPrice.type,
+                currency: retrievedPrice.currency,
+            })
+        } catch (priceErr: unknown) {
+            console.error("[checkout debug] prices.retrieve FAILED:", priceErr)
+            const stripeErr = priceErr as {
+                message?: string
+                type?: string
+                code?: string
+                statusCode?: number
+                raw?: unknown
+                rawType?: string
+            }
+            return NextResponse.json(
+                {
+                    error: "Stripe prices.retrieve failed",
+                    message: stripeErr.message ?? (priceErr instanceof Error ? priceErr.message : String(priceErr)),
+                    type: stripeErr.type ?? null,
+                    code: stripeErr.code ?? null,
+                    statusCode: stripeErr.statusCode ?? null,
+                    rawType: stripeErr.rawType ?? null,
+                    raw: stripeErr.raw ?? null,
+                    debug: {
+                        envStripePriceId: process.env.STRIPE_PRICE_ID ?? null,
+                        getStripePriceId: priceId,
+                        line_items: lineItems,
+                        apiVersion: "2026-02-25.clover",
+                    },
+                },
+                { status: 500 }
+            )
+        }
+
         const session = await stripe.checkout.sessions.create({
             payment_method_types: ["card"],
             mode: "subscription",
             customer_email: email,
             metadata,
-            line_items: [
-                {
-                    price: priceId,
-                    quantity: 1,
-                },
-            ],
+            line_items: lineItems,
             success_url,
             cancel_url,
         })
