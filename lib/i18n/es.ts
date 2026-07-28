@@ -18,7 +18,4 @@ export const es: TranslationKeys = {
     // Footer
     footerCopyright: "© 2026 Smart Option Academy. Todos los derechos reservados.",
     footerDisclaimer: "Disclaimer Legal",
-
-    // Main buttons
-    whatsappChat: "Hablar por WhatsApp",
 }

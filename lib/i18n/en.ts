@@ -16,9 +16,6 @@ export const en = {
     // Footer
     footerCopyright: "© 2026 Smart Option Academy. All rights reserved.",
     footerDisclaimer: "Legal Disclaimer",
-
-    // Main buttons
-    whatsappChat: "Chat on WhatsApp",
 }
 
 export type TranslationKeys = typeof en
