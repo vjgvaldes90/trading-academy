@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
+import { notifyNewStudentCreated } from "@/lib/adminNotifications"
 
 export type TradingStudentRow = {
     id?: string
@@ -43,7 +44,12 @@ export async function ensureTradingStudentByEmail(
     }
 
     console.log("👤 student created", { email: normalized })
-    return inserted as TradingStudentRow
+    const row = inserted as TradingStudentRow
+    await notifyNewStudentCreated(admin, {
+        email: normalized,
+        studentId: typeof row.id === "string" ? row.id : null,
+    })
+    return row
 }
 
 export function isTradingStudentProfileCompleted(row: TradingStudentRow | null | undefined): boolean {

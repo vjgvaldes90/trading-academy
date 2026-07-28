@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
+import {
+    notifyNewStudentCreated,
+    tradingStudentExistsByEmail,
+} from "@/lib/adminNotifications"
 
 export const runtime = "nodejs"
 
@@ -16,16 +20,28 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: "Email required" }, { status: 400 })
         }
 
+        const existed = await tradingStudentExistsByEmail(supabase, raw)
         const accessCode = Math.random().toString(36).substring(2, 8).toUpperCase()
 
-        const { error } = await supabase.from("trading_students").upsert(
-            { email: raw, access_code: accessCode, access_type: "paid", is_active: true },
-            { onConflict: "email" }
-        )
+        const { data: upserted, error } = await supabase
+            .from("trading_students")
+            .upsert(
+                { email: raw, access_code: accessCode, access_type: "paid", is_active: true },
+                { onConflict: "email" }
+            )
+            .select("id")
+            .single()
 
         if (error) {
             console.error("[create-user]", error)
             return NextResponse.json({ error: "Error guardando" }, { status: 500 })
+        }
+
+        if (!existed) {
+            await notifyNewStudentCreated(supabase, {
+                email: raw,
+                studentId: typeof upserted?.id === "string" ? upserted.id : null,
+            })
         }
 
         return NextResponse.json({ accessCode })

@@ -1,4 +1,8 @@
 import { createSupabaseServiceRoleClient } from "@/lib/access"
+import {
+    notifyNewStudentCreated,
+    tradingStudentExistsByEmail,
+} from "@/lib/adminNotifications"
 import { sendEmail } from "@/lib/sendEmail"
 
 export type ProvisionStudentInput = {
@@ -38,6 +42,7 @@ export async function provisionAcademyStudent(
     const accessCode = generateAccessCode()
 
     const supabase = createSupabaseServiceRoleClient()
+    const existed = await tradingStudentExistsByEmail(supabase, email)
 
     const row: Record<string, unknown> = {
         first_name: firstName,
@@ -58,7 +63,7 @@ export async function provisionAcademyStudent(
     const { data: savedRow, error: dbErr } = await supabase
         .from("trading_students")
         .upsert(row, { onConflict: "email" })
-        .select("email, access_code, access_expires_at, access_type")
+        .select("id, email, access_code, access_expires_at, access_type")
         .single()
 
     if (dbErr) {
@@ -68,6 +73,14 @@ export async function provisionAcademyStudent(
     if (!savedRow?.access_code || savedRow.access_code !== accessCode) {
         console.error("[provisionAcademyStudent] upsert row mismatch", { savedRow, accessCode })
         throw new Error("Failed to save access code")
+    }
+
+    if (!existed) {
+        await notifyNewStudentCreated(supabase, {
+            email,
+            studentId: typeof savedRow.id === "string" ? savedRow.id : null,
+            name,
+        })
     }
 
     console.log(savedRow)

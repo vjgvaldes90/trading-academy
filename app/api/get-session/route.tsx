@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
+import {
+    notifyNewStudentCreated,
+    tradingStudentExistsByEmail,
+} from "@/lib/adminNotifications"
 import { createStripeClient, getStripeSecretKey } from "@/lib/stripe-server"
 import { setAuthCookiesForPaidUser } from "@/lib/authCookies"
 import { attachSingleDeviceSessionCookies } from "@/lib/studentSingleSession"
@@ -55,21 +59,32 @@ export async function POST(req: Request) {
         }
 
         if (!student?.access_code || String(student.access_code).trim().length === 0) {
+            const existed = await tradingStudentExistsByEmail(supabase, email)
             const accessCode = Math.random().toString(36).substring(2, 8).toUpperCase()
             const accessExpiresAt = computeRenewalAccessExpiresAtIso(null)
-            const { error: upsertErr } = await supabase.from("trading_students").upsert(
-                {
-                    email,
-                    access_code: accessCode,
-                    access_type: "paid",
-                    is_active: true,
-                    access_expires_at: accessExpiresAt,
-                },
-                { onConflict: "email" }
-            )
+            const { data: upserted, error: upsertErr } = await supabase
+                .from("trading_students")
+                .upsert(
+                    {
+                        email,
+                        access_code: accessCode,
+                        access_type: "paid",
+                        is_active: true,
+                        access_expires_at: accessExpiresAt,
+                    },
+                    { onConflict: "email" }
+                )
+                .select("id")
+                .single()
             if (upsertErr) {
                 console.error("[get-session] trading_students upsert:", upsertErr)
                 return NextResponse.json({ error: "Database update failed" }, { status: 500 })
+            }
+            if (!existed) {
+                await notifyNewStudentCreated(supabase, {
+                    email,
+                    studentId: typeof upserted?.id === "string" ? upserted.id : null,
+                })
             }
         }
 

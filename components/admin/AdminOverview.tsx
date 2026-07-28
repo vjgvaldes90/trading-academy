@@ -7,16 +7,27 @@ import { useEffect, useMemo, useState } from "react"
 
 type Metrics = {
     totalStudents: number
-    activeSubscriptions: number
-    totalClasses: number
-    upcomingSessions: number
+    activeStudents: number
+    newThisWeek: number
+    newThisMonth: number
 }
 
-function sessionStartInFuture(date: string | null, time: string | null, now: Date): boolean {
-    if (!date || !time) return false
-    const dt = new Date(`${date.trim()}T${time.trim()}`)
-    if (Number.isNaN(dt.getTime())) return false
-    return dt.getTime() > now.getTime()
+type StudentRow = {
+    is_active?: boolean | null
+    created_at?: string | null
+}
+
+function startOfLocalWeek(now: Date): Date {
+    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const day = d.getDay()
+    const diffToMonday = day === 0 ? -6 : 1 - day
+    d.setDate(d.getDate() + diffToMonday)
+    d.setHours(0, 0, 0, 0)
+    return d
+}
+
+function startOfLocalMonth(now: Date): Date {
+    return new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0)
 }
 
 export default function AdminOverview({
@@ -35,44 +46,36 @@ export default function AdminOverview({
             setLoading(true)
             setError(null)
             const now = new Date()
+            const weekStart = startOfLocalWeek(now).getTime()
+            const monthStart = startOfLocalMonth(now).getTime()
             try {
-                const [studentsRes, lessonsRes, sessionsRes] = await Promise.all([
-                    fetch("/api/admin/trading-students", { cache: "no-store", credentials: "include" }),
-                    fetch("/api/lessons", { cache: "no-store", credentials: "include" }),
-                    fetch("/api/admin/sessions", { cache: "no-store", credentials: "include" }),
-                ])
-
+                const studentsRes = await fetch("/api/admin/trading-students", {
+                    cache: "no-store",
+                    credentials: "include",
+                })
                 const studentsPayload = (await studentsRes.json().catch(() => [])) as unknown
-                const lessonsPayload = (await lessonsRes.json().catch(() => [])) as unknown
-                const sessionsPayload = (await sessionsRes.json().catch(() => [])) as unknown
 
                 if (!studentsRes.ok) throw new Error(t.adminFailedToLoadStudents)
-                if (!lessonsRes.ok) throw new Error(t.adminFailedToLoadClasses)
-                if (!sessionsRes.ok) throw new Error(t.adminFailedToLoadSessions)
 
-                const studentList = Array.isArray(studentsPayload) ? studentsPayload : []
+                const studentList = Array.isArray(studentsPayload)
+                    ? (studentsPayload as StudentRow[])
+                    : []
+
                 const totalStudents = studentList.length
-                const activeSubscriptions = studentList.filter((r: Record<string, unknown>) => {
-                    const st = typeof r.subscription_status === "string" ? r.subscription_status.toLowerCase() : ""
-                    return st === "active"
+                const activeStudents = studentList.filter((r) => r.is_active !== false).length
+                const newThisWeek = studentList.filter((r) => {
+                    if (typeof r.created_at !== "string" || !r.created_at.trim()) return false
+                    const ts = Date.parse(r.created_at)
+                    return Number.isFinite(ts) && ts >= weekStart
                 }).length
-
-                const lessons = Array.isArray(lessonsPayload) ? lessonsPayload : []
-                const totalClasses = lessons.length
-
-                const sessions = Array.isArray(sessionsPayload) ? sessionsPayload : []
-                const upcomingSessions = sessions.filter((s: Record<string, unknown>) => {
-                    const status = typeof s.status === "string" ? s.status : "active"
-                    if (status !== "active") return false
-                    return sessionStartInFuture(
-                        typeof s.date === "string" ? s.date : null,
-                        typeof s.time === "string" ? s.time : null,
-                        now
-                    )
+                const newThisMonth = studentList.filter((r) => {
+                    if (typeof r.created_at !== "string" || !r.created_at.trim()) return false
+                    const ts = Date.parse(r.created_at)
+                    return Number.isFinite(ts) && ts >= monthStart
                 }).length
 
                 if (!cancelled) {
-                    setMetrics({ totalStudents, activeSubscriptions, totalClasses, upcomingSessions })
+                    setMetrics({ totalStudents, activeStudents, newThisWeek, newThisMonth })
                 }
             } catch (e) {
                 if (!cancelled) {
@@ -94,9 +97,9 @@ export default function AdminOverview({
             metrics
                 ? [
                       { label: t.adminTotalStudents, value: metrics.totalStudents },
-                      { label: t.adminActiveSubscriptions, value: metrics.activeSubscriptions },
-                      { label: t.adminTotalClasses, value: metrics.totalClasses },
-                      { label: t.adminUpcomingSessions, value: metrics.upcomingSessions },
+                      { label: t.adminActiveStudents, value: metrics.activeStudents },
+                      { label: t.adminNewThisWeek, value: metrics.newThisWeek },
+                      { label: t.adminNewThisMonth, value: metrics.newThisMonth },
                   ]
                 : [],
         [metrics, t]

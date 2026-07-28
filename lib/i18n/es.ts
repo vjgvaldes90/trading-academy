@@ -276,6 +276,9 @@ export const es: TranslationKeys = {
     adminFailedToLoadSessions: "No se pudieron cargar las sesiones",
     failedToLoadOverview: "No se pudo cargar el resumen",
     adminTotalStudents: "Total de estudiantes",
+    adminActiveStudents: "Estudiantes activos",
+    adminNewThisWeek: "Nuevos esta semana",
+    adminNewThisMonth: "Nuevos este mes",
     adminActiveSubscriptions: "Suscripciones activas",
     adminTotalClasses: "Total de clases",
     adminUpcomingSessions: "Próximas sesiones",
@@ -287,6 +290,12 @@ export const es: TranslationKeys = {
     adminQuickViewStudentsDesc: "Acceso y activación",
     adminQuickManageSubscriptions: "Gestionar suscripciones",
     adminQuickManageSubscriptionsDesc: "Resumen del estado de facturación",
+    adminNotificationsTitle: "Notificaciones",
+    adminNotificationsAria: "Notificaciones de administración",
+    adminNoNotifications: "Aún no hay notificaciones.",
+    adminMarkAsRead: "Marcar como leída",
+    adminMarkAsReadFailed: "No se pudo marcar como leída",
+    adminFailedToLoadNotifications: "No se pudieron cargar las notificaciones",
 
     // Create session modal
     createSessionTitle: "Nueva sesión (Zoom)",

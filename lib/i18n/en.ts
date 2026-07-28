@@ -274,6 +274,9 @@ export const en = {
     adminFailedToLoadSessions: "Could not load sessions",
     failedToLoadOverview: "Failed to load overview",
     adminTotalStudents: "Total Students",
+    adminActiveStudents: "Active Students",
+    adminNewThisWeek: "New This Week",
+    adminNewThisMonth: "New This Month",
     adminActiveSubscriptions: "Active Subscriptions",
     adminTotalClasses: "Total Classes",
     adminUpcomingSessions: "Upcoming Sessions",
@@ -285,6 +288,12 @@ export const en = {
     adminQuickViewStudentsDesc: "Access and activation",
     adminQuickManageSubscriptions: "Manage Subscriptions",
     adminQuickManageSubscriptionsDesc: "Billing status overview",
+    adminNotificationsTitle: "Notifications",
+    adminNotificationsAria: "Admin notifications",
+    adminNoNotifications: "No notifications yet.",
+    adminMarkAsRead: "Mark as read",
+    adminMarkAsReadFailed: "Could not mark as read",
+    adminFailedToLoadNotifications: "Could not load notifications",
 
     // Create session modal
     createSessionTitle: "New session (Zoom)",

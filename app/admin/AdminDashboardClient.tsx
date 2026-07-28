@@ -2,6 +2,7 @@
 
 import AdminAnalytics from "@/components/admin/AdminAnalytics"
 import AdminClasses from "@/components/admin/AdminClasses"
+import AdminNotificationsBell from "@/components/admin/AdminNotificationsBell"
 import AdminOverview from "@/components/admin/AdminOverview"
 import AdminSessions from "@/components/admin/AdminSessions"
 import AdminSettings from "@/components/admin/AdminSettings"
@@ -67,13 +68,16 @@ export default function AdminDashboardClient({
             />
 
             <main className="flex-1 ml-0 lg:ml-64 p-6 lg:p-8">
-                {activeView !== "sessions" ? (
-                    <header className="mb-6 border-b border-white/10 pb-4">
+                <header className="mb-6 flex items-center justify-between gap-4 border-b border-white/10 pb-4">
+                    {activeView !== "sessions" ? (
                         <h1 className="text-lg font-bold tracking-tight text-slate-100 lg:text-xl">
                             {sectionTitles[activeView]}
                         </h1>
-                    </header>
-                ) : null}
+                    ) : (
+                        <div className="min-w-0 flex-1" />
+                    )}
+                    <AdminNotificationsBell />
+                </header>
 
                 <div
                     key={activeView}

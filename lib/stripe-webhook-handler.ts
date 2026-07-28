@@ -1,6 +1,10 @@
 import Stripe from "stripe"
 import { createStripeClient, getStripeSecretKey, getStripeWebhookSecret } from "@/lib/stripe-server"
 import { createSupabaseServiceRoleClient } from "@/lib/access"
+import {
+    notifyNewStudentCreated,
+    tradingStudentExistsByEmail,
+} from "@/lib/adminNotifications"
 import { sendEmail } from "@/lib/sendEmail"
 import { computeRenewalAccessExpiresAtIso } from "@/lib/studentSubscriptionRenewal"
 import {
@@ -115,6 +119,7 @@ async function fulfillPaidAccessAndSendWelcomeEmail(args: {
     }
 
     const supabase = createSupabaseServiceRoleClient()
+    const existed = await tradingStudentExistsByEmail(supabase, emailForDb)
 
     const { data: savedRow, error: dbErr } = await supabase
         .from("trading_students")
@@ -129,7 +134,7 @@ async function fulfillPaidAccessAndSendWelcomeEmail(args: {
             },
             { onConflict: "email" }
         )
-        .select("email, access_code")
+        .select("id, email, access_code")
         .single()
 
     if (dbErr) {
@@ -139,6 +144,13 @@ async function fulfillPaidAccessAndSendWelcomeEmail(args: {
     if (!savedRow?.access_code || savedRow.access_code !== accessCode) {
         console.error("❌ trading_students upsert: row mismatch", { savedRow, accessCode })
         throw new Error("Failed to save access code")
+    }
+    if (!existed) {
+        await notifyNewStudentCreated(supabase, {
+            email: emailForDb,
+            studentId: typeof savedRow.id === "string" ? savedRow.id : null,
+            name: rawName ?? null,
+        })
     }
     console.log("💾 Saved code:", accessCode)
 
