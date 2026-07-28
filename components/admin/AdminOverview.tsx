@@ -1,33 +1,42 @@
 "use client"
 
+import RecentActivityPanel from "@/components/admin/executive/RecentActivityPanel"
+import UpcomingLiveSessionsPanel from "@/components/admin/executive/UpcomingLiveSessionsPanel"
+import StudentGrowthChart from "@/components/admin/executive/StudentGrowthChart"
+import MonthlyRevenueChart from "@/components/admin/executive/MonthlyRevenueChart"
 import type { AdminDashboardView } from "@/components/admin/AdminSidebar"
+import type { ActivityFeedItem } from "@/lib/activityFeed"
+import type {
+    ExecutiveMetrics,
+    ExecutiveUpcomingSession,
+    StudentGrowthPoint,
+} from "@/lib/executiveDashboard"
 import { useLanguage } from "@/context/LanguageProvider"
 import { BookOpen, CalendarPlus, CreditCard, Users } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 
-type Metrics = {
-    totalStudents: number
-    activeStudents: number
-    newThisWeek: number
-    newThisMonth: number
+type DashboardPayload = {
+    metrics?: ExecutiveMetrics
+    activity?: ActivityFeedItem[]
+    upcomingSessions?: ExecutiveUpcomingSession[]
+    studentGrowth?: StudentGrowthPoint[]
+    error?: string
 }
 
-type StudentRow = {
-    is_active?: boolean | null
-    created_at?: string | null
-}
-
-function startOfLocalWeek(now: Date): Date {
-    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-    const day = d.getDay()
-    const diffToMonday = day === 0 ? -6 : 1 - day
-    d.setDate(d.getDate() + diffToMonday)
-    d.setHours(0, 0, 0, 0)
-    return d
-}
-
-function startOfLocalMonth(now: Date): Date {
-    return new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0)
+function formatMetricValue(
+    value: number | null | undefined,
+    opts?: { percent?: boolean; currency?: boolean }
+): string {
+    if (value == null || !Number.isFinite(value)) return "—"
+    if (opts?.percent) return `${Math.round(value)}%`
+    if (opts?.currency) {
+        return new Intl.NumberFormat("en-US", {
+            style: "currency",
+            currency: "USD",
+            maximumFractionDigits: 0,
+        }).format(value)
+    }
+    return String(value)
 }
 
 export default function AdminOverview({
@@ -36,7 +45,10 @@ export default function AdminOverview({
     setActiveView: (view: AdminDashboardView) => void
 }) {
     const { t } = useLanguage()
-    const [metrics, setMetrics] = useState<Metrics | null>(null)
+    const [metrics, setMetrics] = useState<ExecutiveMetrics | null>(null)
+    const [activity, setActivity] = useState<ActivityFeedItem[]>([])
+    const [upcoming, setUpcoming] = useState<ExecutiveUpcomingSession[]>([])
+    const [growth, setGrowth] = useState<StudentGrowthPoint[]>([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
 
@@ -45,42 +57,29 @@ export default function AdminOverview({
         const load = async () => {
             setLoading(true)
             setError(null)
-            const now = new Date()
-            const weekStart = startOfLocalWeek(now).getTime()
-            const monthStart = startOfLocalMonth(now).getTime()
             try {
-                const studentsRes = await fetch("/api/admin/trading-students", {
+                const res = await fetch("/api/admin/executive-dashboard", {
                     cache: "no-store",
                     credentials: "include",
                 })
-                const studentsPayload = (await studentsRes.json().catch(() => [])) as unknown
-
-                if (!studentsRes.ok) throw new Error(t.adminFailedToLoadStudents)
-
-                const studentList = Array.isArray(studentsPayload)
-                    ? (studentsPayload as StudentRow[])
-                    : []
-
-                const totalStudents = studentList.length
-                const activeStudents = studentList.filter((r) => r.is_active !== false).length
-                const newThisWeek = studentList.filter((r) => {
-                    if (typeof r.created_at !== "string" || !r.created_at.trim()) return false
-                    const ts = Date.parse(r.created_at)
-                    return Number.isFinite(ts) && ts >= weekStart
-                }).length
-                const newThisMonth = studentList.filter((r) => {
-                    if (typeof r.created_at !== "string" || !r.created_at.trim()) return false
-                    const ts = Date.parse(r.created_at)
-                    return Number.isFinite(ts) && ts >= monthStart
-                }).length
-
-                if (!cancelled) {
-                    setMetrics({ totalStudents, activeStudents, newThisWeek, newThisMonth })
+                const payload = (await res.json().catch(() => ({}))) as DashboardPayload
+                if (!res.ok) {
+                    throw new Error(
+                        typeof payload.error === "string" ? payload.error : t.failedToLoadOverview
+                    )
                 }
+                if (cancelled) return
+                setMetrics(payload.metrics ?? null)
+                setActivity(Array.isArray(payload.activity) ? payload.activity : [])
+                setUpcoming(Array.isArray(payload.upcomingSessions) ? payload.upcomingSessions : [])
+                setGrowth(Array.isArray(payload.studentGrowth) ? payload.studentGrowth : [])
             } catch (e) {
                 if (!cancelled) {
                     setError(e instanceof Error ? e.message : t.failedToLoadOverview)
                     setMetrics(null)
+                    setActivity([])
+                    setUpcoming([])
+                    setGrowth([])
                 }
             } finally {
                 if (!cancelled) setLoading(false)
@@ -92,18 +91,43 @@ export default function AdminOverview({
         }
     }, [t])
 
-    const statCards = useMemo(
-        () =>
-            metrics
-                ? [
-                      { label: t.adminTotalStudents, value: metrics.totalStudents },
-                      { label: t.adminActiveStudents, value: metrics.activeStudents },
-                      { label: t.adminNewThisWeek, value: metrics.newThisWeek },
-                      { label: t.adminNewThisMonth, value: metrics.newThisMonth },
-                  ]
-                : [],
-        [metrics, t]
-    )
+    const statCards = useMemo(() => {
+        const m = metrics
+        return [
+            {
+                label: t.adminTotalStudents,
+                value: formatMetricValue(m?.totalStudents),
+            },
+            {
+                label: t.adminActiveStudents,
+                value: formatMetricValue(m?.activeStudents),
+            },
+            {
+                label: t.adminLiveSessionsThisWeek,
+                value: formatMetricValue(m?.liveSessionsThisWeek),
+            },
+            {
+                label: t.adminOpenSupportTickets,
+                value: formatMetricValue(m?.openSupportTickets),
+            },
+            {
+                label: t.adminExpiringSubscriptions,
+                value: formatMetricValue(m?.expiringSubscriptions),
+            },
+            {
+                label: t.adminTotalBookedSeatsThisWeek,
+                value: formatMetricValue(m?.totalBookedSeatsThisWeek ?? null),
+            },
+            {
+                label: t.adminSeatOccupancy,
+                value: formatMetricValue(m?.seatOccupancyPercent ?? null, { percent: true }),
+            },
+            {
+                label: t.adminMonthlyRevenue,
+                value: formatMetricValue(m?.monthlyRevenue ?? null, { currency: true }),
+            },
+        ]
+    }, [metrics, t])
 
     const quickActions = useMemo(
         () => [
@@ -138,30 +162,43 @@ export default function AdminOverview({
     return (
         <div className="space-y-8">
             <header>
-                <h2 className="text-xl font-semibold text-slate-50">{t.adminOverview}</h2>
-                <p className="mt-1 text-sm text-slate-400">{t.adminOverviewSubtitle}</p>
+                <h2 className="text-xl font-semibold text-slate-50">{t.adminExecutiveDashboard}</h2>
+                <p className="mt-1 text-sm text-slate-400">{t.adminExecutiveDashboardSubtitle}</p>
             </header>
 
-            {loading ? (
-                <p className="text-sm text-slate-400">{t.loadingMetrics}</p>
-            ) : error ? (
-                <p className="text-sm text-red-400">{error}</p>
-            ) : (
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                    {statCards.map((c) => (
-                        <div
-                            key={c.label}
-                            className="rounded-xl border border-white/10 bg-white/5 p-6 transition hover:border-blue-500/25 hover:bg-white/[0.07]"
-                        >
-                            <p className="text-sm text-slate-400">{c.label}</p>
-                            <p className="mt-2 text-2xl font-semibold tabular-nums text-slate-50">{c.value}</p>
-                        </div>
-                    ))}
-                </div>
-            )}
+            {error ? <p className="text-sm text-red-400">{error}</p> : null}
+
+            {/* Row 1 — KPI cards */}
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                {statCards.map((c) => (
+                    <div
+                        key={c.label}
+                        className="rounded-xl border border-white/10 bg-white/5 p-5 transition hover:border-blue-500/25 hover:bg-white/[0.07]"
+                    >
+                        <p className="text-sm text-slate-400">{c.label}</p>
+                        <p className="mt-2 text-2xl font-semibold tabular-nums text-slate-50">
+                            {loading ? "…" : c.value}
+                        </p>
+                    </div>
+                ))}
+            </div>
+
+            {/* Row 2 — Activity + Upcoming */}
+            <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+                <RecentActivityPanel items={activity} loading={loading} />
+                <UpcomingLiveSessionsPanel sessions={upcoming} loading={loading} />
+            </div>
+
+            {/* Row 3 — Charts */}
+            <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+                <StudentGrowthChart points={growth} loading={loading} />
+                <MonthlyRevenueChart />
+            </div>
 
             <section>
-                <h3 className="text-sm font-extrabold uppercase tracking-wide text-slate-300">{t.quickActions}</h3>
+                <h3 className="text-sm font-extrabold uppercase tracking-wide text-slate-300">
+                    {t.quickActions}
+                </h3>
                 <div className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-4">
                     {quickActions.map(({ Icon, title, description, view }) => (
                         <button
@@ -178,7 +215,9 @@ export default function AdminOverview({
                         >
                             <Icon className="h-8 w-8 shrink-0 text-blue-400 transition-transform duration-200 group-hover:scale-110" />
                             <div className="flex w-full flex-col gap-1">
-                                <span className="text-sm font-extrabold leading-snug text-slate-100">{title}</span>
+                                <span className="text-sm font-extrabold leading-snug text-slate-100">
+                                    {title}
+                                </span>
                                 <span className="text-xs leading-snug text-slate-400">{description}</span>
                             </div>
                         </button>

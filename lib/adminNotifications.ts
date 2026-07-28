@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
+import { recordStudentRegistered } from "@/lib/activityFeed"
 
 export const ADMIN_NOTIFICATION_TYPES = [
     "new_student",
@@ -67,6 +68,7 @@ export async function notifyNewStudentCreated(
             name,
         },
     })
+    await recordStudentRegistered(supabase, args)
 }
 
 /** Returns true if a trading_students row already exists for this email. */

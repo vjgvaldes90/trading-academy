@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { requireAuthorizedAdminFromCookies } from "@/lib/adminAuth"
 import { createSupabaseServiceRoleClient } from "@/lib/access"
+import { recordLiveSessionCreated } from "@/lib/activityFeed"
 import { spanishWeekdayFromIsoDate } from "@/lib/sessions"
 import {
     buildZoomStartTime,
@@ -151,6 +152,14 @@ export async function POST(req: Request) {
                 { status: 500 }
             )
         }
+
+        const saved = data as Record<string, unknown> | null
+        await recordLiveSessionCreated(supabase, {
+            sessionId: typeof saved?.id === "string" ? saved.id : null,
+            date: dateRaw,
+            time: timeRaw,
+            title: typeof saved?.title === "string" ? saved.title : topic,
+        })
 
         return NextResponse.json(data, { status: 201 })
     } catch (err: unknown) {
