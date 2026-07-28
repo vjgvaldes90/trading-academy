@@ -1,35 +1,10 @@
 "use client"
 
 import type { StudentDashboardView } from "@/components/student/Sidebar"
+import { useLanguage } from "@/context/LanguageProvider"
 import { BookOpen, FileText, PlayCircle, Video } from "lucide-react"
 
 type QuickActionView = Extract<StudentDashboardView, "live" | "classes" | "resources">
-
-const ACTIONS: {
-    Icon: typeof BookOpen
-    title: string
-    description: string
-    view: QuickActionView
-}[] = [
-    {
-        Icon: Video,
-        title: "Sesiones en vivo",
-        description: "Únete a la próxima clase",
-        view: "live",
-    },
-    {
-        Icon: PlayCircle,
-        title: "Ver clases",
-        description: "Continúa aprendiendo",
-        view: "classes",
-    },
-    {
-        Icon: FileText,
-        title: "Recursos",
-        description: "Material complementario",
-        view: "resources",
-    },
-]
 
 export default function QuickActions({
     activeView,
@@ -38,11 +13,39 @@ export default function QuickActions({
     activeView: StudentDashboardView
     setActiveView: (view: StudentDashboardView) => void
 }) {
+    const { t } = useLanguage()
+
+    const actions: {
+        Icon: typeof BookOpen
+        title: string
+        description: string
+        view: QuickActionView
+    }[] = [
+        {
+            Icon: Video,
+            title: t.quickActionLiveTitle,
+            description: t.quickActionLiveDesc,
+            view: "live",
+        },
+        {
+            Icon: PlayCircle,
+            title: t.quickActionClassesTitle,
+            description: t.quickActionClassesDesc,
+            view: "classes",
+        },
+        {
+            Icon: FileText,
+            title: t.quickActionResourcesTitle,
+            description: t.quickActionResourcesDesc,
+            view: "resources",
+        },
+    ]
+
     return (
         <div className="lg:col-span-2 rounded-2xl p-6 bg-[#111827] border border-white/10 shadow-sm">
-            <div className="text-slate-50 font-extrabold">Quick Actions</div>
+            <div className="text-slate-50 font-extrabold">{t.quickActions}</div>
             <div className="mt-4 grid grid-cols-2 md:grid-cols-3 gap-4">
-                {ACTIONS.map(({ Icon, title, description, view }) => {
+                {actions.map(({ Icon, title, description, view }) => {
                     const isActive = activeView === view
                     return (
                         <button

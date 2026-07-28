@@ -2,6 +2,7 @@
 
 import type { TabKey } from "@/context/SessionContext"
 import { useSession } from "@/context/SessionContext"
+import { useLanguage } from "@/context/LanguageProvider"
 import {
     canShowStudentLiveJoinButton,
     DbSession,
@@ -16,6 +17,7 @@ import { useState } from "react"
 
 function SlotRow({ session }: { session: DbSession }) {
     const { academyAccess, userEmail } = useSession()
+    const { t } = useLanguage()
     const router = useRouter()
     const now = new Date()
     const canAccess = academyAccess.canAccess
@@ -53,20 +55,20 @@ function SlotRow({ session }: { session: DbSession }) {
             >
                 {label}
             </div>
-            <p style={{ margin: 0, fontSize: "0.75rem", color: "#22c55e" }}>Disponible</p>
+            <p style={{ margin: 0, fontSize: "0.75rem", color: "#22c55e" }}>{t.available}</p>
             {!canAccess ? (
                 <>
-                    <p style={{ margin: 0, fontSize: "0.75rem", color: "#fcd34d" }}>Acceso no disponible</p>
+                    <p style={{ margin: 0, fontSize: "0.75rem", color: "#fcd34d" }}>{t.accessNotAvailable}</p>
                     <Link
                         href="/pricing"
                         style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--ds-accent)" }}
                     >
-                        Obtener acceso →
+                        {t.getAccess}
                     </Link>
                 </>
             ) : sessionClosed ? (
                 <p style={{ margin: 0, fontSize: "0.75rem", fontWeight: 600, color: "#94a3b8" }}>
-                    Sesión cerrada
+                    {t.sessionClosed}
                 </p>
             ) : mayOpenLiveJoin ? (
                 <button
@@ -75,27 +77,28 @@ function SlotRow({ session }: { session: DbSession }) {
                     onClick={() => void handleSecureJoin()}
                     className="inline-flex w-full items-center justify-center rounded-xl bg-red-600 px-4 py-2 text-xs font-bold text-white shadow-lg shadow-red-900/30 hover:bg-red-500 disabled:cursor-wait disabled:opacity-70"
                 >
-                    {joining ? "Abriendo…" : "Join Live Session"}
+                    {joining ? t.opening : t.joinLiveSession}
                 </button>
             ) : isStudentJoinTooEarly(session, now) ? (
                 <p style={{ margin: 0, fontSize: "0.75rem", color: "#94a3b8" }}>
-                    Disponible 10 minutos antes
+                    {t.availableTenMinBefore}
                 </p>
             ) : (
-                <p style={{ margin: 0, fontSize: "0.75rem", color: "#94a3b8" }}>Live Session</p>
+                <p style={{ margin: 0, fontSize: "0.75rem", color: "#94a3b8" }}>{t.liveSession}</p>
             )}
         </div>
     )
 }
 
-const TAB_LABELS: { key: TabKey; label: string }[] = [
-    { key: "today", label: "Hoy" },
-    { key: "thisWeek", label: "Esta semana" },
-    { key: "nextWeek", label: "Próxima semana" },
-]
-
 export default function BookSessionSection() {
     const { activeTab, setActiveTab, filteredSessions, sessions } = useSession()
+    const { t } = useLanguage()
+
+    const tabLabels: { key: TabKey; label: string }[] = [
+        { key: "today", label: t.tabToday },
+        { key: "thisWeek", label: t.tabThisWeek },
+        { key: "nextWeek", label: t.tabNextWeek },
+    ]
 
     return (
         <section id="sesiones-en-vivo" aria-labelledby="sesiones-en-vivo-title">
@@ -109,7 +112,7 @@ export default function BookSessionSection() {
                     fontWeight: 700,
                 }}
             >
-                Sesiones en vivo
+                {t.liveSessionsTitle}
             </h2>
 
             <div
@@ -120,7 +123,7 @@ export default function BookSessionSection() {
                     marginBottom: "var(--ds-4)",
                 }}
             >
-                {TAB_LABELS.map(({ key, label }) => (
+                {tabLabels.map(({ key, label }) => (
                     <button
                         key={key}
                         type="button"
@@ -147,11 +150,11 @@ export default function BookSessionSection() {
 
             {!sessions?.length ? (
                 <p style={{ color: "var(--ds-text-muted)", margin: 0, fontSize: "0.875rem", textAlign: "center" }}>
-                    No tienes sesiones disponibles aún
+                    {t.noSessionsAvailableYet}
                 </p>
             ) : filteredSessions.length === 0 ? (
                 <p style={{ color: "var(--ds-text-muted)", margin: 0, fontSize: "0.875rem" }}>
-                    No hay sesiones en este rango.
+                    {t.noSessionsInRange}
                 </p>
             ) : (
                 <div

@@ -1,5 +1,6 @@
 "use client"
 
+import { useLanguage } from "@/context/LanguageProvider"
 import { useEffect, useMemo, useState } from "react"
 
 type Lesson = {
@@ -17,6 +18,7 @@ function formatCreatedAt(iso: string): string {
 }
 
 export default function LearningPlayer() {
+    const { t } = useLanguage()
     const [lessons, setLessons] = useState<Lesson[]>([])
     const [activeLesson, setActiveLesson] = useState<Lesson | undefined>(undefined)
     const [loading, setLoading] = useState(true)
@@ -35,7 +37,7 @@ export default function LearningPlayer() {
                     const msg =
                         typeof (payload as { error?: unknown })?.error === "string"
                             ? String((payload as { error: unknown }).error)
-                            : "Failed to load lessons"
+                            : t.failedToLoadLessons
                     throw new Error(msg)
                 }
 
@@ -47,7 +49,7 @@ export default function LearningPlayer() {
                 if (!cancelled) {
                     setLessons([])
                     setActiveLesson(undefined)
-                    setError(e instanceof Error ? e.message : "Failed to load lessons")
+                    setError(e instanceof Error ? e.message : t.failedToLoadLessons)
                 }
             } finally {
                 if (!cancelled) setLoading(false)
@@ -58,19 +60,19 @@ export default function LearningPlayer() {
         return () => {
             cancelled = true
         }
-    }, [])
+    }, [t.failedToLoadLessons])
 
     const activeLessonId = activeLesson?.id ?? null
 
     const sidebar = useMemo(() => {
         if (loading) {
-            return <p className="text-slate-400 text-sm m-0">Loading…</p>
+            return <p className="text-slate-400 text-sm m-0">{t.loading}</p>
         }
         if (error) {
             return <p className="text-red-400 text-sm m-0">{error}</p>
         }
         if (lessons.length === 0) {
-            return <p className="text-slate-400 text-sm m-0">No lessons available yet.</p>
+            return <p className="text-slate-400 text-sm m-0">{t.noLessonsAvailable}</p>
         }
 
         return (
@@ -98,18 +100,18 @@ export default function LearningPlayer() {
                 })}
             </div>
         )
-    }, [activeLessonId, error, lessons, loading])
+    }, [activeLessonId, error, lessons, loading, t.failedToLoadLessons, t.loading, t.noLessonsAvailable])
 
     return (
-        <section aria-label="Learning player">
+        <section aria-label={t.learningPlayerAria}>
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2 rounded-xl border border-blue-500/20 bg-gradient-to-br from-slate-900/60 to-[#0B0F1A] p-4 shadow-[0_20px_30px_-20px_rgba(59,130,246,0.25)]">
                     {loading ? (
-                        <p className="m-0 text-slate-400 text-sm">Loading…</p>
+                        <p className="m-0 text-slate-400 text-sm">{t.loading}</p>
                     ) : error ? (
                         <p className="m-0 text-red-400 text-sm">{error}</p>
                     ) : !activeLesson ? (
-                        <p className="m-0 text-slate-400 text-sm">No lesson selected.</p>
+                        <p className="m-0 text-slate-400 text-sm">{t.noLessonSelected}</p>
                     ) : (
                         <>
                             <iframe
@@ -133,11 +135,10 @@ export default function LearningPlayer() {
                 </div>
 
                 <aside className="rounded-xl border border-blue-500/20 bg-gradient-to-br from-slate-900/60 to-[#0B0F1A] p-4 shadow-[0_20px_30px_-20px_rgba(59,130,246,0.25)]">
-                    <div className="mb-3 text-blue-200 font-extrabold text-sm">Lessons</div>
+                    <div className="mb-3 text-blue-200 font-extrabold text-sm">{t.lessonsTitle}</div>
                     {sidebar}
                 </aside>
             </div>
         </section>
     )
 }
-

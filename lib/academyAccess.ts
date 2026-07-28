@@ -1,5 +1,6 @@
 import { cookies } from "next/headers"
 import { canAccessAcademy, createSupabaseServiceRoleClient, type AcademyActor } from "@/lib/access"
+import { getTranslations } from "@/lib/i18n"
 
 export type AcademyAccessState = {
     canAccess: boolean
@@ -34,7 +35,7 @@ export async function getAcademyAccessState(): Promise<AcademyAccessState> {
         console.error("[getAcademyAccessState]", e)
         return {
             canAccess: false,
-            message: "No pudimos verificar tu acceso.",
+            message: getTranslations("es").accessVerifyFailed,
             actor,
         }
     }

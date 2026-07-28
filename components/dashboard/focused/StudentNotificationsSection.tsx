@@ -1,6 +1,7 @@
 "use client"
 
 import { useSession } from "@/context/SessionContext"
+import { useLanguage } from "@/context/LanguageProvider"
 import { useCallback, useEffect, useState } from "react"
 
 export type StudentNotificationRow = {
@@ -11,11 +12,11 @@ export type StudentNotificationRow = {
     created_at: string
 }
 
-function formatWhen(iso: string | null): string {
+function formatWhen(iso: string | null, locale: string): string {
     if (!iso) return ""
     const d = new Date(iso)
     if (Number.isNaN(d.getTime())) return ""
-    return d.toLocaleString("es", {
+    return d.toLocaleString(locale, {
         dateStyle: "medium",
         timeStyle: "short",
     })
@@ -23,6 +24,7 @@ function formatWhen(iso: string | null): string {
 
 export default function StudentNotificationsSection() {
     const { userEmail, dashboardDataReady } = useSession()
+    const { t, language } = useLanguage()
     const [items, setItems] = useState<StudentNotificationRow[]>([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
@@ -41,23 +43,23 @@ export default function StudentNotificationsSection() {
                 const msg =
                     typeof (payload as { error?: unknown })?.error === "string"
                         ? (payload as { error: string }).error
-                        : "No se pudieron cargar los avisos"
+                        : t.failedToLoadNotifications
                 throw new Error(msg)
             }
             setItems(Array.isArray(payload) ? (payload as StudentNotificationRow[]) : [])
         } catch (e: unknown) {
-            setError(e instanceof Error ? e.message : "Error al cargar avisos")
+            setError(e instanceof Error ? e.message : t.loadNotificationsError)
             setItems([])
         } finally {
             setLoading(false)
         }
-    }, [userEmail])
+    }, [userEmail, t.failedToLoadNotifications, t.loadNotificationsError])
 
     useEffect(() => {
         if (!dashboardDataReady || !userEmail) return
         void load()
-        const t = setInterval(() => void load(), 60_000)
-        return () => clearInterval(t)
+        const interval = setInterval(() => void load(), 60_000)
+        return () => clearInterval(interval)
     }, [dashboardDataReady, userEmail, load])
 
     useEffect(() => {
@@ -70,6 +72,7 @@ export default function StudentNotificationsSection() {
     }, [dashboardDataReady, userEmail, load])
 
     const unreadCount = items.filter((n) => !n.read).length
+    const dateLocale = language === "es" ? "es" : "en"
 
     return (
         <section aria-labelledby="avisos-title">
@@ -86,10 +89,10 @@ export default function StudentNotificationsSection() {
                     flexWrap: "wrap",
                 }}
             >
-                Avisos
+                {t.notificationsTitle}
                 {unreadCount > 0 ? (
                     <span
-                        aria-label={`${unreadCount} sin leer`}
+                        aria-label={t.unreadCountAria.replace("{count}", String(unreadCount))}
                         style={{
                             display: "inline-flex",
                             alignItems: "center",
@@ -119,7 +122,7 @@ export default function StudentNotificationsSection() {
                 }}
             >
                 {loading ? (
-                    <p style={{ margin: 0, color: "var(--ds-text-muted)", fontSize: "0.9375rem" }}>Cargando…</p>
+                    <p style={{ margin: 0, color: "var(--ds-text-muted)", fontSize: "0.9375rem" }}>{t.loading}</p>
                 ) : error ? (
                     <p style={{ margin: 0, color: "var(--ds-danger)", fontSize: "0.9375rem" }}>{error}</p>
                 ) : items.length === 0 ? (
@@ -132,7 +135,7 @@ export default function StudentNotificationsSection() {
                             lineHeight: 1.5,
                         }}
                     >
-                        No tienes avisos nuevos.
+                        {t.noNewNotifications}
                     </p>
                 ) : (
                     <ul
@@ -181,7 +184,7 @@ export default function StudentNotificationsSection() {
                                                 color: unread ? "#facc15" : "var(--ds-text-muted)",
                                             }}
                                         >
-                                            {unread ? "Sin leer" : "Leído"}
+                                            {unread ? t.unread : t.read}
                                         </span>
                                         <time
                                             dateTime={n.created_at}
@@ -191,7 +194,7 @@ export default function StudentNotificationsSection() {
                                                 flexShrink: 0,
                                             }}
                                         >
-                                            {formatWhen(n.created_at)}
+                                            {formatWhen(n.created_at, dateLocale)}
                                         </time>
                                     </div>
                                     <p

@@ -7,8 +7,10 @@ import LoginInfo from "@/components/login/LoginInfo"
 import LoginCard from "@/components/login/LoginCard"
 import { sanitizeRedirect } from "@/lib/sanitizeRedirect"
 import { persistStudent } from "@/lib/studentLocalStorage"
+import { useLanguage } from "@/context/LanguageProvider"
 
 function LoginPageInner() {
+    const { t } = useLanguage()
     const [email, setEmail] = useState("")
     const [code, setCode] = useState("")
     const [mode, setMode] = useState<"buy" | "access">("buy")
@@ -27,9 +29,9 @@ function LoginPageInner() {
     const queryError = searchParams.get("error")?.trim()
     const queryAccessError =
         queryError === "access_denied"
-            ? "Tu acceso a la academia no esta activo o ha caducado. Si crees que es un error, contacta al administrador."
+            ? t.loginAccessDeniedError
             : queryError === "session_expired"
-              ? "Tu sesion ha finalizado porque iniciaste sesion en otro dispositivo. Vuelve a entrar con tu codigo o enlace."
+              ? t.loginSessionExpiredError
               : null
 
     useEffect(() => {
@@ -41,7 +43,7 @@ function LoginPageInner() {
         setAccessError(null)
         const trimmed = code.trim()
         if (!trimmed) {
-            setAccessError("Codigo invalido")
+            setAccessError(t.loginInvalidCode)
             return
         }
 
@@ -56,7 +58,7 @@ function LoginPageInner() {
             })
 
             if (!res.ok) {
-                setAccessError("Codigo invalido")
+                setAccessError(t.loginInvalidCode)
                 return
             }
 
@@ -79,10 +81,16 @@ function LoginPageInner() {
                     window.location.replace("/blocked")
                     return
                 }
-                if (typeof data.message === "string") {
-                    setAccessError(data.message)
+                if (data.reason === "unpaid") {
+                    setAccessError(t.accessDeniedUnpaid)
                     return
                 }
+                if (data.reason === "not_found") {
+                    setAccessError(t.accessDeniedNotFound)
+                    return
+                }
+                setAccessError(t.accessDeniedNotFound)
+                return
             }
 
             if (data.success) {
@@ -110,11 +118,11 @@ function LoginPageInner() {
                 }
                 window.location.assign(dest)
             } else {
-                setAccessError("Codigo invalido")
+                setAccessError(t.loginInvalidCode)
             }
         } catch (err) {
             console.error("Access error:", err)
-            setAccessError("Codigo invalido")
+            setAccessError(t.loginInvalidCode)
         }
     }
 
@@ -140,22 +148,25 @@ function LoginPageInner() {
             </div>
             <div className="absolute bottom-5 left-0 right-0 z-20 flex justify-center px-6">
                 <Link href="/disclaimer" className="text-xs font-semibold text-slate-400 transition hover:text-blue-300">
-                    Disclaimer Legal
+                    {t.loginDisclaimerLink}
                 </Link>
             </div>
         </div>
     )
 }
 
+function LoginPageFallback() {
+    const { t } = useLanguage()
+    return (
+        <div className="flex min-h-screen items-center justify-center bg-[#020617] text-slate-300">
+            {t.loginLoading}
+        </div>
+    )
+}
+
 export default function LoginPage() {
     return (
-        <Suspense
-            fallback={
-                <div className="flex min-h-screen items-center justify-center bg-[#020617] text-slate-300">
-                    Cargando...
-                </div>
-            }
-        >
+        <Suspense fallback={<LoginPageFallback />}>
             <LoginPageInner />
         </Suspense>
     )

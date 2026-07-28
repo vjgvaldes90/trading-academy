@@ -1,3 +1,5 @@
+import { getTranslations, readStoredLanguage } from "@/lib/i18n"
+
 export const STUDENT_STORAGE_KEY = "student"
 
 /** Non-httpOnly mirror of session email so the dashboard can run without server components or `/api` calls. */
@@ -23,10 +25,11 @@ export function resolveDashboardStudent(): StoredStudent | null {
     const cookieEmail = readDashboardClientEmailFromBrowserCookie()
     const email = (stored?.email ?? cookieEmail)?.trim().toLowerCase() ?? ""
     if (!email) return null
+    const fallback = getTranslations(readStoredLanguage()).defaultStudentName
     const name =
         stored?.name?.trim() ||
         (email.includes("@") ? (email.split("@")[0] ?? "").trim() : email) ||
-        "Usuario"
+        fallback
     const classes = stored?.classes ?? []
     return { name, email, classes }
 }
@@ -69,7 +72,7 @@ export function buildStudentDisplayName(p: {
     if (a || b) return [a, b].filter(Boolean).join(" ").trim()
     const em = (p.email ?? "").trim()
     if (em.includes("@")) return em.split("@")[0] ?? em
-    return em || "Student"
+    return em || getTranslations(readStoredLanguage()).defaultStudentName
 }
 
 export function persistStudent(student: StoredStudent): void {

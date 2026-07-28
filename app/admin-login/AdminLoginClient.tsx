@@ -1,17 +1,26 @@
 "use client"
 
+import { useLanguage } from "@/context/LanguageProvider"
 import Link from "next/link"
-import { FormEvent, useState } from "react"
+import { FormEvent, useMemo, useState } from "react"
 
 type Props = {
-    queryError: string | null
+    queryErrorCode: string | null
 }
 
-export default function AdminLoginClient({ queryError }: Props) {
+export default function AdminLoginClient({ queryErrorCode }: Props) {
+    const { t } = useLanguage()
     const [email, setEmail] = useState("")
     const [busy, setBusy] = useState(false)
     const [message, setMessage] = useState<string | null>(null)
     const [error, setError] = useState<string | null>(null)
+
+    const queryError = useMemo(() => {
+        if (!queryErrorCode) return null
+        if (queryErrorCode === "unauthorized") return t.adminLoginUnauthorized
+        if (queryErrorCode === "session_expired") return t.adminLoginSessionExpired
+        return t.adminLoginAccessDenied
+    }, [queryErrorCode, t])
 
     const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault()
@@ -34,7 +43,7 @@ export default function AdminLoginClient({ queryError }: Props) {
                 throw new Error(
                     typeof payload.error === "string" && payload.error.trim()
                         ? payload.error
-                        : "Could not complete admin login"
+                        : t.adminLoginFailed
                 )
             }
             const target =
@@ -43,7 +52,7 @@ export default function AdminLoginClient({ queryError }: Props) {
                     : "/admin"
             window.location.assign(target)
         } catch (e) {
-            setError(e instanceof Error ? e.message : "Could not complete admin login")
+            setError(e instanceof Error ? e.message : t.adminLoginFailed)
         } finally {
             setBusy(false)
         }
@@ -58,22 +67,20 @@ export default function AdminLoginClient({ queryError }: Props) {
                 <section className="w-full max-w-md rounded-3xl border border-slate-700/70 bg-slate-950/70 p-8 shadow-[0_30px_80px_-35px_rgba(59,130,246,0.6)] backdrop-blur">
                     <div className="mb-7">
                         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-300/90">
-                            Smart Option Academy
+                            {t.smartOptionAcademy}
                         </p>
-                        <h1 className="mt-2 text-2xl font-extrabold text-slate-50">Corporate Admin Login</h1>
-                        <p className="mt-2 text-sm text-slate-400">
-                            Access is restricted to authorized corporate admin accounts.
-                        </p>
+                        <h1 className="mt-2 text-2xl font-extrabold text-slate-50">{t.adminLoginTitle}</h1>
+                        <p className="mt-2 text-sm text-slate-400">{t.adminLoginSubtitle}</p>
                     </div>
 
                     <form className="space-y-4" onSubmit={handleSubmit}>
                         <label className="block space-y-2">
-                            <span className="text-sm font-semibold text-slate-200">Corporate email</span>
+                            <span className="text-sm font-semibold text-slate-200">{t.adminLoginEmailLabel}</span>
                             <input
                                 type="email"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value.toLowerCase())}
-                                placeholder="name@smartoptionacademy.com"
+                                placeholder={t.adminLoginEmailPlaceholder}
                                 autoComplete="email"
                                 required
                                 className="w-full rounded-xl border border-slate-700 bg-slate-900/80 px-4 py-3 text-sm text-slate-100 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-500/35"
@@ -85,7 +92,7 @@ export default function AdminLoginClient({ queryError }: Props) {
                             disabled={busy}
                             className="w-full rounded-xl bg-gradient-to-b from-blue-500 to-blue-700 px-4 py-3 text-sm font-bold text-white transition hover:from-blue-400 hover:to-blue-600 disabled:cursor-not-allowed disabled:opacity-60"
                         >
-                            {busy ? "Signing in..." : "Sign in to admin dashboard"}
+                            {busy ? t.adminLoginSigningIn : t.adminLoginSubmit}
                         </button>
                     </form>
 
@@ -94,9 +101,9 @@ export default function AdminLoginClient({ queryError }: Props) {
                     {message ? <p className="mt-4 text-sm text-emerald-300">{message}</p> : null}
 
                     <div className="mt-6 border-t border-slate-800 pt-4 text-xs text-slate-400">
-                        Student access remains available via{" "}
+                        {t.adminLoginStudentAccess}{" "}
                         <Link href="/login" className="font-semibold text-blue-300 hover:text-blue-200">
-                            student login
+                            {t.adminLoginStudentLink}
                         </Link>
                         .
                     </div>

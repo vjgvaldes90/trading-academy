@@ -1,6 +1,8 @@
 "use client"
 
-import { type ComponentType } from "react"
+import { useLanguage } from "@/context/LanguageProvider"
+import type { TranslationKeys } from "@/lib/i18n/en"
+import { type ComponentType, useMemo } from "react"
 import {
     BarChart3,
     Calendar,
@@ -21,19 +23,19 @@ export type AdminDashboardView =
     | "settings"
 
 type NavItem = {
-    label: string
+    labelKey: keyof TranslationKeys
     view: AdminDashboardView
     icon: ComponentType<{ size?: number; className?: string }>
 }
 
 const NAV_ITEMS: NavItem[] = [
-    { label: "Overview", view: "overview", icon: LayoutDashboard },
-    { label: "Recorded Classes", view: "classes", icon: Video },
-    { label: "Live Sessions", view: "sessions", icon: Calendar },
-    { label: "Students", view: "students", icon: Users },
-    { label: "Subscriptions", view: "subscriptions", icon: CreditCard },
-    { label: "Analytics", view: "analytics", icon: BarChart3 },
-    { label: "Settings", view: "settings", icon: SettingsIcon },
+    { labelKey: "adminOverview", view: "overview", icon: LayoutDashboard },
+    { labelKey: "adminRecordedClasses", view: "classes", icon: Video },
+    { labelKey: "adminLiveSessions", view: "sessions", icon: Calendar },
+    { labelKey: "adminStudents", view: "students", icon: Users },
+    { labelKey: "adminSubscriptions", view: "subscriptions", icon: CreditCard },
+    { labelKey: "adminAnalytics", view: "analytics", icon: BarChart3 },
+    { labelKey: "adminSettings", view: "settings", icon: SettingsIcon },
 ]
 
 export default function AdminSidebar({
@@ -43,6 +45,17 @@ export default function AdminSidebar({
     activeView: AdminDashboardView
     setActiveView: (view: AdminDashboardView) => void
 }) {
+    const { t } = useLanguage()
+
+    const navLabels = useMemo(
+        () =>
+            NAV_ITEMS.map((item) => ({
+                ...item,
+                label: t[item.labelKey],
+            })),
+        [t]
+    )
+
     const itemBase =
         "flex items-center gap-3 px-4 py-3 rounded-lg cursor-pointer transition text-sm font-semibold text-left w-full"
     const itemActive = "bg-blue-600/20 text-blue-400 ring-1 ring-blue-500/25"
@@ -63,13 +76,13 @@ export default function AdminSidebar({
                     <LayoutDashboard size={18} />
                 </div>
                 <div>
-                    <div className="text-slate-50 font-extrabold text-[15px] tracking-tight">Admin</div>
-                    <div className="text-white/60 text-xs mt-0.5">Trading Academy</div>
+                    <div className="text-slate-50 font-extrabold text-[15px] tracking-tight">{t.adminLabel}</div>
+                    <div className="text-white/60 text-xs mt-0.5">{t.tradingAcademy}</div>
                 </div>
             </div>
 
             <nav className="flex flex-col gap-1">
-                {NAV_ITEMS.map((item) => {
+                {navLabels.map((item) => {
                     const Icon = item.icon
                     const isActive = activeView === item.view
                     return (
@@ -87,7 +100,7 @@ export default function AdminSidebar({
             </nav>
 
             <div className="mt-auto rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-slate-400">
-                Panel de control interno
+                {t.adminInternalPanel}
             </div>
         </aside>
     )

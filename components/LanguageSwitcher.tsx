@@ -3,15 +3,15 @@
 import { useEffect, useRef, useState } from "react"
 import { useLanguage, type Language } from "@/context/LanguageProvider"
 
-const options: { code: Language; label: string; flag: string }[] = [
-    { code: "en", label: "English", flag: "🇺🇸" },
-    { code: "es", label: "Español", flag: "🇪🇸" },
-]
-
 export default function LanguageSwitcher() {
-    const { language, setLanguage } = useLanguage()
+    const { language, setLanguage, t } = useLanguage()
     const [open, setOpen] = useState(false)
     const containerRef = useRef<HTMLDivElement>(null)
+
+    const options: { code: Language; label: string; flag: string }[] = [
+        { code: "en", label: t.langEnglish, flag: "🇺🇸" },
+        { code: "es", label: t.langSpanish, flag: "🇪🇸" },
+    ]
 
     useEffect(() => {
         if (!open) return
@@ -36,7 +36,7 @@ export default function LanguageSwitcher() {
                 className="flex items-center gap-2 rounded-full border border-blue-400/25 bg-[#0B1220]/95 px-4 py-2.5 text-sm font-semibold text-slate-100 shadow-[0_12px_28px_rgba(2,6,23,0.55)] backdrop-blur transition hover:border-blue-300/40 hover:brightness-110"
                 aria-expanded={open}
                 aria-haspopup="listbox"
-                aria-label="Change language"
+                aria-label={t.changeLanguage}
             >
                 <span aria-hidden>🌐</span>
                 <span>{currentLabel}</span>

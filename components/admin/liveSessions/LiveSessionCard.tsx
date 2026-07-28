@@ -1,6 +1,7 @@
 "use client"
 
 import type { AdminSessionRow } from "@/components/admin/liveSessions/types"
+import { useLanguage } from "@/context/LanguageProvider"
 import { isWithinAdminHostWindow, type DbSession } from "@/lib/sessions"
 
 function adminRowToDbSession(r: AdminSessionRow): DbSession {
@@ -31,10 +32,11 @@ export default function LiveSessionCard({
     onRequestCancelSession: (row: AdminSessionRow) => void
     onHostStart: (sessionId: string) => void | Promise<void>
 }) {
+    const { t } = useLanguage()
     const hostAllowed =
         (row.status ?? "active") === "active" && isWithinAdminHostWindow(adminRowToDbSession(row), now)
 
-    const title = row.title?.trim() || "Sesión en vivo"
+    const title = row.title?.trim() || t.liveSessionDefault
 
     return (
         <article
@@ -53,8 +55,10 @@ export default function LiveSessionCard({
 
             <div className="flex flex-1 flex-col gap-3 px-4 py-3">
                 <div>
-                    <p className="text-[0.65rem] font-medium uppercase tracking-wide text-slate-500">Estado</p>
-                    <p className="mt-0.5 text-sm font-semibold text-emerald-300">Live Session</p>
+                    <p className="text-[0.65rem] font-medium uppercase tracking-wide text-slate-500">
+                        {t.statusLabel}
+                    </p>
+                    <p className="mt-0.5 text-sm font-semibold text-emerald-300">{t.liveSession}</p>
                 </div>
             </div>
 
@@ -65,14 +69,14 @@ export default function LiveSessionCard({
                         onClick={() => onEditSession(row)}
                         className="rounded-lg border border-slate-500/40 bg-slate-900/75 px-3 py-2 text-xs font-bold text-slate-200 transition hover:border-slate-400/60"
                     >
-                        Editar
+                        {t.edit}
                     </button>
                     <button
                         type="button"
                         onClick={() => onRequestCancelSession(row)}
                         className="rounded-lg border border-red-400/45 bg-red-950/35 px-3 py-2 text-xs font-bold text-red-200 transition hover:bg-red-950/50"
                     >
-                        Cancelar sesión
+                        {t.cancelSession}
                     </button>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -82,7 +86,7 @@ export default function LiveSessionCard({
                         onClick={() => void onHostStart(row.id)}
                         className="rounded-lg border border-sky-500/45 bg-blue-950/40 px-3 py-2 text-xs font-bold text-sky-200 transition enabled:cursor-pointer enabled:hover:bg-blue-950/60 disabled:cursor-not-allowed disabled:opacity-55"
                     >
-                        Entrar como anfitrión (Zoom)
+                        {t.enterAsHostZoom}
                     </button>
                 </div>
             </div>

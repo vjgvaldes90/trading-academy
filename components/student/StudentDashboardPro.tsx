@@ -4,6 +4,7 @@ import BookSessionSection from "@/components/dashboard/focused/BookSessionSectio
 import ResourcesSection from "@/components/dashboard/focused/ResourcesSection"
 import StudentNotificationsSection from "@/components/dashboard/focused/StudentNotificationsSection"
 import { useSession } from "@/context/SessionContext"
+import { useLanguage } from "@/context/LanguageProvider"
 import {
     canShowStudentLiveJoinButton,
     getNextUpcomingSession,
@@ -49,6 +50,7 @@ function thumbUrl(lesson: Lesson): string | null {
 export default function StudentDashboardPro({ userName }: { userName: string }) {
     const router = useRouter()
     const { sessions, academyAccess, userEmail } = useSession()
+    const { t } = useLanguage()
     const [now, setNow] = useState(() => new Date())
 
     const [lessons, setLessons] = useState<Lesson[]>([])
@@ -76,7 +78,7 @@ export default function StudentDashboardPro({ userName }: { userName: string }) 
                     const msg =
                         typeof (payload as { error?: unknown })?.error === "string"
                             ? String((payload as { error: unknown }).error)
-                            : "Failed to load lessons"
+                            : t.failedToLoadLessons
                     throw new Error(msg)
                 }
 
@@ -88,7 +90,7 @@ export default function StudentDashboardPro({ userName }: { userName: string }) 
                 if (!cancelled) {
                     setLessons([])
                     setActiveLesson(null)
-                    setLessonsError(e instanceof Error ? e.message : "Failed to load lessons")
+                    setLessonsError(e instanceof Error ? e.message : t.failedToLoadLessons)
                 }
             } finally {
                 if (!cancelled) setLessonsLoading(false)
@@ -115,15 +117,17 @@ export default function StudentDashboardPro({ userName }: { userName: string }) 
         isStudentSecureJoinWindowClosed(nextBooked!, now) &&
         !isStudentJoinTooEarly(nextBooked!, now)
 
-    const heroTitle = activeLesson?.title ?? (lessonsLoading ? "Cargando…" : "No hay clases disponibles")
+    const heroTitle = activeLesson?.title ?? (lessonsLoading ? t.loading : t.noClassesAvailable)
     const heroThumb = activeLesson ? thumbUrl(activeLesson) : null
 
     return (
         <div className="space-y-6">
             {/* HEADER */}
             <header>
-                <h1 className="text-2xl font-semibold">Bienvenido de vuelta, {userName}</h1>
-                <p className="text-white/60 mt-1">Continúa tu aprendizaje y alcanza tus metas.</p>
+                <h1 className="text-2xl font-semibold">
+                    {t.welcomeBack} {userName}
+                </h1>
+                <p className="text-white/60 mt-1">{t.continueLearningSubtitle}</p>
             </header>
 
             {/* HERO + LIVE */}
@@ -132,15 +136,15 @@ export default function StudentDashboardPro({ userName }: { userName: string }) 
                 <div className="lg:col-span-2 bg-gradient-to-r from-[#111827] to-[#0B1120] rounded-2xl p-6 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 border border-white/10 shadow-sm">
                     <div className="min-w-0">
                         <div className="text-white/60 text-xs font-extrabold tracking-[0.18em] uppercase">
-                            CONTINÚA APRENDIENDO
+                            {t.continueLearning}
                         </div>
                         <div className="mt-2 text-slate-50 text-xl font-extrabold truncate">{heroTitle}</div>
-                        <div className="mt-2 text-white/60 text-sm">Instructor: Smart Option Academy</div>
+                        <div className="mt-2 text-white/60 text-sm">{t.instructorLabel}</div>
                         <div className="mt-4">
                             <div className="h-2 w-full rounded-full bg-white/10 overflow-hidden">
                                 <div className="h-full w-[38%] bg-blue-500/70 rounded-full" />
                             </div>
-                            <div className="mt-2 text-white/60 text-xs">Progreso: 38%</div>
+                            <div className="mt-2 text-white/60 text-xs">{t.progressLabel.replace("{percent}", "38")}</div>
                         </div>
                     </div>
 
@@ -158,16 +162,16 @@ export default function StudentDashboardPro({ userName }: { userName: string }) 
                             onClick={() => playerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
                             className="mt-3 w-full rounded-xl bg-blue-600/20 text-blue-300 border border-white/10 px-4 py-2.5 font-extrabold hover:bg-white/10 transition disabled:opacity-60 disabled:cursor-not-allowed"
                         >
-                            Reproducir ahora
+                            {t.watchNow}
                         </button>
                     </div>
                 </div>
 
                 {/* NEXT LIVE SESSION */}
                 <div id="live-sessions" className="rounded-2xl p-6 bg-[#111827] border border-white/10 shadow-sm">
-                    <div className="text-slate-50 font-extrabold">Próxima Sesión en Vivo</div>
+                    <div className="text-slate-50 font-extrabold">{t.nextLiveSession}</div>
                     {!nextBooked ? (
-                        <div className="mt-3 text-white/60 text-sm">No sessions scheduled</div>
+                        <div className="mt-3 text-white/60 text-sm">{t.noSessionsScheduled}</div>
                     ) : (
                         <div className="mt-4 flex flex-col gap-4">
                             <div className="flex items-center gap-4">
@@ -175,11 +179,11 @@ export default function StudentDashboardPro({ userName }: { userName: string }) 
                                     <div className="text-2xl font-extrabold text-slate-50">
                                         {(sessionDisplayDay(nextBooked).match(/\d{1,2}/)?.[0] ?? "").trim() || "—"}
                                     </div>
-                                    <div className="text-white/60 text-xs">Día</div>
+                                    <div className="text-white/60 text-xs">{t.dayLabel}</div>
                                 </div>
                                 <div className="min-w-0">
                                     <div className="text-slate-100 font-bold truncate">
-                                        {nextBooked.title ?? "Sesión en vivo"}
+                                        {nextBooked.title ?? t.liveSessionDefault}
                                     </div>
                                     <div className="text-white/60 text-sm">
                                         {sessionDisplayDay(nextBooked)} · {sessionDisplayHour(nextBooked) || "—"}
@@ -197,10 +201,10 @@ export default function StudentDashboardPro({ userName }: { userName: string }) 
                                         : "cursor-not-allowed bg-white/5 text-white/40 border border-white/10",
                                 ].join(" ")}
                             >
-                                Join Live Session
+                                {t.joinLiveSession}
                             </button>
                             {nextClosed ? (
-                                <div className="text-white/60 text-xs">Sesión cerrada</div>
+                                <div className="text-white/60 text-xs">{t.sessionClosed}</div>
                             ) : null}
                         </div>
                     )}
@@ -213,11 +217,11 @@ export default function StudentDashboardPro({ userName }: { userName: string }) 
                 <div className="lg:col-span-2 rounded-2xl p-6 bg-[#111827] border border-white/10 shadow-sm">
                     {!activeLesson ? (
                         lessonsLoading ? (
-                            <p className="m-0 text-white/60 text-sm">Cargando clases…</p>
+                            <p className="m-0 text-white/60 text-sm">{t.loadingClasses}</p>
                         ) : lessonsError ? (
                             <p className="m-0 text-red-400 text-sm">{lessonsError}</p>
                         ) : (
-                            <p className="m-0 text-white/60 text-sm">No hay clases disponibles.</p>
+                            <p className="m-0 text-white/60 text-sm">{t.noClassesAvailable}</p>
                         )
                     ) : (
                         <>
@@ -243,19 +247,19 @@ export default function StudentDashboardPro({ userName }: { userName: string }) 
 
                 {/* RECENT CLASSES */}
                 <aside className="rounded-2xl p-6 bg-[#111827] border border-white/10 shadow-sm">
-                    <div className="text-slate-50 font-extrabold">Recent Classes</div>
+                    <div className="text-slate-50 font-extrabold">{t.recentClasses}</div>
                     <div className="mt-4 max-h-[520px] overflow-auto pr-1">
                         {lessonsLoading ? (
-                            <p className="m-0 text-white/60 text-sm">Cargando…</p>
+                            <p className="m-0 text-white/60 text-sm">{t.loading}</p>
                         ) : lessonsError ? (
                             <p className="m-0 text-red-400 text-sm">{lessonsError}</p>
                         ) : lessons.length === 0 ? (
-                            <p className="m-0 text-white/60 text-sm">No lessons yet.</p>
+                            <p className="m-0 text-white/60 text-sm">{t.noLessonsYet}</p>
                         ) : (
                             <div className="flex flex-col gap-3">
                                 {lessons.slice(0, 8).map((lesson) => {
                                     const active = activeLesson?.id === lesson.id
-                                    const t = thumbUrl(lesson)
+                                    const thumb = thumbUrl(lesson)
                                     return (
                                         <button
                                             key={lesson.id}
@@ -268,13 +272,13 @@ export default function StudentDashboardPro({ userName }: { userName: string }) 
                                         >
                                             <div className="flex gap-3">
                                                 <div className="h-12 w-20 rounded-lg overflow-hidden bg-black/40 border border-white/10 flex-shrink-0">
-                                                    {t ? <img src={t} alt="" className="h-full w-full object-cover" /> : null}
+                                                    {thumb ? <img src={thumb} alt="" className="h-full w-full object-cover" /> : null}
                                                 </div>
                                                 <div className="min-w-0">
                                                     <div className={["font-extrabold text-sm truncate", active ? "text-blue-200" : "text-slate-100"].join(" ")}>
                                                         {lesson.title}
                                                     </div>
-                                                    <div className="text-white/60 text-xs mt-1">Instructor: Smart Option Academy</div>
+                                                    <div className="text-white/60 text-xs mt-1">{t.instructorLabel}</div>
                                                     <div className="mt-2 h-1.5 w-full rounded-full bg-white/10 overflow-hidden">
                                                         <div className="h-full w-[38%] bg-blue-500/60 rounded-full" />
                                                     </div>
@@ -290,19 +294,19 @@ export default function StudentDashboardPro({ userName }: { userName: string }) 
             </section>
 
             {/* QUICK ACTIONS */}
-            <section aria-label="Quick actions">
+            <section aria-label={t.quickActionsAria}>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                     <a href="#sesiones-en-vivo" className="bg-[#111827] p-4 rounded-xl border border-white/10 hover:bg-white/10 transition">
-                        <div className="font-extrabold">Sesiones en vivo</div>
-                        <div className="text-white/60 text-sm mt-1">Únete a la próxima clase</div>
+                        <div className="font-extrabold">{t.quickActionLiveTitle}</div>
+                        <div className="text-white/60 text-sm mt-1">{t.quickActionLiveDesc}</div>
                     </a>
                     <a href="#mis-clases" className="bg-[#111827] p-4 rounded-xl border border-white/10 hover:bg-white/10 transition">
-                        <div className="font-extrabold">Ver clases</div>
-                        <div className="text-white/60 text-sm mt-1">Continúa tu aprendizaje</div>
+                        <div className="font-extrabold">{t.watchClasses}</div>
+                        <div className="text-white/60 text-sm mt-1">{t.quickActionClassesDesc}</div>
                     </a>
                     <div className="bg-[#111827] p-4 rounded-xl border border-white/10 hover:bg-white/10 transition">
-                        <div className="font-extrabold">Comunidad</div>
-                        <div className="text-white/60 text-sm mt-1">Próximamente</div>
+                        <div className="font-extrabold">{t.community}</div>
+                        <div className="text-white/60 text-sm mt-1">{t.comingSoon}</div>
                     </div>
                 </div>
             </section>

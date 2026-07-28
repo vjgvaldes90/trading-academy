@@ -1,8 +1,11 @@
 "use client"
 
 import { motion } from "framer-motion"
+import { useLanguage } from "@/context/LanguageProvider"
 
 export default function ChartSection() {
+    const { t } = useLanguage()
+
     return (
         <motion.section
             className="bg-black py-14 text-white md:py-16"
@@ -13,15 +16,15 @@ export default function ChartSection() {
         >
             <div className="mx-auto max-w-6xl px-8 text-center">
                 <p className="mb-2 text-sm font-semibold uppercase tracking-[0.2em] text-red-400 md:text-base">
-                    Live Market Analysis
+                    {t.chartEyebrow}
                 </p>
 
                 <h2 className="mb-3 text-3xl font-bold leading-tight md:text-4xl">
-                    Acciones • ETFS • Opciones
+                    {t.chartTitle}
                 </h2>
 
                 <p className="mx-auto mb-7 max-w-xl text-base text-slate-300 md:text-lg">
-                    Accede a análisis de mercado en tiempo real y aprende estrategias profesionales junto a expertos.
+                    {t.chartSubtitle}
                 </p>
 
                 <motion.div
@@ -113,7 +116,7 @@ export default function ChartSection() {
 
                     <div className="pointer-events-none absolute left-4 top-14 hidden rounded-2xl border border-white/15 bg-white/10 p-2.5 text-left backdrop-blur-xl md:block">
                         <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-300">
-                            LIVE MARKET ANALYSIS
+                            {t.chartEyebrow.toUpperCase()}
                         </p>
                         <div className="mt-1.5 space-y-1 text-xs">
                             <p className="flex items-center justify-between gap-6">
@@ -132,9 +135,9 @@ export default function ChartSection() {
                     </div>
 
                     <div className="pointer-events-none absolute right-4 top-14 hidden rounded-2xl border border-white/15 bg-black/45 px-3 py-2 text-xs text-slate-100 backdrop-blur-xl md:flex md:items-center md:gap-2">
-                        <span className="rounded-md border border-white/20 bg-white/10 px-2 py-0.5">Forex</span>
-                        <span className="rounded-md border border-white/20 bg-white/10 px-2 py-0.5">Futuros</span>
-                        <span className="rounded-md border border-white/20 bg-white/10 px-2 py-0.5">NASDAQ</span>
+                        <span className="rounded-md border border-white/20 bg-white/10 px-2 py-0.5">{t.chartTagForex}</span>
+                        <span className="rounded-md border border-white/20 bg-white/10 px-2 py-0.5">{t.chartTagFutures}</span>
+                        <span className="rounded-md border border-white/20 bg-white/10 px-2 py-0.5">{t.chartTagNasdaq}</span>
                     </div>
                     <div className="pointer-events-none absolute bottom-0 left-0 right-0 border-t border-white/10 bg-black/45 px-4 py-1.5 text-[10px] font-medium tracking-[0.08em] text-slate-200/85 backdrop-blur-md sm:text-xs">
                         <div className="ticker-track flex items-center gap-8 whitespace-nowrap">
@@ -151,10 +154,10 @@ export default function ChartSection() {
                         <div className="flex items-start justify-between gap-3">
                             <span className="inline-flex items-center gap-2 rounded-full border border-red-400/45 bg-red-500/15 px-3 py-1 text-xs font-semibold tracking-[0.18em] text-red-100 backdrop-blur-md">
                                 <span className="h-2 w-2 rounded-full bg-red-400 shadow-[0_0_10px_rgba(248,113,113,0.95)]" />
-                                EN VIVO
+                                {t.chartLiveBadge}
                             </span>
                             <span className="rounded-xl border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-medium text-slate-100 backdrop-blur-xl">
-                                500+ Traders
+                                {t.chartTraders}
                             </span>
                         </div>
 
@@ -163,7 +166,7 @@ export default function ChartSection() {
                                 href="/login"
                                 className="pointer-events-auto inline-flex shrink-0 items-center justify-center rounded-xl bg-gradient-to-r from-red-600 to-red-700 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_12px_30px_rgba(220,38,38,0.4)] transition-all duration-300 hover:brightness-110 sm:px-5"
                             >
-                                Ver Clase
+                                {t.chartViewClass}
                             </a>
                         </div>
                     </div>

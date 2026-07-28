@@ -59,7 +59,10 @@ export async function POST(req: Request) {
         const accessEv = evaluateAcademyAccess(accessRow as TradingStudentAccessRow | null)
         if (!accessEv.ok) {
             return NextResponse.json(
-                { error: academyAccessDeniedMessageEs(accessEv.reason) },
+                {
+                    error: academyAccessDeniedMessageEs(accessEv.reason),
+                    reason: accessEv.reason ?? "not_found",
+                },
                 { status: 403 }
             )
         }

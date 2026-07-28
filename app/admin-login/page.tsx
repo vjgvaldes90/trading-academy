@@ -4,17 +4,16 @@ type Props = {
     searchParams?: Promise<Record<string, string | string[] | undefined>>
 }
 
-function resolveQueryError(value: string | string[] | undefined): string | null {
+function resolveQueryErrorCode(value: string | string[] | undefined): string | null {
     const raw = Array.isArray(value) ? value[0] : value
     const code = typeof raw === "string" ? raw.trim() : ""
     if (!code) return null
-    if (code === "unauthorized") return "Only authorized corporate admin accounts can access this area."
-    if (code === "session_expired") return "Your admin session expired. Request a new secure login link."
-    return "Access denied."
+    if (code === "unauthorized" || code === "session_expired") return code
+    return "access_denied"
 }
 
 export default async function AdminLoginPage({ searchParams }: Props) {
     const resolvedSearchParams = searchParams ? await searchParams : {}
-    const queryError = resolveQueryError(resolvedSearchParams.error)
-    return <AdminLoginClient queryError={queryError} />
+    const queryErrorCode = resolveQueryErrorCode(resolvedSearchParams.error)
+    return <AdminLoginClient queryErrorCode={queryErrorCode} />
 }

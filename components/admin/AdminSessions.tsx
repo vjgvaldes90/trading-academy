@@ -11,6 +11,7 @@ import LiveSessionCard from "@/components/admin/liveSessions/LiveSessionCard"
 import CancelSessionConfirmModal from "@/app/admin/CancelSessionConfirmModal"
 import CreateSessionModal from "@/app/admin/CreateSessionModal"
 import EditSessionModal from "@/app/admin/EditSessionModal"
+import { useLanguage } from "@/context/LanguageProvider"
 import { fetchSecureAdminStartUrl } from "@/lib/secureJoinClient"
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react"
 
@@ -95,6 +96,7 @@ function SessionCardsGrid({
     onRequestCancelSession,
     now,
     onHostStart,
+    emptyMessage,
 }: {
     rows: AdminSessionRow[]
     highlightedIds: Set<string>
@@ -102,11 +104,12 @@ function SessionCardsGrid({
     onRequestCancelSession: (row: AdminSessionRow) => void
     now: Date
     onHostStart: (sessionId: string) => void | Promise<void>
+    emptyMessage: string
 }) {
     if (rows.length === 0) {
         return (
             <p className="px-4 py-8 text-center text-sm text-slate-500">
-                No hay sesiones en este periodo.
+                {emptyMessage}
             </p>
         )
     }
@@ -131,17 +134,17 @@ function SessionCardsGrid({
 function AccordionWeek({
     id,
     label,
-    count,
     open,
     onToggle,
     children,
+    countLabel,
 }: {
     id: string
     label: string
-    count: number
     open: boolean
     onToggle: () => void
     children: ReactNode
+    countLabel: string
 }) {
     return (
         <div className="border-b border-sky-500/15 last:border-b-0">
@@ -159,9 +162,7 @@ function AccordionWeek({
                     </span>
                     <span>
                         <span className="block text-base font-bold tracking-tight text-slate-100">{label}</span>
-                        <span className="text-xs font-medium text-slate-500">
-                            {count} sesión{count === 1 ? "" : "es"}
-                        </span>
+                        <span className="text-xs font-medium text-slate-500">{countLabel}</span>
                     </span>
                 </span>
             </button>
@@ -173,6 +174,7 @@ function AccordionWeek({
 }
 
 export default function AdminSessions() {
+    const { t } = useLanguage()
     const [rows, setRows] = useState<AdminSessionRow[]>([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
@@ -182,6 +184,14 @@ export default function AdminSessions() {
     const [editSession, setEditSession] = useState<AdminSessionRow | null>(null)
     const [cancelTarget, setCancelTarget] = useState<AdminSessionRow | null>(null)
     const [now, setNow] = useState(() => new Date())
+
+    const sessionCountLabel = useCallback(
+        (count: number) =>
+            count === 1
+                ? t.adminSessionCountOne.replace("{count}", String(count))
+                : t.adminSessionCountMany.replace("{count}", String(count)),
+        [t]
+    )
 
     const loadSessions = useCallback(async (opts?: { silent?: boolean; signal?: AbortSignal }) => {
         const silent = opts?.silent === true
@@ -200,7 +210,7 @@ export default function AdminSessions() {
                 const msg =
                     typeof (payload as { error?: unknown })?.error === "string"
                         ? (payload as { error: string }).error
-                        : "Failed to load admin sessions"
+                        : t.failedToLoadAdminSessions
                 throw new Error(msg)
             }
 
@@ -209,12 +219,12 @@ export default function AdminSessions() {
         } catch (e: unknown) {
             if (e instanceof DOMException && e.name === "AbortError") return
             if (!signal?.aborted) {
-                setError(e instanceof Error ? e.message : "Error loading sessions")
+                setError(e instanceof Error ? e.message : t.errorLoadingSessions)
             }
         } finally {
             if (!signal?.aborted && !silent) setLoading(false)
         }
-    }, [])
+    }, [t])
 
     useEffect(() => {
         const ac = new AbortController()
@@ -223,8 +233,8 @@ export default function AdminSessions() {
     }, [loadSessions])
 
     useEffect(() => {
-        const t = window.setInterval(() => setNow(new Date()), 30_000)
-        return () => window.clearInterval(t)
+        const interval = window.setInterval(() => setNow(new Date()), 30_000)
+        return () => window.clearInterval(interval)
     }, [])
 
     const { currentWeekSessions, nextWeekSessions } = useMemo(() => splitSessionsByWeek(rows), [rows])
@@ -267,10 +277,10 @@ export default function AdminSessions() {
     return (
         <div className="mx-auto max-w-7xl space-y-8 text-[#e5e7eb]">
             <header className="border-b border-white/10 pb-8">
-                <h1 className="text-2xl font-bold tracking-tight text-slate-50 lg:text-[1.65rem]">Live Sessions</h1>
-                <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-400">
-                    Live sessions overview — this week and next.
-                </p>
+                <h1 className="text-2xl font-bold tracking-tight text-slate-50 lg:text-[1.65rem]">
+                    {t.adminLiveSessions}
+                </h1>
+                <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-400">{t.adminSessionsSubtitle}</p>
             </header>
 
             <div className="flex flex-col gap-4 rounded-2xl border border-white/[0.08] bg-[#0c1222]/90 px-4 py-4 shadow-[0_24px_48px_-28px_rgba(0,0,0,0.65)] sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-y-3">
@@ -280,29 +290,29 @@ export default function AdminSessions() {
                         onClick={() => setCreateModalOpen(true)}
                         className="rounded-lg border border-amber-400/40 bg-[#0f172a]/90 px-4 py-2.5 text-sm font-bold text-amber-300 transition hover:border-amber-300/60 hover:bg-[#0f172a]"
                     >
-                        + Nueva sesión
+                        + {t.adminNewSession}
                     </button>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2 border-t border-white/5 pt-4 sm:border-t-0 sm:pt-0">
                     <span className="text-[0.65rem] font-semibold uppercase tracking-wider text-slate-600">
-                        Filtros
+                        {t.adminFilters}
                     </span>
                     <button
                         type="button"
                         disabled
                         className="cursor-not-allowed rounded-md border border-dashed border-white/10 bg-transparent px-3 py-1.5 text-xs text-slate-600"
-                        title="Próximamente"
+                        title={t.comingSoon}
                     >
-                        Fecha
+                        {t.adminFilterDate}
                     </button>
                     <button
                         type="button"
                         disabled
                         className="cursor-not-allowed rounded-md border border-dashed border-white/10 bg-transparent px-3 py-1.5 text-xs text-slate-600"
-                        title="Próximamente"
+                        title={t.comingSoon}
                     >
-                        Estado
+                        {t.adminFilterStatus}
                     </button>
                 </div>
             </div>
@@ -312,34 +322,30 @@ export default function AdminSessions() {
                     className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-400/35 bg-amber-950/25 px-4 py-3 text-amber-100"
                     role="status"
                 >
-                    <span className="text-sm font-semibold">
-                        Tu sesión comienza en menos de 10 minutos
-                    </span>
+                    <span className="text-sm font-semibold">{t.adminSessionStartingSoon}</span>
                     <button
                         type="button"
                         onClick={() => void handleAdminHostStart(upcomingSoonSession.id)}
                         className="rounded-lg border border-amber-400/50 bg-amber-400/15 px-3 py-2 text-xs font-semibold text-amber-100 transition hover:bg-amber-400/25"
                     >
-                        Entrar a la sesión
+                        {t.adminEnterSession}
                     </button>
                 </div>
             ) : null}
 
             <section className="overflow-hidden rounded-2xl border border-sky-500/20 bg-gradient-to-br from-[#111827] to-[#0a0f1a] shadow-[0_28px_56px_-32px_rgba(37,99,235,0.45)]">
                 {loading ? (
-                    <p className="px-4 py-12 text-center text-sm text-slate-500">Cargando sesiones…</p>
+                    <p className="px-4 py-12 text-center text-sm text-slate-500">{t.loadingSessions}</p>
                 ) : error ? (
                     <p className="px-4 py-12 text-center text-sm text-red-400">{error}</p>
                 ) : rows.length === 0 ? (
-                    <p className="px-4 py-12 text-center text-sm text-slate-500">
-                        No hay sesiones programadas. Cree una con «Nueva sesión».
-                    </p>
+                    <p className="px-4 py-12 text-center text-sm text-slate-500">{t.noSessionsScheduledCreate}</p>
                 ) : (
                     <>
                         <AccordionWeek
                             id="week-this"
-                            label="Esta semana"
-                            count={currentWeekSessions.length}
+                            label={t.tabThisWeek}
+                            countLabel={sessionCountLabel(currentWeekSessions.length)}
                             open={isThisWeekOpen}
                             onToggle={() => setIsThisWeekOpen((v) => !v)}
                         >
@@ -350,12 +356,13 @@ export default function AdminSessions() {
                                 onRequestCancelSession={setCancelTarget}
                                 now={now}
                                 onHostStart={handleAdminHostStart}
+                                emptyMessage={t.noSessionsThisPeriod}
                             />
                         </AccordionWeek>
                         <AccordionWeek
                             id="week-next"
-                            label="Próxima semana"
-                            count={nextWeekSessions.length}
+                            label={t.tabNextWeek}
+                            countLabel={sessionCountLabel(nextWeekSessions.length)}
                             open={isNextWeekOpen}
                             onToggle={() => setIsNextWeekOpen((v) => !v)}
                         >
@@ -366,6 +373,7 @@ export default function AdminSessions() {
                                 onRequestCancelSession={setCancelTarget}
                                 now={now}
                                 onHostStart={handleAdminHostStart}
+                                emptyMessage={t.noSessionsThisPeriod}
                             />
                         </AccordionWeek>
                     </>
@@ -406,7 +414,7 @@ export default function AdminSessions() {
                     const payload = (await res.json().catch(() => ({}))) as { error?: string }
                     if (!res.ok) {
                         throw new Error(
-                            typeof payload.error === "string" ? payload.error : "Failed to cancel session"
+                            typeof payload.error === "string" ? payload.error : t.failedToCancelSession
                         )
                     }
                     await loadSessions({ silent: true })

@@ -1,3 +1,5 @@
+import { getTranslations, readStoredLanguage } from "@/lib/i18n"
+
 export type DbSession = {
     id: string
     title?: string | null
@@ -105,6 +107,7 @@ export function isWithinAdminHostWindow(s: DbSession, now: Date): boolean {
     return now.getTime() >= earliest
 }
 
+/** Canonical Spanish weekday labels persisted in DB (`sessions.day` / legacy columns). */
 const SPANISH_WEEKDAYS = [
     "Domingo",
     "Lunes",
@@ -113,9 +116,48 @@ const SPANISH_WEEKDAYS = [
     "Jueves",
     "Viernes",
     "Sábado",
-]
+] as const
 
-/** Spanish weekday label from `YYYY-MM-DD` using local calendar date parts. */
+function localizedWeekdays(): string[] {
+    const tr = getTranslations(readStoredLanguage())
+    return [
+        tr.weekdaySunday,
+        tr.weekdayMonday,
+        tr.weekdayTuesday,
+        tr.weekdayWednesday,
+        tr.weekdayThursday,
+        tr.weekdayFriday,
+        tr.weekdaySaturday,
+    ]
+}
+
+/** Map a stored weekday label (ES or EN) to the active UI language. */
+export function localizeWeekdayLabel(day: string): string {
+    const raw = day.trim()
+    if (!raw) return getTranslations(readStoredLanguage()).sessionFallbackLabel
+    const tr = getTranslations(readStoredLanguage())
+    const map: Record<string, string> = {
+        Domingo: tr.weekdaySunday,
+        Sunday: tr.weekdaySunday,
+        Lunes: tr.weekdayMonday,
+        Monday: tr.weekdayMonday,
+        Martes: tr.weekdayTuesday,
+        Tuesday: tr.weekdayTuesday,
+        Miércoles: tr.weekdayWednesday,
+        Wednesday: tr.weekdayWednesday,
+        Jueves: tr.weekdayThursday,
+        Thursday: tr.weekdayThursday,
+        Viernes: tr.weekdayFriday,
+        Friday: tr.weekdayFriday,
+        Sábado: tr.weekdaySaturday,
+        Saturday: tr.weekdaySaturday,
+        Sesión: tr.sessionFallbackLabel,
+        Session: tr.sessionFallbackLabel,
+    }
+    return map[raw] ?? raw
+}
+
+/** Spanish weekday label from `YYYY-MM-DD` using local calendar date parts (for DB persistence). */
 export function spanishWeekdayFromIsoDate(dateYmd: string): string {
     const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateYmd.trim())
     if (!m) return "Sesión"
@@ -275,14 +317,16 @@ export function formatTimeLabel(session: DbSession): string {
 
 export function weekdayLabel(session: DbSession): string {
     const at = startAt(session)
-    if (at) return SPANISH_WEEKDAYS[at.getDay()]
-    return session.day?.trim() || "Sesión"
+    if (at) return localizedWeekdays()[at.getDay()] ?? getTranslations(readStoredLanguage()).sessionFallbackLabel
+    const d = session.day?.trim()
+    if (d) return localizeWeekdayLabel(d)
+    return getTranslations(readStoredLanguage()).sessionFallbackLabel
 }
 
 /** Prefer stored `session_day`; fallback computed from `session_date` + `session_hour`. */
 export function sessionDisplayDay(session: DbSession): string {
     const d = session.day?.trim()
-    if (d) return d
+    if (d) return localizeWeekdayLabel(d)
     return weekdayLabel(session)
 }
 
@@ -367,7 +411,8 @@ export function buildNextSessionTicker(
     now: Date,
     opts: { hasPaid: boolean }
 ): { line: string; joinHref: string } {
-    if (!sessionState) return { line: "Sin próxima sesión programada.", joinHref: "#weekly-schedule" }
+    const tr = getTranslations(readStoredLanguage())
+    if (!sessionState) return { line: tr.tickerNoUpcomingSession, joinHref: "#weekly-schedule" }
 
     const { status, session } = sessionState
     const joinHref = canShowStudentLiveJoinButton(session, now, {
@@ -379,16 +424,22 @@ export function buildNextSessionTicker(
     const tm = formatTimeLabel(session) || "--"
     const at = startAt(session)
 
+    const fill = (template: string, extra?: Record<string, string>) =>
+        template
+            .replace("{day}", wd)
+            .replace("{time}", tm)
+            .replace("{countdown}", extra?.countdown ?? "")
+
     if (status === "live" || isSessionLiveNow(session, now)) {
-        return { line: `🔴 En vivo → ${wd} ${tm}`, joinHref }
+        return { line: fill(tr.tickerLive), joinHref }
     }
-    if (!at) return { line: `🟢 Próxima sesión → ${wd} ${tm}`, joinHref }
+    if (!at) return { line: fill(tr.tickerNextSession), joinHref }
 
     const ms = at.getTime() - now.getTime()
-    if (ms <= 0) return { line: `🟢 ${wd} ${tm}`, joinHref }
+    if (ms <= 0) return { line: fill(tr.tickerSessionAt), joinHref }
 
     const h = Math.floor(ms / 3_600_000)
     const m = Math.floor((ms % 3_600_000) / 60_000)
     const countdown = h > 0 ? `${h}h ${m}m` : `${m}m`
-    return { line: `🟢 Próxima sesión en ${countdown} → ${wd} ${tm}`, joinHref }
+    return { line: fill(tr.tickerNextIn, { countdown }), joinHref }
 }

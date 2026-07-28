@@ -4,6 +4,7 @@ import Link from "next/link"
 import { motion } from "framer-motion"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import { useLanguage } from "@/context/LanguageProvider"
 import { useSession } from "@/context/SessionContext"
 import {
     canShowStudentLiveJoinButton,
@@ -21,6 +22,7 @@ type SessionCardProps = {
 
 export default function SessionCard({ session, isUpdated = false }: SessionCardProps) {
     const { academyAccess, userEmail } = useSession()
+    const { t } = useLanguage()
     const router = useRouter()
     const now = new Date()
     const [joining, setJoining] = useState(false)
@@ -70,20 +72,20 @@ export default function SessionCard({ session, isUpdated = false }: SessionCardP
                     <p className="text-xs text-gray-400">{dateLine}</p>
                 </div>
                 <span className="rounded-full border border-green-400/30 bg-green-500/20 px-2 py-1 text-xs font-semibold text-green-300">
-                    Disponible
+                    {t.available}
                 </span>
             </div>
 
             <div className="mt-auto space-y-2 border-t border-white/5 pt-2">
                 {!canAccess ? (
                     <>
-                        <p className="text-xs text-amber-200/90">Acceso no disponible</p>
+                        <p className="text-xs text-amber-200/90">{t.accessNotAvailable}</p>
                         <Link href="/pricing" className="text-xs font-bold text-blue-400 hover:text-blue-300">
-                            Obtener acceso →
+                            {t.getAccess}
                         </Link>
                     </>
                 ) : sessionClosed ? (
-                    <p className="text-xs font-semibold text-slate-400">Sesión cerrada</p>
+                    <p className="text-xs font-semibold text-slate-400">{t.sessionClosed}</p>
                 ) : mayOpenLiveJoin ? (
                     <button
                         type="button"
@@ -91,12 +93,12 @@ export default function SessionCard({ session, isUpdated = false }: SessionCardP
                         onClick={() => void handleSecureJoin()}
                         className="inline-flex w-full items-center justify-center rounded-xl bg-red-600 px-3 py-1.5 text-xs font-bold text-white shadow-lg shadow-red-900/30 hover:bg-red-500 disabled:cursor-wait disabled:opacity-70"
                     >
-                        {joining ? "Abriendo…" : "Join Live Session"}
+                        {joining ? t.opening : t.joinLiveSession}
                     </button>
                 ) : isStudentJoinTooEarly(session, now) ? (
-                    <p className="text-xs text-gray-400">Disponible 10 minutos antes</p>
+                    <p className="text-xs text-gray-400">{t.availableTenMinBefore}</p>
                 ) : (
-                    <p className="text-xs font-semibold text-green-400">Live Session</p>
+                    <p className="text-xs font-semibold text-green-400">{t.liveSession}</p>
                 )}
             </div>
         </motion.div>

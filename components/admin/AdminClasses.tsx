@@ -2,6 +2,7 @@
 
 import type { CSSProperties } from "react"
 import { FormEvent, useCallback, useEffect, useState } from "react"
+import { useLanguage } from "@/context/LanguageProvider"
 
 type LessonRow = {
     id: string
@@ -21,6 +22,7 @@ function formatCreatedAt(iso: string): string {
 }
 
 export default function AdminClasses() {
+    const { t } = useLanguage()
     const [title, setTitle] = useState("")
     const [description, setDescription] = useState("")
     const [videoUrl, setVideoUrl] = useState("")
@@ -42,17 +44,17 @@ export default function AdminClasses() {
                 const msg =
                     typeof (payload as { error?: string })?.error === "string"
                         ? (payload as { error: string }).error
-                        : "Failed to load classes"
+                        : t.adminFailedToLoadClasses
                 throw new Error(msg)
             }
             setLessons(Array.isArray(payload) ? (payload as LessonRow[]) : [])
         } catch (e) {
-            setListError(e instanceof Error ? e.message : "Failed to load classes")
+            setListError(e instanceof Error ? e.message : t.adminFailedToLoadClasses)
             setLessons([])
         } finally {
             setListLoading(false)
         }
-    }, [])
+    }, [t])
 
     useEffect(() => {
         void loadLessons()
@@ -79,16 +81,16 @@ export default function AdminClasses() {
                 throw new Error(
                     typeof payload.error === "string" && payload.error.trim()
                         ? payload.error
-                        : "Could not add class"
+                        : t.adminCouldNotAddClass
                 )
             }
-            setSuccess("Class added successfully.")
+            setSuccess(t.adminClassAddedSuccess)
             setTitle("")
             setDescription("")
             setVideoUrl("")
             await loadLessons()
         } catch (e) {
-            setFormError(e instanceof Error ? e.message : "Could not add class")
+            setFormError(e instanceof Error ? e.message : t.adminCouldNotAddClass)
         } finally {
             setBusy(false)
         }
@@ -117,7 +119,7 @@ export default function AdminClasses() {
         <div className="space-y-6 text-[#e5e7eb]">
             <div style={{ maxWidth: 1100, margin: "0 auto" }}>
                 <p style={{ margin: "0 0 18px", color: "#9ca3af", fontSize: "0.95rem" }}>
-                    Publish and curate on-demand lessons for students.
+                    {t.adminClassesSubtitle}
                 </p>
 
                 <section
@@ -137,11 +139,11 @@ export default function AdminClasses() {
                             background: "rgba(2,6,23,0.45)",
                         }}
                     >
-                        <span style={{ fontWeight: 700, color: "#93c5fd" }}>Add recorded class</span>
+                        <span style={{ fontWeight: 700, color: "#93c5fd" }}>{t.adminAddRecordedClass}</span>
                     </div>
                     <form onSubmit={handleSubmit} style={{ padding: "16px" }}>
                         <div style={{ marginBottom: 14 }}>
-                            <label style={labelStyle}>Title</label>
+                            <label style={labelStyle}>{t.titleLabel}</label>
                             <input
                                 type="text"
                                 value={title}
@@ -151,7 +153,7 @@ export default function AdminClasses() {
                             />
                         </div>
                         <div style={{ marginBottom: 14 }}>
-                            <label style={labelStyle}>Description</label>
+                            <label style={labelStyle}>{t.descriptionLabel}</label>
                             <textarea
                                 value={description}
                                 onChange={(e) => setDescription(e.target.value)}
@@ -160,7 +162,7 @@ export default function AdminClasses() {
                             />
                         </div>
                         <div style={{ marginBottom: 16 }}>
-                            <label style={labelStyle}>Video URL (YouTube embed)</label>
+                            <label style={labelStyle}>{t.adminVideoUrlLabel}</label>
                             <input
                                 type="url"
                                 value={videoUrl}
@@ -191,7 +193,7 @@ export default function AdminClasses() {
                                 opacity: busy ? 0.7 : 1,
                             }}
                         >
-                            {busy ? "Adding…" : "Add Class"}
+                            {busy ? t.adding : t.adminAddClass}
                         </button>
                     </form>
                 </section>
@@ -212,15 +214,15 @@ export default function AdminClasses() {
                             background: "rgba(2,6,23,0.45)",
                         }}
                     >
-                        <span style={{ fontWeight: 700, color: "#93c5fd" }}>Published classes</span>
+                        <span style={{ fontWeight: 700, color: "#93c5fd" }}>{t.adminPublishedClasses}</span>
                     </div>
                     <div style={{ padding: "16px" }}>
                         {listLoading ? (
-                            <p style={{ margin: 0, color: "#9ca3af" }}>Loading…</p>
+                            <p style={{ margin: 0, color: "#9ca3af" }}>{t.loading}</p>
                         ) : listError ? (
                             <p style={{ margin: 0, color: "#ef4444" }}>{listError}</p>
                         ) : lessons.length === 0 ? (
-                            <p style={{ margin: 0, color: "#9ca3af" }}>No recorded classes yet.</p>
+                            <p style={{ margin: 0, color: "#9ca3af" }}>{t.noRecordedClassesAvailable}</p>
                         ) : (
                             <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 12 }}>
                                 {lessons.map((lesson) => (

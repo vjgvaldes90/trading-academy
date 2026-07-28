@@ -2,6 +2,7 @@
 
 import type { CSSProperties, FormEvent } from "react"
 import { useEffect, useState } from "react"
+import { useLanguage } from "@/context/LanguageProvider"
 
 const inputStyle: CSSProperties = {
     width: "100%",
@@ -50,6 +51,7 @@ type EditSessionModalProps = {
 }
 
 export default function EditSessionModal({ open, session, onClose, onSuccess }: EditSessionModalProps) {
+    const { t } = useLanguage()
     const [time, setTime] = useState(() => toTimeInputValue(session?.time ?? null))
     const [submitError, setSubmitError] = useState<string | null>(null)
     const [submitting, setSubmitting] = useState(false)
@@ -70,7 +72,7 @@ export default function EditSessionModal({ open, session, onClose, onSuccess }: 
         setSubmitError(null)
 
         if (!time.trim()) {
-            setSubmitError("La hora es obligatoria.")
+            setSubmitError(t.createSessionTimeRequired)
             return
         }
 
@@ -88,7 +90,7 @@ export default function EditSessionModal({ open, session, onClose, onSuccess }: 
             const payload = (await res.json().catch(() => ({}))) as { error?: string; details?: string }
             if (!res.ok) {
                 const msg =
-                    typeof payload.error === "string" ? payload.error : "No se pudo actualizar la sesión"
+                    typeof payload.error === "string" ? payload.error : t.updateSessionFailed
                 const detail =
                     typeof payload.details === "string" && payload.details.trim() !== ""
                         ? `${msg}: ${payload.details}`
@@ -98,7 +100,7 @@ export default function EditSessionModal({ open, session, onClose, onSuccess }: 
             await Promise.resolve(onSuccess())
             onClose()
         } catch (err: unknown) {
-            setSubmitError(err instanceof Error ? err.message : "Error al guardar")
+            setSubmitError(err instanceof Error ? err.message : t.saveError)
         } finally {
             setSubmitting(false)
         }
@@ -146,7 +148,7 @@ export default function EditSessionModal({ open, session, onClose, onSuccess }: 
                         id="edit-session-title"
                         style={{ margin: 0, fontSize: "1.05rem", fontWeight: 800, color: "#f8fafc" }}
                     >
-                        Editar sesión
+                        {t.editSessionTitle}
                     </h2>
                     <button
                         type="button"
@@ -164,21 +166,22 @@ export default function EditSessionModal({ open, session, onClose, onSuccess }: 
                             opacity: submitting ? 0.6 : 1,
                         }}
                     >
-                        Cerrar
+                        {t.close}
                     </button>
                 </div>
 
                 <div style={{ padding: "12px 18px 0", color: "#64748b", fontSize: "0.8125rem" }}>
-                    Fecha (solo lectura): <span style={{ color: "#e2e8f0" }}>{dateLabel}</span>
+                    {t.editSessionDateReadonly}{" "}
+                    <span style={{ color: "#e2e8f0" }}>{dateLabel}</span>
                 </div>
                 <p style={{ margin: "8px 18px 0", color: "#64748b", fontSize: "0.78rem", lineHeight: 1.45 }}>
-                    El enlace de Zoom (estudiantes y anfitrión) se actualiza automáticamente al guardar la hora.
+                    {t.editSessionZoomNote}
                 </p>
 
                 <form onSubmit={(e) => void handleSubmit(e)} style={{ padding: "14px 18px 20px" }}>
                     <div style={{ marginBottom: 18 }}>
                         <label htmlFor="edit-session-time" style={labelStyle}>
-                            Hora
+                            {t.timeLabel}
                         </label>
                         <input
                             id="edit-session-time"
@@ -216,7 +219,7 @@ export default function EditSessionModal({ open, session, onClose, onSuccess }: 
                             transition: "all 0.2s ease",
                         }}
                     >
-                        {submitting ? "Guardando…" : "Guardar cambios"}
+                        {submitting ? t.saving : t.saveChanges}
                     </button>
                 </form>
             </div>

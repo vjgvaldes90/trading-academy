@@ -1,5 +1,6 @@
 "use client"
 
+import { useLanguage } from "@/context/LanguageProvider"
 import { useEffect, useState } from "react"
 
 type Lesson = {
@@ -17,6 +18,7 @@ function formatLessonDate(iso: string): string {
 }
 
 export default function ClassesView() {
+    const { t } = useLanguage()
     const [lessons, setLessons] = useState<Lesson[]>([])
     const [activeLesson, setActiveLesson] = useState<Lesson | null>(null)
     const [loading, setLoading] = useState(true)
@@ -34,7 +36,7 @@ export default function ClassesView() {
                     const msg =
                         typeof (payload as { error?: unknown })?.error === "string"
                             ? String((payload as { error: unknown }).error)
-                            : "Failed to load lessons"
+                            : t.failedToLoadLessons
                     throw new Error(msg)
                 }
                 const rows = Array.isArray(payload) ? (payload as Lesson[]) : []
@@ -45,7 +47,7 @@ export default function ClassesView() {
                 if (!cancelled) {
                     setLessons([])
                     setActiveLesson(null)
-                    setError(e instanceof Error ? e.message : "Failed to load lessons")
+                    setError(e instanceof Error ? e.message : t.failedToLoadLessons)
                 }
             } finally {
                 if (!cancelled) setLoading(false)
@@ -55,23 +57,23 @@ export default function ClassesView() {
         return () => {
             cancelled = true
         }
-    }, [])
+    }, [t.failedToLoadLessons])
 
     return (
         <div className="space-y-6">
             <header>
-                <h2 className="text-xl font-semibold">Mis Clases</h2>
-                <p className="text-white/60 mt-1">Selecciona una lección y continúa aprendiendo.</p>
+                <h2 className="text-xl font-semibold">{t.myClassesTitle}</h2>
+                <p className="text-white/60 mt-1">{t.selectLessonSubtitle}</p>
             </header>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2 rounded-2xl p-6 bg-[#111827] border border-white/10 shadow-sm">
                     {loading ? (
-                        <p className="m-0 text-white/60 text-sm">Cargando clases…</p>
+                        <p className="m-0 text-white/60 text-sm">{t.loadingClasses}</p>
                     ) : error ? (
                         <p className="m-0 text-red-400 text-sm">{error}</p>
                     ) : !activeLesson ? (
-                        <p className="m-0 text-white/60 text-sm">No hay clases disponibles.</p>
+                        <p className="m-0 text-white/60 text-sm">{t.noClassesAvailable}</p>
                     ) : (
                         <>
                             <iframe
@@ -95,12 +97,12 @@ export default function ClassesView() {
                 </div>
 
                 <aside className="rounded-2xl p-6 bg-[#111827] border border-white/10 shadow-sm">
-                    <div className="text-slate-50 font-extrabold">Lecciones</div>
+                    <div className="text-slate-50 font-extrabold">{t.lessonsTitle}</div>
                     <div className="mt-4 max-h-[520px] overflow-auto pr-1">
                         {loading ? (
-                            <p className="m-0 text-white/60 text-sm">Cargando…</p>
+                            <p className="m-0 text-white/60 text-sm">{t.loading}</p>
                         ) : lessons.length === 0 ? (
-                            <p className="m-0 text-white/60 text-sm">No lessons yet.</p>
+                            <p className="m-0 text-white/60 text-sm">{t.noLessonsYet}</p>
                         ) : (
                             <div className="flex flex-col gap-2">
                                 {lessons.map((lesson) => {

@@ -2,6 +2,7 @@
 
 import type { CSSProperties, FormEvent } from "react"
 import { useEffect, useState } from "react"
+import { useLanguage } from "@/context/LanguageProvider"
 
 const ACCESS_TYPE_OPTIONS = ["free", "paid", "vip", "discount"] as const
 
@@ -49,6 +50,7 @@ function isValidEmail(value: string): boolean {
 }
 
 export default function CreateStudentModal({ open, onClose, onSubmit }: CreateStudentModalProps) {
+    const { t } = useLanguage()
     const [firstName, setFirstName] = useState("")
     const [lastName, setLastName] = useState("")
     const [email, setEmail] = useState("")
@@ -126,7 +128,7 @@ export default function CreateStudentModal({ open, onClose, onSubmit }: CreateSt
                         id="create-student-title"
                         style={{ margin: 0, fontSize: "1.05rem", fontWeight: 800, color: "#f8fafc" }}
                     >
-                        New Student
+                        {t.createStudentTitle}
                     </h2>
                     <button
                         type="button"
@@ -142,14 +144,14 @@ export default function CreateStudentModal({ open, onClose, onSubmit }: CreateSt
                             cursor: "pointer",
                         }}
                     >
-                        Close
+                        {t.close}
                     </button>
                 </div>
 
                 <form onSubmit={handleSubmit} style={{ padding: "18px 18px 20px" }}>
                     <div style={{ marginBottom: 16 }}>
                         <label htmlFor="create-student-first-name" style={labelStyle}>
-                            First Name
+                            {t.firstNameLabel}
                         </label>
                         <input
                             id="create-student-first-name"
@@ -162,7 +164,7 @@ export default function CreateStudentModal({ open, onClose, onSubmit }: CreateSt
                     </div>
                     <div style={{ marginBottom: 16 }}>
                         <label htmlFor="create-student-last-name" style={labelStyle}>
-                            Last Name
+                            {t.lastNameLabel}
                         </label>
                         <input
                             id="create-student-last-name"
@@ -175,7 +177,7 @@ export default function CreateStudentModal({ open, onClose, onSubmit }: CreateSt
                     </div>
                     <div style={{ marginBottom: 16 }}>
                         <label htmlFor="create-student-email" style={labelStyle}>
-                            Email
+                            {t.emailLabel}
                         </label>
                         <input
                             id="create-student-email"
@@ -188,7 +190,7 @@ export default function CreateStudentModal({ open, onClose, onSubmit }: CreateSt
                     </div>
                     <div style={{ marginBottom: 16 }}>
                         <label htmlFor="create-student-phone" style={labelStyle}>
-                            Phone
+                            {t.phoneLabel}
                         </label>
                         <input
                             id="create-student-phone"
@@ -201,7 +203,7 @@ export default function CreateStudentModal({ open, onClose, onSubmit }: CreateSt
                     </div>
                     <div style={{ marginBottom: 18 }}>
                         <label htmlFor="create-student-access-type" style={labelStyle}>
-                            Access Type
+                            {t.accessTypeFieldLabel}
                         </label>
                         <select
                             id="create-student-access-type"
@@ -236,7 +238,7 @@ export default function CreateStudentModal({ open, onClose, onSubmit }: CreateSt
                             transition: "all 0.2s ease",
                         }}
                     >
-                        Create Student
+                        {t.createStudent}
                     </button>
                 </form>
             </div>

@@ -25,8 +25,8 @@ export default function Navbar() {
         >
             <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
 
-                <div className="text-white font-bold text-lg tracking-wide">
-                    Smart Option <span className="text-blue-400">Academy</span>
+                <div className="text-white font-bold text-lg tracking-wide text-blue-400">
+                    {t.smartOptionAcademy}
                 </div>
 
                 <div className="hidden md:flex items-center gap-8 text-gray-300 text-sm">

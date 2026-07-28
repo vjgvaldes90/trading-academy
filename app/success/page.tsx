@@ -2,19 +2,19 @@
 
 import { Suspense, useCallback, useEffect, useRef, useState } from "react"
 import { useSearchParams } from "next/navigation"
+import { useLanguage } from "@/context/LanguageProvider"
 
 type SyncState = "loading" | "success" | "error"
 
 function SuccessPageContent() {
+    const { t } = useLanguage()
     const searchParams = useSearchParams()
     const sessionId = searchParams.get("session_id")?.trim() ?? ""
     const isMissingSessionId = sessionId.length === 0
 
     const [syncState, setSyncState] = useState<SyncState>(isMissingSessionId ? "error" : "loading")
     const [errorMessage, setErrorMessage] = useState(
-        isMissingSessionId
-            ? "No se encontró la sesión de pago. Vuelve a intentar o contacta soporte."
-            : ""
+        isMissingSessionId ? t.successMissingSession : ""
     )
     const redirectedRef = useRef(false)
 
@@ -42,14 +42,14 @@ function SuccessPageContent() {
                 const msg =
                     typeof data.error === "string" && data.error.trim()
                         ? data.error
-                        : "Hubo un problema preparando tu sesión. Intenta de nuevo."
+                        : t.successSessionError
                 setErrorMessage(msg)
                 setSyncState("error")
                 return
             }
 
             if (typeof data.email !== "string" || !data.email.trim()) {
-                setErrorMessage("La sesión se creó sin email. Intenta de nuevo o contacta soporte.")
+                setErrorMessage(t.successNoEmail)
                 setSyncState("error")
                 return
             }
@@ -62,10 +62,10 @@ function SuccessPageContent() {
             window.location.assign("/complete-profile?from=payment")
         } catch (e) {
             console.warn("[success] get-session failed", e)
-            setErrorMessage("Hubo un problema preparando tu sesión. Intenta de nuevo.")
+            setErrorMessage(t.successSessionError)
             setSyncState("error")
         }
-    }, [sessionId])
+    }, [sessionId, t])
 
     useEffect(() => {
         if (isMissingSessionId) return
@@ -118,13 +118,13 @@ function SuccessPageContent() {
                     }}
                 >
                     {syncState === "error"
-                        ? "No pudimos preparar tu acceso"
-                        : "✅ Payment successful"}
+                        ? t.successTitleError
+                        : t.successTitle}
                 </h1>
 
                 {syncState === "loading" || syncState === "success" ? (
                     <p style={{ color: "#94a3b8", fontSize: "0.95rem", margin: 0, lineHeight: 1.6 }}>
-                        Preparando tu cuenta…
+                        {t.successPreparing}
                     </p>
                 ) : null}
 
@@ -158,7 +158,7 @@ function SuccessPageContent() {
                                     cursor: "pointer",
                                 }}
                             >
-                                Reintentar
+                                {t.successRetry}
                             </button>
                         ) : null}
                     </>
@@ -175,24 +175,27 @@ function SuccessPageContent() {
     )
 }
 
+function SuccessPageFallback() {
+    const { t } = useLanguage()
+    return (
+        <div
+            style={{
+                minHeight: "100vh",
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                background: "#0f172a",
+                color: "white",
+            }}
+        >
+            {t.successPreparing}
+        </div>
+    )
+}
+
 export default function SuccessPage() {
     return (
-        <Suspense
-            fallback={
-                <div
-                    style={{
-                        minHeight: "100vh",
-                        display: "flex",
-                        justifyContent: "center",
-                        alignItems: "center",
-                        background: "#0f172a",
-                        color: "white",
-                    }}
-                >
-                    Preparando tu cuenta…
-                </div>
-            }
-        >
+        <Suspense fallback={<SuccessPageFallback />}>
             <SuccessPageContent />
         </Suspense>
     )

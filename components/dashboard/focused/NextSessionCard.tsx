@@ -1,6 +1,7 @@
 "use client"
 
 import { useSession } from "@/context/SessionContext"
+import { useLanguage } from "@/context/LanguageProvider"
 import {
     canShowStudentLiveJoinButton,
     getMinutesUntilSessionStart,
@@ -17,20 +18,21 @@ import { useEffect, useMemo, useState } from "react"
 
 export default function NextSessionCard() {
     const { sessions, academyAccess, userEmail } = useSession()
+    const { t } = useLanguage()
     const router = useRouter()
     const [now, setNow] = useState(() => new Date())
     const [joining, setJoining] = useState(false)
 
     useEffect(() => {
-        const t = setInterval(() => setNow(new Date()), 30_000)
-        return () => clearInterval(t)
+        const interval = setInterval(() => setNow(new Date()), 30_000)
+        return () => clearInterval(interval)
     }, [])
 
     const nextSession = useMemo(() => getNextUpcomingSession(sessions, now), [sessions, now])
 
     if (!nextSession) return null
 
-    const label = `Próxima sesión: ${sessionDisplayDay(nextSession)} ${sessionDisplayHour(nextSession)}`.trim()
+    const label = `${t.nextSessionPrefix} ${sessionDisplayDay(nextSession)} ${sessionDisplayHour(nextSession)}`.trim()
 
     const canJoin =
         Boolean(userEmail) &&
@@ -72,7 +74,7 @@ export default function NextSessionCard() {
     }
 
     return (
-        <section aria-label="Próxima sesión">
+        <section aria-label={t.nextSessionAria}>
             <div
                 style={{
                     borderRadius: 12,
@@ -101,7 +103,7 @@ export default function NextSessionCard() {
                         textAlign: "center",
                     }}
                 >
-                    Tu acceso se valida automaticamente para que entres sin complicaciones.
+                    {t.accessValidationNote}
                 </p>
                 {canJoin ? (
                     <button
@@ -126,12 +128,12 @@ export default function NextSessionCard() {
                             transition: "all 0.2s ease",
                         }}
                     >
-                        {joining ? "Abriendo..." : "Join Live Session"}
+                        {joining ? t.opening : t.joinLiveSession}
                     </button>
                 ) : !academyAccess.canAccess ? (
                     <div style={{ display: "grid", gap: 8 }}>
                         <p style={{ margin: 0, fontSize: "0.8125rem", color: "#fcd34d", textAlign: "center" }}>
-                            Acceso no disponible
+                            {t.accessNotAvailable}
                         </p>
                         <Link
                             href="/pricing"
@@ -142,24 +144,24 @@ export default function NextSessionCard() {
                                 color: "#60a5fa",
                             }}
                         >
-                            Obtener acceso →
+                            {t.getAccess}
                         </Link>
                     </div>
                 ) : sessionClosed ? (
                     <p style={{ margin: 0, fontSize: "0.8125rem", color: "#94a3b8", textAlign: "center" }}>
-                        Sesión cerrada
+                        {t.sessionClosed}
                     </p>
                 ) : (
                     <div style={{ display: "grid", gap: 8 }}>
                         <button type="button" onClick={scrollToSessions} style={secondaryButtonStyle}>
-                            Ver sesiones
+                            {t.viewSessions}
                         </button>
                         <p style={{ margin: 0, fontSize: "0.78rem", color: "#94a3b8", textAlign: "center" }}>
                             {isStudentJoinTooEarly(nextSession, now)
-                                ? "Disponible 10 minutos antes"
+                                ? t.availableTenMinBefore
                                 : getMinutesUntilSessionStart(nextSession, now) === null
-                                  ? "Horario no disponible"
-                                  : "Live Session"}
+                                  ? t.scheduleUnavailable
+                                  : t.liveSession}
                         </p>
                     </div>
                 )}

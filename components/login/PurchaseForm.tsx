@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { supabase } from "@/lib/supabase"
+import { useLanguage } from "@/context/LanguageProvider"
 
 // IMPORTANT:
 // Do NOT create live-session reservations here.
@@ -13,6 +14,7 @@ type PurchaseFormProps = {
 }
 
 export default function PurchaseForm({ email, setEmail }: PurchaseFormProps) {
+    const { t } = useLanguage()
     const [payError, setPayError] = useState<string | null>(null)
     const [loading, setLoading] = useState(false)
     const [acceptedDisclaimer, setAcceptedDisclaimer] = useState(false)
@@ -21,11 +23,11 @@ export default function PurchaseForm({ email, setEmail }: PurchaseFormProps) {
         setPayError(null)
         const em = email.trim()
         if (!em) {
-            setPayError("Ingresa tu email")
+            setPayError(t.purchaseEmailRequired)
             return
         }
         if (!acceptedDisclaimer) {
-            setPayError("Debes confirmar el disclaimer educativo antes de continuar")
+            setPayError(t.purchaseDisclaimerRequired)
             return
         }
         setLoading(true)
@@ -46,7 +48,7 @@ export default function PurchaseForm({ email, setEmail }: PurchaseFormProps) {
                 const msg =
                     typeof checkoutJson.error === "string" && checkoutJson.error.trim()
                         ? checkoutJson.error
-                        : "Error creando checkout"
+                        : t.purchaseCheckoutError
                 setPayError(msg)
                 return
             }
@@ -55,10 +57,10 @@ export default function PurchaseForm({ email, setEmail }: PurchaseFormProps) {
             if (data?.url) {
                 window.location.href = data.url
             } else {
-                setPayError("No se recibió la URL de pago")
+                setPayError(t.purchaseNoPaymentUrl)
             }
         } catch {
-            setPayError("Error de conexión")
+            setPayError(t.purchaseConnectionError)
         } finally {
             setLoading(false)
         }
@@ -68,7 +70,7 @@ export default function PurchaseForm({ email, setEmail }: PurchaseFormProps) {
         <>
             <input
                 type="email"
-                placeholder="Ingresa tu email"
+                placeholder={t.purchaseEmailPlaceholder}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="mb-2 w-full rounded-lg border border-blue-400/30 bg-[#040B18] px-4 py-3 text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -84,8 +86,7 @@ export default function PurchaseForm({ email, setEmail }: PurchaseFormProps) {
                     className="mt-0.5 h-4 w-4 rounded border-blue-300/40 bg-[#040B18] text-blue-500 focus:ring-blue-500"
                 />
                 <span>
-                    Confirmo que entiendo que este programa es unicamente educativo y no representa asesoria
-                    financiera personalizada.
+                    {t.purchaseDisclaimerCheckbox}
                 </span>
             </label>
 
@@ -95,11 +96,11 @@ export default function PurchaseForm({ email, setEmail }: PurchaseFormProps) {
                 disabled={loading || !acceptedDisclaimer}
                 className="w-full rounded-lg border border-blue-300/30 bg-gradient-to-r from-blue-500 to-blue-700 py-3 font-bold text-white shadow-[0_12px_26px_rgba(37,99,235,0.32)] transition hover:brightness-110 disabled:opacity-60"
             >
-                {loading ? "Procesando…" : "🚀 Comprar acceso ($150)"}
+                {loading ? t.purchaseProcessing : t.purchaseBuyButton}
             </button>
 
             <p className="mt-3 text-center text-xs text-slate-400">
-                Pago seguro • Acceso inmediato
+                {t.purchaseSecurePayment}
             </p>
         </>
     )

@@ -5,6 +5,7 @@ import PurchaseForm from "./PurchaseForm"
 import AccessForm from "./AccessForm"
 import { motion, AnimatePresence } from "framer-motion"
 import { useEffect } from "react"
+import { useLanguage } from "@/context/LanguageProvider"
 
 export type LoginMode = "buy" | "access"
 
@@ -34,6 +35,8 @@ export default function LoginCard({
     onClearAccessError,
     startOnAccessTab = false,
 }: LoginCardProps) {
+    const { t } = useLanguage()
+
     useEffect(() => {
         if (!startOnAccessTab) return
         setMode("access")
@@ -42,19 +45,16 @@ export default function LoginCard({
     return (
         <div className="w-full max-w-md space-y-4 rounded-3xl border border-blue-400/20 bg-[#0B1220]/85 p-7 shadow-[0_28px_68px_rgba(2,6,23,0.7)] backdrop-blur-2xl">
 
-            {/* 🔥 TITLE */}
             <h1 className="text-2xl font-bold text-slate-100">
-                Smart Option Academy
+                {t.loginCardTitle}
             </h1>
 
-            {/* 🔥 SUBTEXT */}
             <p className="text-slate-300">
                 {mode === "buy"
-                    ? "Accede a mentoría institucional"
-                    : "Ingresa al ecosistema Smart Option Academy"}
+                    ? t.loginCardBuySubtitle
+                    : t.loginCardAccessSubtitle}
             </p>
 
-            {/* 🔥 TABS */}
             <LoginTabs
                 mode={mode}
                 setMode={(value) => {
@@ -62,7 +62,6 @@ export default function LoginCard({
                 }}
             />
 
-            {/* 🔥 FORM (ANIMADO) */}
             <AnimatePresence mode="wait">
 
                 {mode === "buy" && (
@@ -97,15 +96,13 @@ export default function LoginCard({
 
             </AnimatePresence>
 
-
-            {/* 🔥 CTA EXTRA */}
             <p className="pt-2 text-center text-sm text-slate-400">
-                ¿Aún no tienes acceso?{" "}
+                {t.loginCardNoAccess}{" "}
                 <span
                     onClick={() => setMode("buy")}
                     className="cursor-pointer font-semibold text-blue-300"
                 >
-                    Obtener acceso
+                    {t.loginCardGetAccess}
                 </span>
             </p>
 

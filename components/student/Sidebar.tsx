@@ -2,6 +2,7 @@
 
 import { type ComponentType } from "react"
 import { BookOpen, GraduationCap, Home, Settings as SettingsIcon, Video } from "lucide-react"
+import { useLanguage } from "@/context/LanguageProvider"
 
 export type StudentDashboardView =
     | "dashboard"
@@ -16,14 +17,6 @@ type NavItem = {
     icon: ComponentType<{ size?: number; className?: string }>
 }
 
-const NAV_ITEMS: NavItem[] = [
-    { label: "Dashboard", view: "dashboard", icon: Home },
-    { label: "Mis Clases", view: "classes", icon: BookOpen },
-    { label: "Sesiones en vivo", view: "live", icon: Video },
-    { label: "Recursos", view: "resources", icon: BookOpen },
-    { label: "Configuración", view: "settings", icon: SettingsIcon },
-]
-
 function initialsFromName(name: string): string {
     const cleaned = name.trim()
     if (!cleaned) return "U"
@@ -34,8 +27,8 @@ function initialsFromName(name: string): string {
 }
 
 export default function Sidebar({
-    userName = "Student",
-    roleLabel = "Alumno",
+    userName,
+    roleLabel,
     activeView,
     setActiveView,
 }: {
@@ -44,6 +37,18 @@ export default function Sidebar({
     activeView: StudentDashboardView
     setActiveView: (view: StudentDashboardView) => void
 }) {
+    const { t } = useLanguage()
+    const displayName = userName?.trim() || t.defaultStudentName
+    const displayRole = roleLabel ?? t.roleStudent
+
+    const navItems: NavItem[] = [
+        { label: t.navDashboard, view: "dashboard", icon: Home },
+        { label: t.navMyClasses, view: "classes", icon: BookOpen },
+        { label: t.navLiveSessions, view: "live", icon: Video },
+        { label: t.navResources, view: "resources", icon: BookOpen },
+        { label: t.navSettings, view: "settings", icon: SettingsIcon },
+    ]
+
     const itemBase =
         "flex items-center gap-3 px-4 py-3 rounded-lg cursor-pointer transition text-sm font-semibold text-left w-full"
     const itemActive = "bg-blue-600/20 text-blue-400 ring-1 ring-blue-500/25"
@@ -64,18 +69,18 @@ export default function Sidebar({
                     <GraduationCap size={18} />
                 </div>
                 <div>
-                    <div className="text-slate-50 font-extrabold text-[15px] tracking-tight">Trading Academy</div>
-                    <div className="text-white/60 text-xs mt-0.5">Smart Option Academy</div>
+                    <div className="text-slate-50 font-extrabold text-[15px] tracking-tight">{t.tradingAcademy}</div>
+                    <div className="text-white/60 text-xs mt-0.5">{t.smartOptionAcademy}</div>
                 </div>
             </div>
 
             <nav className="flex flex-col gap-1">
-                {NAV_ITEMS.map((item) => {
+                {navItems.map((item) => {
                     const Icon = item.icon
                     const isActive = activeView === item.view
                     return (
                         <button
-                            key={item.label}
+                            key={item.view}
                             type="button"
                             onClick={() => setActiveView(item.view)}
                             className={[itemBase, isActive ? itemActive : itemNormal].join(" ")}
@@ -90,11 +95,11 @@ export default function Sidebar({
             <div className="mt-auto rounded-xl border border-white/10 bg-white/5 p-3">
                 <div className="flex items-center gap-3">
                     <div className="h-10 w-10 rounded-full bg-blue-600/20 border border-white/10 flex items-center justify-center text-blue-200 font-extrabold">
-                        {initialsFromName(userName)}
+                        {initialsFromName(displayName)}
                     </div>
                     <div className="min-w-0">
-                        <div className="truncate text-sm font-bold text-slate-100">{userName}</div>
-                        <div className="text-xs text-white/50">{roleLabel}</div>
+                        <div className="truncate text-sm font-bold text-slate-100">{displayName}</div>
+                        <div className="text-xs text-white/50">{displayRole}</div>
                     </div>
                 </div>
             </div>

@@ -4,10 +4,12 @@ import { supabase } from "@/lib/supabase"
 import { buildStudentDisplayName, persistStudent } from "@/lib/studentLocalStorage"
 import { useSearchParams } from "next/navigation"
 import { Suspense, useEffect, useState } from "react"
+import { useLanguage } from "@/context/LanguageProvider"
 
 function AuthCallbackInner() {
+    const { t } = useLanguage()
     const searchParams = useSearchParams()
-    const [message, setMessage] = useState("Confirmando acceso…")
+    const [message, setMessage] = useState(t.authCallbackConfirming)
 
     useEffect(() => {
         let cancelled = false
@@ -22,7 +24,7 @@ function AuthCallbackInner() {
                     if (exErr) {
                         console.error("[auth/callback] exchangeCodeForSession", exErr)
                         if (!cancelled) {
-                            setMessage("Enlace inválido o caducado. Solicita un nuevo acceso desde el login.")
+                            setMessage(t.authCallbackInvalidLink)
                         }
                         return
                     }
@@ -33,7 +35,7 @@ function AuthCallbackInner() {
                 } = await supabase.auth.getSession()
                 if (!session?.access_token) {
                     if (!cancelled) {
-                        setMessage("No se pudo iniciar sesión. Abre el enlace desde el correo o vuelve a solicitar acceso.")
+                        setMessage(t.authCallbackSessionFailed)
                     }
                     return
                 }
@@ -62,7 +64,7 @@ function AuthCallbackInner() {
                         return
                     }
                     if (!cancelled) {
-                        setMessage("No pudimos completar el acceso. Intenta de nuevo o contacta soporte.")
+                        setMessage(t.authCallbackAccessFailed)
                     }
                     return
                 }
@@ -89,7 +91,7 @@ function AuthCallbackInner() {
             } catch (e) {
                 console.error("[auth/callback]", e)
                 if (!cancelled) {
-                    setMessage("Error inesperado. Vuelve al login e inténtalo de nuevo.")
+                    setMessage(t.authCallbackUnexpected)
                 }
             }
         }
@@ -98,7 +100,7 @@ function AuthCallbackInner() {
         return () => {
             cancelled = true
         }
-    }, [searchParams])
+    }, [searchParams, t])
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
@@ -109,15 +111,18 @@ function AuthCallbackInner() {
     )
 }
 
+function AuthCallbackFallback() {
+    const { t } = useLanguage()
+    return (
+        <div className="min-h-screen flex items-center justify-center bg-gray-50 text-gray-700">
+            {t.authCallbackLoading}
+        </div>
+    )
+}
+
 export default function AuthCallbackPage() {
     return (
-        <Suspense
-            fallback={
-                <div className="min-h-screen flex items-center justify-center bg-gray-50 text-gray-700">
-                    Cargando…
-                </div>
-            }
-        >
+        <Suspense fallback={<AuthCallbackFallback />}>
             <AuthCallbackInner />
         </Suspense>
     )

@@ -18,6 +18,7 @@ import {
     ACCESS_REVOKED_ERROR,
     loadDashboardFromClient,
 } from "@/lib/loadDashboardFromClient"
+import { getTranslations, readStoredLanguage } from "@/lib/i18n"
 import { clearStoredStudent } from "@/lib/studentLocalStorage"
 import { supabase } from "@/lib/supabase"
 import { useRealtimeSessions, type RealtimeEvent } from "@/hooks/useRealtimeSessions"
@@ -90,12 +91,14 @@ export function SessionProvider({
 
         let cancelled = false
         ;(async () => {
+            const lang = readStoredLanguage()
+            const i18n = getTranslations(lang)
             try {
                 const { sessions: nextSessions, canAccess } = await loadDashboardFromClient(supabase, email)
                 if (cancelled) return
                 setAcademyAccess({
                     canAccess,
-                    message: canAccess ? null : "No tienes acceso activo. Compra acceso para unirte a sesiones.",
+                    message: canAccess ? null : i18n.noActiveAccess,
                     actor: { email },
                 })
                 setSessions(nextSessions)
@@ -109,7 +112,7 @@ export function SessionProvider({
                 if (!cancelled) {
                     setAcademyAccess({
                         canAccess: false,
-                        message: "No pudimos cargar el calendario. Recarga la página.",
+                        message: i18n.failedToLoadCalendar,
                         actor: { email },
                     })
                 }
@@ -126,11 +129,12 @@ export function SessionProvider({
     const refreshDashboardSessions = useCallback(async () => {
         const email = initialUserEmail?.trim().toLowerCase() ?? ""
         if (!email) return
+        const i18n = getTranslations(readStoredLanguage())
         try {
             const { sessions: nextSessions, canAccess } = await loadDashboardFromClient(supabase, email)
             setAcademyAccess({
                 canAccess,
-                message: canAccess ? null : "No tienes acceso activo. Compra acceso para unirte a sesiones.",
+                message: canAccess ? null : i18n.noActiveAccess,
                 actor: { email },
             })
             setSessions(nextSessions)

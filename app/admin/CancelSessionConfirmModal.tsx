@@ -1,5 +1,6 @@
 "use client"
 
+import { useLanguage } from "@/context/LanguageProvider"
 import { useState } from "react"
 
 type CancelSessionConfirmModalProps = {
@@ -17,13 +18,17 @@ type CancelSessionConfirmModalProps = {
 export default function CancelSessionConfirmModal({
     open,
     sessionSummary = "",
-    title = "Cancel session?",
-    description = "Are you sure? This will notify all students.",
-    confirmText = "Yes, cancel session",
+    title,
+    description,
+    confirmText,
     onAfterConfirm,
     onClose,
     onConfirm,
 }: CancelSessionConfirmModalProps) {
+    const { t } = useLanguage()
+    const resolvedTitle = title ?? t.cancelSessionTitle
+    const resolvedDescription = description ?? t.cancelSessionDescription
+    const resolvedConfirmText = confirmText ?? t.cancelSessionConfirm
     const [submitting, setSubmitting] = useState(false)
     const [error, setError] = useState<string | null>(null)
 
@@ -37,7 +42,7 @@ export default function CancelSessionConfirmModal({
             await onAfterConfirm?.()
             onClose()
         } catch (e: unknown) {
-            setError(e instanceof Error ? e.message : "Could not cancel session")
+            setError(e instanceof Error ? e.message : t.cancelSessionFailed)
         } finally {
             setSubmitting(false)
         }
@@ -76,10 +81,10 @@ export default function CancelSessionConfirmModal({
                         id="cancel-session-confirm-title"
                         style={{ margin: "0 0 12px", fontSize: "1.1rem", fontWeight: 800, color: "#f8fafc" }}
                     >
-                        {title}
+                        {resolvedTitle}
                     </h2>
                     <p style={{ margin: "0 0 8px", color: "#94a3b8", fontSize: "0.875rem", lineHeight: 1.55 }}>
-                        {description}
+                        {resolvedDescription}
                     </p>
                     {sessionSummary ? (
                         <p style={{ margin: 0, color: "#cbd5e1", fontSize: "0.8125rem" }}>
@@ -115,7 +120,7 @@ export default function CancelSessionConfirmModal({
                             cursor: submitting ? "not-allowed" : "pointer",
                         }}
                     >
-                        Go back
+                        {t.goBack}
                     </button>
                     <button
                         type="button"
@@ -132,7 +137,7 @@ export default function CancelSessionConfirmModal({
                             cursor: submitting ? "not-allowed" : "pointer",
                         }}
                     >
-                        {submitting ? "Cancelling…" : confirmText}
+                        {submitting ? t.cancelling : resolvedConfirmText}
                     </button>
                 </div>
             </div>

@@ -2,6 +2,7 @@
 
 import type { CSSProperties, FormEvent } from "react"
 import { useEffect, useState } from "react"
+import { useLanguage } from "@/context/LanguageProvider"
 
 const inputStyle: CSSProperties = {
     width: "100%",
@@ -32,6 +33,7 @@ type CreateSessionModalProps = {
 }
 
 export default function CreateSessionModal({ open, onClose, onSuccess }: CreateSessionModalProps) {
+    const { t } = useLanguage()
     const [date, setDate] = useState("")
     const [time, setTime] = useState("")
     const [submitError, setSubmitError] = useState<string | null>(null)
@@ -52,11 +54,11 @@ export default function CreateSessionModal({ open, onClose, onSuccess }: CreateS
         setSubmitError(null)
 
         if (!date.trim()) {
-            setSubmitError("La fecha es obligatoria.")
+            setSubmitError(t.createSessionDateRequired)
             return
         }
         if (!time.trim()) {
-            setSubmitError("La hora es obligatoria.")
+            setSubmitError(t.createSessionTimeRequired)
             return
         }
 
@@ -77,7 +79,7 @@ export default function CreateSessionModal({ open, onClose, onSuccess }: CreateS
                 const msg =
                     typeof payload.error === "string"
                         ? payload.error
-                        : "No se pudo crear la sesión"
+                        : t.createSessionFailed
                 const detail =
                     typeof payload.details === "string" && payload.details.trim() !== ""
                         ? `${msg}: ${payload.details}`
@@ -87,7 +89,7 @@ export default function CreateSessionModal({ open, onClose, onSuccess }: CreateS
             await Promise.resolve(onSuccess())
             onClose()
         } catch (err: unknown) {
-            setSubmitError(err instanceof Error ? err.message : "Error al crear la sesión")
+            setSubmitError(err instanceof Error ? err.message : t.createSessionError)
         } finally {
             setSubmitting(false)
         }
@@ -135,7 +137,7 @@ export default function CreateSessionModal({ open, onClose, onSuccess }: CreateS
                         id="create-session-title"
                         style={{ margin: 0, fontSize: "1.05rem", fontWeight: 800, color: "#f8fafc" }}
                     >
-                        Nueva sesión (Zoom)
+                        {t.createSessionTitle}
                     </h2>
                     <button
                         type="button"
@@ -153,19 +155,18 @@ export default function CreateSessionModal({ open, onClose, onSuccess }: CreateS
                             opacity: submitting ? 0.6 : 1,
                         }}
                     >
-                        Cerrar
+                        {t.close}
                     </button>
                 </div>
 
                 <p style={{ margin: "12px 18px 0", color: "#64748b", fontSize: "0.8125rem", lineHeight: 1.45 }}>
-                    Se creará una reunión de Zoom mediante la API del servidor (OAuth cuenta a cuenta). No se pueden
-                    pegar enlaces manuales.
+                    {t.createSessionZoomNote}
                 </p>
 
                 <form onSubmit={(e) => void handleSubmit(e)} style={{ padding: "18px 18px 20px" }}>
                     <div style={{ marginBottom: 16 }}>
                         <label htmlFor="create-session-date" style={labelStyle}>
-                            Fecha
+                            {t.dateLabel}
                         </label>
                         <input
                             id="create-session-date"
@@ -179,7 +180,7 @@ export default function CreateSessionModal({ open, onClose, onSuccess }: CreateS
                     </div>
                     <div style={{ marginBottom: 18 }}>
                         <label htmlFor="create-session-time" style={labelStyle}>
-                            Hora
+                            {t.timeLabel}
                         </label>
                         <input
                             id="create-session-time"
@@ -217,7 +218,7 @@ export default function CreateSessionModal({ open, onClose, onSuccess }: CreateS
                             transition: "all 0.2s ease",
                         }}
                     >
-                        {submitting ? "Creando…" : "Crear sesión"}
+                        {submitting ? t.creating : t.createSession}
                     </button>
                 </form>
             </div>

@@ -9,17 +9,11 @@ import {
     useState,
     type ReactNode,
 } from "react"
-import { en, type TranslationKeys } from "@/lib/i18n/en"
-import { es } from "@/lib/i18n/es"
+import type { Language } from "@/lib/i18n"
+import type { TranslationKeys } from "@/lib/i18n/en"
+import { STORAGE_KEY, translations } from "@/lib/i18n"
 
-export type Language = "en" | "es"
-
-const STORAGE_KEY = "smart-option-academy-lang"
-
-const translations: Record<Language, TranslationKeys> = {
-    en,
-    es,
-}
+export type { Language }
 
 type LanguageContextValue = {
     language: Language

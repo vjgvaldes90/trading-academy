@@ -2,12 +2,14 @@
 
 import { useState } from "react"
 import { persistStudent, readStoredStudent } from "@/lib/studentLocalStorage"
+import { useLanguage } from "@/context/LanguageProvider"
 
 type CompleteProfileFormProps = {
     userEmail: string
 }
 
 export default function CompleteProfileForm({ userEmail }: CompleteProfileFormProps) {
+    const { t } = useLanguage()
     const [firstName, setFirstName] = useState("")
     const [lastName, setLastName] = useState("")
     const [phone, setPhone] = useState("")
@@ -22,7 +24,7 @@ export default function CompleteProfileForm({ userEmail }: CompleteProfileFormPr
         const ln = lastName.trim()
         const ph = phone.trim()
         if (!fn || !ln || !ph) {
-            setError("Nombre, apellido y teléfono son obligatorios")
+            setError(t.completeProfileRequiredFields)
             return
         }
 
@@ -36,20 +38,39 @@ export default function CompleteProfileForm({ userEmail }: CompleteProfileFormPr
             })
             const data = await res.json().catch(() => ({}))
             if (!res.ok) {
-                setError(typeof data?.error === "string" ? data.error : "Error al guardar")
+                const reason =
+                    typeof (data as { reason?: unknown })?.reason === "string"
+                        ? String((data as { reason: string }).reason)
+                        : null
+                if (res.status === 401) {
+                    setError(t.mustSignInToContinue)
+                    return
+                }
+                if (res.status === 403) {
+                    if (reason === "inactive") setError(t.accessDeniedInactive)
+                    else if (reason === "expired") setError(t.accessDeniedExpired)
+                    else if (reason === "unpaid") setError(t.accessDeniedUnpaid)
+                    else setError(t.accessDeniedNotFound)
+                    return
+                }
+                if (res.status === 400) {
+                    setError(t.completeProfileRequiredFields)
+                    return
+                }
+                setError(t.completeProfileSaveError)
                 return
             }
             console.log("✅ Profile saved")
             const fullName = [fn, ln].filter(Boolean).join(" ").trim()
             const existing = readStoredStudent()
             persistStudent({
-                name: fullName || (userEmail.split("@")[0] ?? "Student"),
+                name: fullName || (userEmail.split("@")[0] ?? t.defaultStudentName),
                 email: userEmail.trim().toLowerCase(),
                 classes: existing?.classes ?? [],
             })
             window.location.assign("/dashboard")
         } catch {
-            setError("Error de conexión")
+            setError(t.completeProfileConnectionError)
         } finally {
             setLoading(false)
         }
@@ -64,16 +85,16 @@ export default function CompleteProfileForm({ userEmail }: CompleteProfileFormPr
             style={{ boxShadow: "0 25px 50px -12px rgba(0,0,0,0.5)" }}
         >
             <h1 className="text-xl font-semibold text-white text-center mb-1">
-                Completa tu perfil para comenzar
+                {t.completeProfileTitle}
             </h1>
             <p className="text-sm text-slate-400 text-center mb-8">
-                Un solo paso para acceder a la plataforma.
+                {t.completeProfileSubtitle}
             </p>
 
             <form onSubmit={handleSubmit} className="space-y-5">
                 <div>
                     <label htmlFor="firstName" className="block text-xs font-medium text-slate-400 mb-1.5">
-                        Nombre
+                        {t.completeProfileFirstName}
                     </label>
                     <input
                         id="firstName"
@@ -83,12 +104,12 @@ export default function CompleteProfileForm({ userEmail }: CompleteProfileFormPr
                         value={firstName}
                         onChange={(e) => setFirstName(e.target.value)}
                         className="w-full rounded-lg border border-white/10 bg-slate-900/80 px-3 py-2.5 text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-                        placeholder="Tu nombre"
+                        placeholder={t.completeProfileFirstNamePlaceholder}
                     />
                 </div>
                 <div>
                     <label htmlFor="lastName" className="block text-xs font-medium text-slate-400 mb-1.5">
-                        Apellido
+                        {t.completeProfileLastName}
                     </label>
                     <input
                         id="lastName"
@@ -98,12 +119,12 @@ export default function CompleteProfileForm({ userEmail }: CompleteProfileFormPr
                         value={lastName}
                         onChange={(e) => setLastName(e.target.value)}
                         className="w-full rounded-lg border border-white/10 bg-slate-900/80 px-3 py-2.5 text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-                        placeholder="Tu apellido"
+                        placeholder={t.completeProfileLastNamePlaceholder}
                     />
                 </div>
                 <div>
                     <label htmlFor="phone" className="block text-xs font-medium text-slate-400 mb-1.5">
-                        Teléfono
+                        {t.completeProfilePhone}
                     </label>
                     <input
                         id="phone"
@@ -113,7 +134,7 @@ export default function CompleteProfileForm({ userEmail }: CompleteProfileFormPr
                         value={phone}
                         onChange={(e) => setPhone(e.target.value)}
                         className="w-full rounded-lg border border-white/10 bg-slate-900/80 px-3 py-2.5 text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-                        placeholder="+1 234 567 8900"
+                        placeholder={t.completeProfilePhonePlaceholder}
                     />
                 </div>
 
@@ -128,7 +149,7 @@ export default function CompleteProfileForm({ userEmail }: CompleteProfileFormPr
                     disabled={loading || !trimmedOk}
                     className="w-full rounded-lg bg-blue-600 py-3 text-sm font-semibold text-white hover:bg-blue-500 disabled:opacity-50 transition-colors"
                 >
-                    {loading ? "Guardando…" : "Continuar al panel"}
+                    {loading ? t.completeProfileSaving : t.completeProfileContinue}
                 </button>
             </form>
         </div>

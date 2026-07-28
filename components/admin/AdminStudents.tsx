@@ -4,8 +4,8 @@ import CancelSessionConfirmModal from "@/app/admin/CancelSessionConfirmModal"
 import CreateStudentModal, {
     type CreateStudentFormValues,
 } from "@/components/admin/CreateStudentModal"
-import { CANCEL_SUBSCRIPTION_POLICY_MESSAGE } from "@/lib/subscriptionCancellation"
-import { useCallback, useEffect, useState } from "react"
+import { useLanguage } from "@/context/LanguageProvider"
+import { useCallback, useEffect, useMemo, useState } from "react"
 
 type TradingStudentListRow = {
     id: string
@@ -28,12 +28,18 @@ function studentPathEmail(email: string): string {
 }
 
 export default function AdminStudents() {
+    const { t } = useLanguage()
     const [rows, setRows] = useState<TradingStudentListRow[]>([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
     const [busyEmail, setBusyEmail] = useState<string | null>(null)
     const [cancelModal, setCancelModal] = useState<CancelModalTarget | null>(null)
     const [createModalOpen, setCreateModalOpen] = useState(false)
+
+    const tableHeaders = useMemo(
+        () => [t.emailLabel, t.accessTypeLabel, t.activeLabel, t.actions],
+        [t]
+    )
 
     const handleCreateStudent = async (values: CreateStudentFormValues) => {
         try {
@@ -84,7 +90,7 @@ export default function AdminStudents() {
                 const msg =
                     typeof (payload as { error?: unknown })?.error === "string"
                         ? (payload as { error: string }).error
-                        : "Failed to load students"
+                        : t.failedToLoadStudents
                 throw new Error(msg)
             }
             const list = Array.isArray(payload) ? (payload as Record<string, unknown>[]) : []
@@ -105,12 +111,12 @@ export default function AdminStudents() {
                 }))
             )
         } catch (e: unknown) {
-            setError(e instanceof Error ? e.message : "Error loading students")
+            setError(e instanceof Error ? e.message : t.errorLoadingStudents)
             setRows([])
         } finally {
             setLoading(false)
         }
-    }, [])
+    }, [t])
 
     useEffect(() => {
         void load()
@@ -130,7 +136,7 @@ export default function AdminStudents() {
             })
             const data = (await res.json().catch(() => ({}))) as Record<string, unknown>
             if (!res.ok) {
-                const msg = typeof data.error === "string" ? data.error : "Update failed"
+                const msg = typeof data.error === "string" ? data.error : t.updateFailed
                 throw new Error(msg)
             }
             const updated = data as {
@@ -154,7 +160,7 @@ export default function AdminStudents() {
                 )
             )
         } catch (e: unknown) {
-            setError(e instanceof Error ? e.message : "Update failed")
+            setError(e instanceof Error ? e.message : t.updateFailed)
             await load()
         } finally {
             setBusyEmail(null)
@@ -180,14 +186,14 @@ export default function AdminStudents() {
                     }}
                 >
                     <p style={{ margin: 0, color: "#9ca3af", fontSize: "0.95rem", flex: "1 1 240px" }}>
-                        Manage access type and activation. Changes apply immediately.
+                        {t.adminStudentsSubtitle}
                     </p>
                     <button
                         type="button"
                         onClick={() => setCreateModalOpen(true)}
                         className="rounded-lg border border-amber-400/40 bg-[#0f172a]/90 px-4 py-2.5 text-sm font-bold text-amber-300 transition hover:border-amber-300/60 hover:bg-[#0f172a]"
                     >
-                        + New Student
+                        + {t.adminNewStudent}
                     </button>
                 </div>
 
@@ -207,18 +213,18 @@ export default function AdminStudents() {
                     }}
                 >
                     {loading ? (
-                        <p style={{ margin: 0, padding: "16px", color: "#9ca3af" }}>Loading…</p>
+                        <p style={{ margin: 0, padding: "16px", color: "#9ca3af" }}>{t.loading}</p>
                     ) : error ? (
                         <p style={{ margin: 0, padding: "16px", color: "#f87171" }}>{error}</p>
                     ) : rows.length === 0 ? (
-                        <p style={{ margin: 0, padding: "16px", color: "#9ca3af" }}>No students found.</p>
+                        <p style={{ margin: 0, padding: "16px", color: "#9ca3af" }}>{t.noStudentsFound}</p>
                     ) : (
                         <div style={{ overflowX: "auto" }}>
                             <CancelSessionConfirmModal
                                 open={cancelModal !== null}
-                                title="Cancel subscription?"
-                                description={`${CANCEL_SUBSCRIPTION_POLICY_MESSAGE} Future renewals will stop; the student keeps access until the current billing period ends.`}
-                                confirmText="Yes, cancel subscription"
+                                title={t.cancelSubscriptionTitle}
+                                description={t.adminCancelSubscriptionModalDescription}
+                                confirmText={t.cancelSubscriptionConfirm}
                                 onClose={() => setCancelModal(null)}
                                 onConfirm={async () => {
                                     if (!cancelModal) return
@@ -237,25 +243,23 @@ export default function AdminStudents() {
                                         const msg =
                                             typeof data.error === "string" && data.error.trim()
                                                 ? data.error
-                                                : "Cancel failed"
+                                                : t.cancelFailed
                                         throw new Error(msg)
                                     }
                                 }}
                                 onAfterConfirm={async () => {
-                                    alert(
-                                        "Subscription scheduled to cancel at period end. No refund was issued."
-                                    )
+                                    alert(t.adminSubscriptionScheduledCancel)
                                     await load()
                                 }}
                             />
                             <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 640 }}>
                                 <thead>
                                     <tr style={{ background: "rgba(15,23,42,0.7)" }}>
-                                        {["Email", "Access type", "Active", "Actions"].map((h) => (
+                                        {tableHeaders.map((h) => (
                                             <th
                                                 key={h}
                                                 style={{
-                                                    textAlign: h === "Actions" ? "right" : "left",
+                                                    textAlign: h === t.actions ? "right" : "left",
                                                     padding: "12px 14px",
                                                     color: "#cbd5e1",
                                                     fontSize: "0.75rem",
@@ -321,7 +325,7 @@ export default function AdminStudents() {
                                                     </select>
                                                 </td>
                                                 <td style={{ padding: "10px 14px", color: "#94a3b8", fontSize: "0.875rem" }}>
-                                                    {active ? "Yes" : "No"}
+                                                    {active ? t.yes : t.no}
                                                 </td>
                                                 <td style={{ padding: "10px 14px", textAlign: "right" }}>
                                                     <div
@@ -342,7 +346,7 @@ export default function AdminStudents() {
                                                             }}
                                                         >
                                                             <span style={{ fontSize: "0.75rem", color: "#64748b" }}>
-                                                                {active ? "Active" : "Inactive"}
+                                                                {active ? t.activeLabel : t.inactiveLabel}
                                                             </span>
                                                             <span
                                                                 style={{
@@ -410,7 +414,7 @@ export default function AdminStudents() {
                                                                     cursor: busy || cancelBusy ? "wait" : "pointer",
                                                                 }}
                                                             >
-                                                                {cancelBusy ? "Loading…" : "Cancel subscription"}
+                                                                {cancelBusy ? t.loading : t.cancelSubscription}
                                                             </button>
                                                         ) : null}
                                                     </div>

@@ -9,24 +9,29 @@ import AdminSidebar, { type AdminDashboardView } from "@/components/admin/AdminS
 import AdminStudents from "@/components/admin/AdminStudents"
 import AdminSubscriptions from "@/components/admin/AdminSubscriptions"
 import dashboardTheme from "@/components/dashboard/dashboardTheme.module.css"
-import { useEffect, useState } from "react"
-
-const SECTION_TITLES: Record<AdminDashboardView, string> = {
-    overview: "Overview",
-    classes: "Recorded Classes",
-    sessions: "Live Sessions",
-    students: "Students",
-    subscriptions: "Subscriptions",
-    analytics: "Analytics",
-    settings: "Settings",
-}
+import { useLanguage } from "@/context/LanguageProvider"
+import { useEffect, useMemo, useState } from "react"
 
 export default function AdminDashboardClient({
     initialView,
 }: {
     initialView?: AdminDashboardView
 }) {
+    const { t } = useLanguage()
     const [activeView, setActiveView] = useState<AdminDashboardView>(initialView ?? "overview")
+
+    const sectionTitles = useMemo<Record<AdminDashboardView, string>>(
+        () => ({
+            overview: t.adminOverview,
+            classes: t.adminRecordedClasses,
+            sessions: t.adminLiveSessions,
+            students: t.adminStudents,
+            subscriptions: t.adminSubscriptions,
+            analytics: t.adminAnalytics,
+            settings: t.adminSettings,
+        }),
+        [t]
+    )
 
     useEffect(() => {
         if (initialView) setActiveView(initialView)
@@ -40,7 +45,7 @@ export default function AdminDashboardClient({
                 {activeView !== "sessions" ? (
                     <header className="mb-6 border-b border-white/10 pb-4">
                         <h1 className="text-lg font-bold tracking-tight text-slate-100 lg:text-xl">
-                            {SECTION_TITLES[activeView]}
+                            {sectionTitles[activeView]}
                         </h1>
                     </header>
                 ) : null}

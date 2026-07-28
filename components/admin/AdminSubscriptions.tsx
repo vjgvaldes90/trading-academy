@@ -1,6 +1,7 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useLanguage } from "@/context/LanguageProvider"
+import { useCallback, useEffect, useMemo, useState } from "react"
 
 type Row = {
     id: string
@@ -11,9 +12,15 @@ type Row = {
 }
 
 export default function AdminSubscriptions() {
+    const { t } = useLanguage()
     const [rows, setRows] = useState<Row[]>([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
+
+    const tableHeaders = useMemo(
+        () => [t.emailLabel, t.accessColumn, t.statusColumn, t.subscriptionIdColumn],
+        [t]
+    )
 
     const load = useCallback(async () => {
         setLoading(true)
@@ -28,7 +35,7 @@ export default function AdminSubscriptions() {
                 const msg =
                     typeof (payload as { error?: unknown })?.error === "string"
                         ? (payload as { error: string }).error
-                        : "Failed to load"
+                        : t.failedToLoad
                 throw new Error(msg)
             }
             const list = Array.isArray(payload) ? (payload as Record<string, unknown>[]) : []
@@ -48,12 +55,12 @@ export default function AdminSubscriptions() {
                 }))
             )
         } catch (e) {
-            setError(e instanceof Error ? e.message : "Error loading subscriptions")
+            setError(e instanceof Error ? e.message : t.errorLoadingSubscriptions)
             setRows([])
         } finally {
             setLoading(false)
         }
-    }, [])
+    }, [t])
 
     useEffect(() => {
         void load()
@@ -62,8 +69,8 @@ export default function AdminSubscriptions() {
     return (
         <div className="space-y-6 text-[#e5e7eb]">
             <header>
-                <h2 className="text-xl font-semibold text-slate-50">Subscriptions</h2>
-                <p className="mt-1 text-sm text-slate-400">Stripe-linked status per student (read-only here).</p>
+                <h2 className="text-xl font-semibold text-slate-50">{t.adminSubscriptions}</h2>
+                <p className="mt-1 text-sm text-slate-400">{t.adminSubscriptionsSubtitle}</p>
             </header>
 
             <section
@@ -76,17 +83,17 @@ export default function AdminSubscriptions() {
                 }}
             >
                 {loading ? (
-                    <p style={{ margin: 0, padding: "16px", color: "#9ca3af" }}>Loading…</p>
+                    <p style={{ margin: 0, padding: "16px", color: "#9ca3af" }}>{t.loading}</p>
                 ) : error ? (
                     <p style={{ margin: 0, padding: "16px", color: "#f87171" }}>{error}</p>
                 ) : rows.length === 0 ? (
-                    <p style={{ margin: 0, padding: "16px", color: "#9ca3af" }}>No students found.</p>
+                    <p style={{ margin: 0, padding: "16px", color: "#9ca3af" }}>{t.noStudentsFound}</p>
                 ) : (
                     <div style={{ overflowX: "auto" }}>
                         <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 720 }}>
                             <thead>
                                 <tr style={{ background: "rgba(15,23,42,0.7)" }}>
-                                    {["Email", "Access", "Status", "Subscription ID"].map((h) => (
+                                    {tableHeaders.map((h) => (
                                         <th
                                             key={h}
                                             style={{

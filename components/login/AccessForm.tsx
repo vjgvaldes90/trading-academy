@@ -1,5 +1,7 @@
 "use client"
 
+import { useLanguage } from "@/context/LanguageProvider"
+
 type AccessFormProps = {
     code: string
     setCode: (value: string) => void
@@ -15,6 +17,8 @@ export default function AccessForm({
     error,
     onClearError,
 }: AccessFormProps) {
+    const { t } = useLanguage()
+
     return (
         <form
             className="space-y-2"
@@ -24,14 +28,14 @@ export default function AccessForm({
             }}
         >
             <label htmlFor="access-code" className="sr-only">
-                Código de acceso
+                {t.accessCodeLabel}
             </label>
             <input
                 id="access-code"
                 type="text"
                 name="access_code"
                 autoComplete="one-time-code"
-                placeholder="Código de acceso"
+                placeholder={t.accessCodePlaceholder}
                 value={code}
                 onChange={(e) => {
                     onClearError?.()
@@ -51,7 +55,7 @@ export default function AccessForm({
                 type="submit"
                 className="mt-4 w-full rounded-lg border border-blue-300/30 bg-gradient-to-r from-blue-500 to-blue-700 py-3 font-bold text-white shadow-[0_12px_26px_rgba(37,99,235,0.32)] transition hover:brightness-110"
             >
-                Entrar al dashboard
+                {t.accessEnterDashboard}
             </button>
         </form>
     )

@@ -11,6 +11,7 @@ import {
 } from "@/lib/sessions"
 import type { StudentDashboardView } from "@/components/student/Sidebar"
 import QuickActions from "@/components/dashboard/QuickActions"
+import { useLanguage } from "@/context/LanguageProvider"
 import { useEffect, useMemo, useState } from "react"
 
 type Lesson = {
@@ -50,6 +51,7 @@ export default function DashboardHome({
     setActiveView: (view: StudentDashboardView) => void
 }) {
     const { sessions, academyAccess, userEmail } = useSession()
+    const { t } = useLanguage()
     const [now, setNow] = useState(() => new Date())
 
     const [lessons, setLessons] = useState<Lesson[]>([])
@@ -74,7 +76,7 @@ export default function DashboardHome({
                     const msg =
                         typeof (payload as { error?: unknown })?.error === "string"
                             ? String((payload as { error: unknown }).error)
-                            : "Failed to load lessons"
+                            : t.failedToLoadLessons
                     throw new Error(msg)
                 }
                 const rows = Array.isArray(payload) ? (payload as Lesson[]) : []
@@ -85,7 +87,7 @@ export default function DashboardHome({
                 if (!cancelled) {
                     setLessons([])
                     setActiveLesson(null)
-                    setLessonsError(e instanceof Error ? e.message : "Failed to load lessons")
+                    setLessonsError(e instanceof Error ? e.message : t.failedToLoadLessons)
                 }
             } finally {
                 if (!cancelled) setLessonsLoading(false)
@@ -111,29 +113,31 @@ export default function DashboardHome({
         isStudentSecureJoinWindowClosed(nextBooked, now) &&
         !isStudentJoinTooEarly(nextBooked, now)
 
-    const heroTitle = activeLesson?.title ?? (lessonsLoading ? "Cargando…" : "No hay clases disponibles")
+    const heroTitle = activeLesson?.title ?? (lessonsLoading ? t.loading : t.noClassesAvailable)
     const heroThumb = activeLesson ? thumbUrl(activeLesson) : null
 
     return (
         <div className="space-y-6">
             <header>
-                <h1 className="text-2xl font-semibold">Bienvenido de vuelta, {userName}</h1>
-                <p className="text-white/60 mt-1">Continúa tu aprendizaje y alcanza tus metas.</p>
+                <h1 className="text-2xl font-semibold">
+                    {t.welcomeBack} {userName}
+                </h1>
+                <p className="text-white/60 mt-1">{t.continueLearningSubtitle}</p>
             </header>
 
             <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2 bg-gradient-to-r from-[#111827] to-[#0B1120] rounded-2xl p-6 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 border border-white/10 shadow-sm">
                     <div className="min-w-0">
                         <div className="text-white/60 text-xs font-extrabold tracking-[0.18em] uppercase">
-                            CONTINÚA APRENDIENDO
+                            {t.continueLearning}
                         </div>
                         <div className="mt-2 text-slate-50 text-xl font-extrabold truncate">{heroTitle}</div>
-                        <div className="mt-2 text-white/60 text-sm">Instructor: Smart Option Academy</div>
+                        <div className="mt-2 text-white/60 text-sm">{t.instructorLabel}</div>
                         <div className="mt-4">
                             <div className="h-2 w-full rounded-full bg-white/10 overflow-hidden">
                                 <div className="h-full w-[38%] bg-blue-500/70 rounded-full" />
                             </div>
-                            <div className="mt-2 text-white/60 text-xs">Progreso: 38%</div>
+                            <div className="mt-2 text-white/60 text-xs">{t.progressLabel.replace("{percent}", "38")}</div>
                         </div>
                     </div>
 
@@ -151,15 +155,15 @@ export default function DashboardHome({
                             onClick={onWatchNow}
                             className="mt-3 w-full rounded-xl bg-blue-600/20 text-blue-300 border border-white/10 px-4 py-2.5 font-extrabold hover:bg-white/10 transition disabled:opacity-60 disabled:cursor-not-allowed"
                         >
-                            Reproducir ahora
+                            {t.watchNow}
                         </button>
                     </div>
                 </div>
 
                 <div className="rounded-2xl p-6 bg-[#111827] border border-white/10 shadow-sm">
-                    <div className="text-slate-50 font-extrabold">Próxima Sesión en Vivo</div>
+                    <div className="text-slate-50 font-extrabold">{t.nextLiveSession}</div>
                     {!nextBooked ? (
-                        <div className="mt-3 text-white/60 text-sm">No sessions scheduled</div>
+                        <div className="mt-3 text-white/60 text-sm">{t.noSessionsScheduled}</div>
                     ) : (
                         <div className="mt-4 flex flex-col gap-4">
                             <div className="flex items-center gap-4">
@@ -167,11 +171,11 @@ export default function DashboardHome({
                                     <div className="text-2xl font-extrabold text-slate-50">
                                         {(sessionDisplayDay(nextBooked).match(/\d{1,2}/)?.[0] ?? "").trim() || "—"}
                                     </div>
-                                    <div className="text-white/60 text-xs">Día</div>
+                                    <div className="text-white/60 text-xs">{t.dayLabel}</div>
                                 </div>
                                 <div className="min-w-0">
                                     <div className="text-slate-100 font-bold truncate">
-                                        {nextBooked.title ?? "Sesión en vivo"}
+                                        {nextBooked.title ?? t.liveSessionDefault}
                                     </div>
                                     <div className="text-white/60 text-sm">
                                         {sessionDisplayDay(nextBooked)} · {sessionDisplayHour(nextBooked) || "—"}
@@ -192,9 +196,9 @@ export default function DashboardHome({
                                         : "cursor-not-allowed bg-white/5 text-white/40",
                                 ].join(" ")}
                             >
-                                Unirse ahora
+                                {t.joinNow}
                             </button>
-                            {nextClosed ? <div className="text-white/60 text-xs">Sesión cerrada</div> : null}
+                            {nextClosed ? <div className="text-white/60 text-xs">{t.sessionClosed}</div> : null}
                         </div>
                     )}
                 </div>
@@ -204,18 +208,18 @@ export default function DashboardHome({
                 <QuickActions activeView={activeView} setActiveView={setActiveView} />
 
                 <aside className="rounded-2xl p-6 bg-[#111827] border border-white/10 shadow-sm">
-                    <div className="text-slate-50 font-extrabold">Recent Classes</div>
+                    <div className="text-slate-50 font-extrabold">{t.recentClasses}</div>
                     <div className="mt-4 max-h-[420px] overflow-auto pr-1">
                         {lessonsLoading ? (
-                            <p className="m-0 text-white/60 text-sm">Cargando…</p>
+                            <p className="m-0 text-white/60 text-sm">{t.loading}</p>
                         ) : lessonsError ? (
                             <p className="m-0 text-red-400 text-sm">{lessonsError}</p>
                         ) : lessons.length === 0 ? (
-                            <p className="m-0 text-white/60 text-sm">No lessons yet.</p>
+                            <p className="m-0 text-white/60 text-sm">{t.noLessonsYet}</p>
                         ) : (
                             <div className="flex flex-col gap-3">
                                 {lessons.slice(0, 6).map((lesson) => {
-                                    const t = thumbUrl(lesson)
+                                    const thumb = thumbUrl(lesson)
                                     return (
                                         <button
                                             key={lesson.id}
@@ -225,14 +229,14 @@ export default function DashboardHome({
                                         >
                                             <div className="flex gap-3">
                                                 <div className="h-12 w-20 rounded-lg overflow-hidden bg-black/40 border border-white/10 flex-shrink-0">
-                                                    {t ? <img src={t} alt="" className="h-full w-full object-cover" /> : null}
+                                                    {thumb ? <img src={thumb} alt="" className="h-full w-full object-cover" /> : null}
                                                 </div>
                                                 <div className="min-w-0">
                                                     <div className="font-extrabold text-sm truncate text-slate-100">
                                                         {lesson.title}
                                                     </div>
                                                     <div className="text-white/60 text-xs mt-1">
-                                                        Instructor: Smart Option Academy
+                                                        {t.instructorLabel}
                                                     </div>
                                                 </div>
                                             </div>

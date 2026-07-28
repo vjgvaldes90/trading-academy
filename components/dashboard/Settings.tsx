@@ -1,5 +1,6 @@
 "use client"
 
+import { useLanguage } from "@/context/LanguageProvider"
 import { CreditCard, LogOut, Shield } from "lucide-react"
 
 export default function Settings({
@@ -15,11 +16,13 @@ export default function Settings({
     onLogout: () => void
     isCancellingSubscription: boolean
 }) {
+    const { t } = useLanguage()
+
     return (
         <div className="space-y-6">
             <header>
-                <h2 className="text-xl font-semibold">Configuración</h2>
-                <p className="text-white/60 mt-1">Cuenta, suscripción y sesión.</p>
+                <h2 className="text-xl font-semibold">{t.settingsTitle}</h2>
+                <p className="text-white/60 mt-1">{t.settingsSubtitle}</p>
             </header>
 
             <section className="rounded-2xl p-6 bg-[#111827] border border-white/10 shadow-sm space-y-3">
@@ -28,19 +31,14 @@ export default function Settings({
                         <Shield size={18} />
                     </div>
                     <div className="min-w-0">
-                        <div className="font-extrabold text-slate-100 text-sm">Seguridad</div>
-                        <p className="text-white/60 text-sm mt-1">
-                            Cierra sesión en este dispositivo cuando termines.
-                        </p>
+                        <div className="font-extrabold text-slate-100 text-sm">{t.securityTitle}</div>
+                        <p className="text-white/60 text-sm mt-1">{t.securityDescription}</p>
                     </div>
                 </div>
 
                 {subscriptionPendingCancel ? (
-                    <div
-                        className="rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-100/90"
-                    >
-                        Tu suscripción está programada para cancelarse al final del periodo de facturación
-                        actual. No se emiten reembolsos; el acceso sigue activo hasta esa fecha.
+                    <div className="rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-100/90">
+                        {t.subscriptionPendingCancel}
                     </div>
                 ) : null}
 
@@ -56,11 +54,9 @@ export default function Settings({
                         </span>
                         <span className="min-w-0">
                             <span className="block font-extrabold text-red-200 text-sm">
-                                {isCancellingSubscription ? "Cancelando…" : "Cancelar suscripción"}
+                                {isCancellingSubscription ? t.cancellingSubscription : t.cancelSubscription}
                             </span>
-                            <span className="block text-red-200/70 text-xs mt-0.5">
-                                Sin reembolsos. El acceso continúa hasta el final del periodo pagado.
-                            </span>
+                            <span className="block text-red-200/70 text-xs mt-0.5">{t.cancelSubscriptionHint}</span>
                         </span>
                     </button>
                 ) : null}
@@ -74,8 +70,8 @@ export default function Settings({
                         <LogOut size={18} />
                     </span>
                     <span className="min-w-0">
-                        <span className="block font-extrabold text-slate-100 text-sm">Cerrar sesión</span>
-                        <span className="block text-white/60 text-xs mt-0.5">Volverás a la pantalla de acceso.</span>
+                        <span className="block font-extrabold text-slate-100 text-sm">{t.logout}</span>
+                        <span className="block text-white/60 text-xs mt-0.5">{t.logoutHint}</span>
                     </span>
                 </button>
             </section>

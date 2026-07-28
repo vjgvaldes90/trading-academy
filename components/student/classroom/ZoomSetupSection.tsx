@@ -1,6 +1,7 @@
 "use client"
 
 import { CheckCircle2, Download, FileText, PlayCircle, Sparkles } from "lucide-react"
+import { useLanguage } from "@/context/LanguageProvider"
 
 export type ZoomSetupPanelState = "loading" | "visible" | "hidden"
 
@@ -25,6 +26,10 @@ export default function ZoomSetupSection({
     onDismissBrowser,
     onDismissPersistent,
 }: ZoomSetupSectionProps) {
+    const { t } = useLanguage()
+
+    const benefits = [t.zoomBenefit1, t.zoomBenefit2, t.zoomBenefit3, t.zoomBenefit4]
+
     if (status === "hidden") return null
 
     if (status === "loading") {
@@ -32,7 +37,7 @@ export default function ZoomSetupSection({
             <div
                 className="mt-6 rounded-2xl border border-blue-400/20 bg-[#0A1020]/80 p-5 shadow-inner shadow-black/20 ring-1 ring-blue-500/10 sm:p-6"
                 aria-busy="true"
-                aria-label="Cargando configuración recomendada"
+                aria-label={t.loadingRecommendedSetup}
             >
                 <div className="flex animate-pulse flex-col gap-4">
                     <div className="flex items-center gap-3">
@@ -65,29 +70,21 @@ export default function ZoomSetupSection({
                     </span>
                     <div>
                         <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-blue-400/90">
-                            Recommended Setup
+                            {t.recommendedSetup}
                         </p>
-                        <h2 className="text-base font-bold text-slate-100 sm:text-lg">Configuración recomendada</h2>
+                        <h2 className="text-base font-bold text-slate-100 sm:text-lg">{t.recommendedSetupTitle}</h2>
                     </div>
                 </div>
                 <p className="mt-2 max-w-xl text-xs font-medium text-slate-500 sm:mt-0 sm:text-right">
-                    Estándar institucional: <span className="text-slate-300">Zoom para escritorio</span> (mejor video,
-                    audio y gráficos).
+                    {t.institutionalStandardPrefix}{" "}
+                    <span className="text-slate-300">{t.zoomDesktopPreferred}</span> {t.zoomDesktopBenefits}
                 </p>
             </div>
 
-            <p className="mt-4 text-sm leading-relaxed text-slate-400">
-                Instala y prueba Zoom antes de tu primera sesión en vivo. Reduce fallos técnicos y sube la calidad de tu
-                experiencia premium en Smart Option Academy.
-            </p>
+            <p className="mt-4 text-sm leading-relaxed text-slate-400">{t.zoomSetupDescription}</p>
 
             <ul className="mt-4 space-y-2.5">
-                {[
-                    "Zoom escritorio: la experiencia preferida para sesiones institucionales",
-                    "Mejor pantalla compartida y lectura de gráficos",
-                    "Menor latencia y audio más estable",
-                    "Menos fricción que el navegador para sesiones largas",
-                ].map((line) => (
+                {benefits.map((line) => (
                     <li key={line} className="flex items-start gap-2 text-sm text-slate-300">
                         <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-blue-400/90" aria-hidden />
                         <span>{line}</span>
@@ -103,7 +100,7 @@ export default function ZoomSetupSection({
                     className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-xl border border-blue-300/45 bg-gradient-to-r from-blue-500 to-blue-700 px-4 py-3 text-sm font-bold text-white shadow-[0_14px_32px_rgba(37,99,235,0.38)] transition hover:brightness-110"
                 >
                     <Download className="h-4 w-4 shrink-0" aria-hidden />
-                    Descargar Zoom (escritorio)
+                    {t.downloadZoomDesktop}
                 </a>
                 <a
                     href={zoomPdfHref}
@@ -112,7 +109,7 @@ export default function ZoomSetupSection({
                     className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-xl border border-slate-500/45 bg-slate-900/50 px-4 py-3 text-sm font-semibold text-slate-100 transition hover:border-blue-400/35 hover:bg-slate-800/70"
                 >
                     <FileText className="h-4 w-4 shrink-0 text-blue-300" aria-hidden />
-                    Guía PDF de configuración
+                    {t.setupGuidePdf}
                 </a>
                 <a
                     href={zoomVideoHref}
@@ -121,7 +118,7 @@ export default function ZoomSetupSection({
                     className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-xl border border-slate-500/45 bg-slate-900/50 px-4 py-3 text-sm font-semibold text-slate-100 transition hover:border-blue-400/35 hover:bg-slate-800/70"
                 >
                     <PlayCircle className="h-4 w-4 shrink-0 text-blue-300" aria-hidden />
-                    Video tutorial
+                    {t.videoTutorial}
                 </a>
             </div>
 
@@ -131,14 +128,14 @@ export default function ZoomSetupSection({
                     onClick={onDismissBrowser}
                     className="inline-flex min-h-[42px] min-w-[44px] items-center justify-center rounded-lg border border-slate-500/40 bg-slate-900/40 px-4 py-2.5 text-sm font-semibold text-slate-200 transition hover:border-slate-400/50 hover:bg-slate-800/50"
                 >
-                    Continuar con navegador
+                    {t.continueWithBrowser}
                 </button>
                 <button
                     type="button"
                     onClick={onDismissPersistent}
                     className="text-center text-xs font-medium text-slate-500 underline-offset-2 hover:text-slate-400 hover:underline sm:ml-auto"
                 >
-                    Ya tengo Zoom instalado
+                    {t.alreadyHaveZoom}
                 </button>
             </div>
         </div>

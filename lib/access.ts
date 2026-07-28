@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { createClient } from "@supabase/supabase-js"
 import { emailHasAcademyAccess } from "@/lib/hasPaid"
+import { getTranslations } from "@/lib/i18n"
 
 export type AcademyActor = {
     email: string | null
@@ -18,9 +19,10 @@ export async function canAccessAcademy(
     email: string | null
 ): Promise<AcademyAccessCheckResult> {
     const normalizedEmail = email?.trim().toLowerCase() || null
+    const tr = getTranslations("es")
 
     if (!normalizedEmail) {
-        return { ok: false, reason: "Debes iniciar sesión para continuar." }
+        return { ok: false, reason: tr.mustSignInToContinue }
     }
 
     try {
@@ -28,12 +30,12 @@ export async function canAccessAcademy(
         if (allowed) return { ok: true }
     } catch (e) {
         console.error("[canAccessAcademy] access check failed", e)
-        return { ok: false, reason: "No pudimos verificar tu acceso. Intenta más tarde." }
+        return { ok: false, reason: tr.accessVerifyFailedRetry }
     }
 
     return {
         ok: false,
-        reason: "No tienes acceso activo. Compra acceso para unirte a sesiones.",
+        reason: tr.accessDeniedPurchaseRequired,
     }
 }
 

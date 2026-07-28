@@ -1,11 +1,15 @@
 "use client"
 
+import { useLanguage } from "@/context/LanguageProvider"
+
 type ResourceItem = { id: string; label: string; kind: "video" | "pdf" }
 
 /** Sustituir por datos reales (CMS / Supabase) cuando existan. */
 const RESOURCES: ResourceItem[] = []
 
 export default function ResourcesSection() {
+    const { t } = useLanguage()
+
     return (
         <section aria-labelledby="recursos-title">
             <h2
@@ -17,12 +21,12 @@ export default function ResourcesSection() {
                     fontWeight: 700,
                 }}
             >
-                📚 Recursos
+                {t.resourcesSectionTitle}
             </h2>
 
             {RESOURCES.length === 0 ? (
                 <p style={{ margin: 0, color: "var(--ds-text-muted)", fontSize: "0.875rem", lineHeight: 1.5 }}>
-                    No hay recursos disponibles aún
+                    {t.noResourcesAvailable}
                 </p>
             ) : (
                 <ul
@@ -49,7 +53,7 @@ export default function ResourcesSection() {
                                 color: "var(--ds-text)",
                             }}
                         >
-                            {r.kind === "video" ? "Video: " : "PDF: "}
+                            {r.kind === "video" ? t.videoPrefix : t.pdfPrefix}
                             {r.label}
                         </li>
                     ))}

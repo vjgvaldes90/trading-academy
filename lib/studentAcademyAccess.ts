@@ -1,3 +1,5 @@
+import { getTranslations, readStoredLanguage, type Language } from "@/lib/i18n"
+
 /**
  * Academy-wide access (trading_students), independent of live-session join windows.
  * Supported access_type values for admin / product: paid, free, discounted, discount, vip.
@@ -53,20 +55,29 @@ export function evaluateAcademyAccess(row: TradingStudentAccessRow | null | unde
     return { ok: false, reason: "unpaid" }
 }
 
+export function academyAccessDeniedMessage(
+    reason: AcademyAccessEvaluation["reason"] | undefined,
+    lang?: Language
+): string {
+    const tr = getTranslations(lang ?? readStoredLanguage())
+    switch (reason) {
+        case "inactive":
+            return tr.accessDeniedInactive
+        case "expired":
+            return tr.accessDeniedExpired
+        case "unpaid":
+            return tr.accessDeniedUnpaid
+        case "not_found":
+        default:
+            return tr.accessDeniedNotFound
+    }
+}
+
+/** @deprecated Prefer academyAccessDeniedMessage — kept for existing API imports. */
 export function academyAccessDeniedMessageEs(
     reason: AcademyAccessEvaluation["reason"] | undefined
 ): string {
-    switch (reason) {
-        case "inactive":
-            return "Tu cuenta está desactivada. Contacta al administrador."
-        case "expired":
-            return "Tu acceso ha caducado. Renueva o contacta al administrador."
-        case "unpaid":
-            return "No tienes acceso activo. Completa el pago o usa un código válido."
-        case "not_found":
-        default:
-            return "No encontramos tu registro de acceso."
-    }
+    return academyAccessDeniedMessage(reason, "es")
 }
 
 export function isAllowedAdminAccessType(value: string): value is AcademyAccessType {

@@ -1,5 +1,6 @@
 "use client"
 
+import { useLanguage } from "@/context/LanguageProvider"
 import type { CSSProperties } from "react"
 import { useEffect, useMemo, useState } from "react"
 
@@ -18,6 +19,7 @@ function formatCreatedAt(iso: string): string {
 }
 
 export default function RecordedClasses() {
+    const { t } = useLanguage()
     const [lessons, setLessons] = useState<Lesson[]>([])
     const [selectedId, setSelectedId] = useState<string | null>(null)
     const [loading, setLoading] = useState(true)
@@ -36,7 +38,7 @@ export default function RecordedClasses() {
                     const msg =
                         typeof (payload as { error?: unknown })?.error === "string"
                             ? String((payload as { error: unknown }).error)
-                            : "Failed to load recorded classes"
+                            : t.failedToLoadRecordedClasses
                     throw new Error(msg)
                 }
 
@@ -49,7 +51,7 @@ export default function RecordedClasses() {
                 if (!cancelled) {
                     setLessons([])
                     setSelectedId(null)
-                    setError(e instanceof Error ? e.message : "Failed to load recorded classes")
+                    setError(e instanceof Error ? e.message : t.failedToLoadRecordedClasses)
                 }
             } finally {
                 if (!cancelled) setLoading(false)
@@ -60,7 +62,7 @@ export default function RecordedClasses() {
         return () => {
             cancelled = true
         }
-    }, [])
+    }, [t.failedToLoadRecordedClasses])
 
     const selected = useMemo(() => lessons.find((l) => l.id === selectedId) ?? null, [lessons, selectedId])
 
@@ -73,19 +75,19 @@ export default function RecordedClasses() {
     }
 
     return (
-        <section aria-label="Recorded classes">
+        <section aria-label={t.recordedClassesAria}>
             <div style={{ display: "grid", gridTemplateColumns: "1.6fr 1fr", gap: "var(--ds-4)", alignItems: "start" }}>
                 <div style={panelStyle}>
                     <div style={{ margin: "0 0 var(--ds-3)", color: "#f8fafc", fontSize: "1.0625rem", fontWeight: 700 }}>
-                        Recorded Classes
+                        {t.recordedClasses}
                     </div>
 
                     {loading ? (
-                        <p style={{ margin: 0, color: "#94a3b8", fontSize: "0.9rem" }}>Loading…</p>
+                        <p style={{ margin: 0, color: "#94a3b8", fontSize: "0.9rem" }}>{t.loading}</p>
                     ) : error ? (
                         <p style={{ margin: 0, color: "#ef4444", fontSize: "0.9rem" }}>{error}</p>
                     ) : !selected ? (
-                        <p style={{ margin: 0, color: "#94a3b8", fontSize: "0.9rem" }}>No recorded classes available yet.</p>
+                        <p style={{ margin: 0, color: "#94a3b8", fontSize: "0.9rem" }}>{t.noRecordedClassesAvailable}</p>
                     ) : (
                         <>
                             <p style={{ margin: "0 0 var(--ds-3)", color: "#e2e8f0", fontWeight: 700 }}>
@@ -129,13 +131,13 @@ export default function RecordedClasses() {
 
                 <div style={panelStyle}>
                     <div style={{ margin: "0 0 var(--ds-3)", color: "#93c5fd", fontSize: "0.95rem", fontWeight: 800 }}>
-                        Lessons
+                        {t.lessonsTitle}
                     </div>
 
                     {loading ? (
-                        <p style={{ margin: 0, color: "#94a3b8", fontSize: "0.9rem" }}>Loading…</p>
+                        <p style={{ margin: 0, color: "#94a3b8", fontSize: "0.9rem" }}>{t.loading}</p>
                     ) : lessons.length === 0 ? (
-                        <p style={{ margin: 0, color: "#94a3b8", fontSize: "0.9rem" }}>No lessons yet.</p>
+                        <p style={{ margin: 0, color: "#94a3b8", fontSize: "0.9rem" }}>{t.noLessonsYet}</p>
                     ) : (
                         <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: "var(--ds-2)" }}>
                             {lessons.map((l) => {
@@ -174,4 +176,3 @@ export default function RecordedClasses() {
         </section>
     )
 }
-

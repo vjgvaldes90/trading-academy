@@ -1,8 +1,9 @@
 "use client"
 
 import type { AdminDashboardView } from "@/components/admin/AdminSidebar"
+import { useLanguage } from "@/context/LanguageProvider"
 import { BookOpen, CalendarPlus, CreditCard, Users } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 
 type Metrics = {
     totalStudents: number
@@ -23,6 +24,7 @@ export default function AdminOverview({
 }: {
     setActiveView: (view: AdminDashboardView) => void
 }) {
+    const { t } = useLanguage()
     const [metrics, setMetrics] = useState<Metrics | null>(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
@@ -44,9 +46,9 @@ export default function AdminOverview({
                 const lessonsPayload = (await lessonsRes.json().catch(() => [])) as unknown
                 const sessionsPayload = (await sessionsRes.json().catch(() => [])) as unknown
 
-                if (!studentsRes.ok) throw new Error("Could not load students")
-                if (!lessonsRes.ok) throw new Error("Could not load classes")
-                if (!sessionsRes.ok) throw new Error("Could not load sessions")
+                if (!studentsRes.ok) throw new Error(t.adminFailedToLoadStudents)
+                if (!lessonsRes.ok) throw new Error(t.adminFailedToLoadClasses)
+                if (!sessionsRes.ok) throw new Error(t.adminFailedToLoadSessions)
 
                 const studentList = Array.isArray(studentsPayload) ? studentsPayload : []
                 const totalStudents = studentList.length
@@ -74,7 +76,7 @@ export default function AdminOverview({
                 }
             } catch (e) {
                 if (!cancelled) {
-                    setError(e instanceof Error ? e.message : "Failed to load overview")
+                    setError(e instanceof Error ? e.message : t.failedToLoadOverview)
                     setMetrics(null)
                 }
             } finally {
@@ -85,58 +87,60 @@ export default function AdminOverview({
         return () => {
             cancelled = true
         }
-    }, [])
+    }, [t])
 
-    const statCards: { label: string; value: string | number }[] = metrics
-        ? [
-              { label: "Total Students", value: metrics.totalStudents },
-              { label: "Active Subscriptions", value: metrics.activeSubscriptions },
-              { label: "Total Classes", value: metrics.totalClasses },
-              { label: "Upcoming Sessions", value: metrics.upcomingSessions },
-          ]
-        : []
+    const statCards = useMemo(
+        () =>
+            metrics
+                ? [
+                      { label: t.adminTotalStudents, value: metrics.totalStudents },
+                      { label: t.adminActiveSubscriptions, value: metrics.activeSubscriptions },
+                      { label: t.adminTotalClasses, value: metrics.totalClasses },
+                      { label: t.adminUpcomingSessions, value: metrics.upcomingSessions },
+                  ]
+                : [],
+        [metrics, t]
+    )
 
-    const quickActions: {
-        title: string
-        description: string
-        view: AdminDashboardView
-        Icon: typeof BookOpen
-    }[] = [
-        {
-            Icon: BookOpen,
-            title: "Add New Class",
-            description: "Published recorded lessons",
-            view: "classes",
-        },
-        {
-            Icon: CalendarPlus,
-            title: "Schedule Session",
-            description: "Live session calendar",
-            view: "sessions",
-        },
-        {
-            Icon: Users,
-            title: "View Students",
-            description: "Access and activation",
-            view: "students",
-        },
-        {
-            Icon: CreditCard,
-            title: "Manage Subscriptions",
-            description: "Billing status overview",
-            view: "subscriptions",
-        },
-    ]
+    const quickActions = useMemo(
+        () => [
+            {
+                Icon: BookOpen,
+                title: t.adminQuickAddClass,
+                description: t.adminQuickAddClassDesc,
+                view: "classes" as const,
+            },
+            {
+                Icon: CalendarPlus,
+                title: t.adminQuickScheduleSession,
+                description: t.adminQuickScheduleSessionDesc,
+                view: "sessions" as const,
+            },
+            {
+                Icon: Users,
+                title: t.adminQuickViewStudents,
+                description: t.adminQuickViewStudentsDesc,
+                view: "students" as const,
+            },
+            {
+                Icon: CreditCard,
+                title: t.adminQuickManageSubscriptions,
+                description: t.adminQuickManageSubscriptionsDesc,
+                view: "subscriptions" as const,
+            },
+        ],
+        [t]
+    )
 
     return (
         <div className="space-y-8">
             <header>
-                <h2 className="text-xl font-semibold text-slate-50">Overview</h2>
-                <p className="mt-1 text-sm text-slate-400">Snapshot of your academy at a glance.</p>
+                <h2 className="text-xl font-semibold text-slate-50">{t.adminOverview}</h2>
+                <p className="mt-1 text-sm text-slate-400">{t.adminOverviewSubtitle}</p>
             </header>
 
             {loading ? (
-                <p className="text-sm text-slate-400">Loading metrics…</p>
+                <p className="text-sm text-slate-400">{t.loadingMetrics}</p>
             ) : error ? (
                 <p className="text-sm text-red-400">{error}</p>
             ) : (
@@ -154,7 +158,7 @@ export default function AdminOverview({
             )}
 
             <section>
-                <h3 className="text-sm font-extrabold uppercase tracking-wide text-slate-300">Quick actions</h3>
+                <h3 className="text-sm font-extrabold uppercase tracking-wide text-slate-300">{t.quickActions}</h3>
                 <div className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-4">
                     {quickActions.map(({ Icon, title, description, view }) => (
                         <button
