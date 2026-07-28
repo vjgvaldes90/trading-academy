@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server"
 import { requireAuthorizedAdminFromCookies } from "@/lib/adminAuth"
 import { createSupabaseServiceRoleClient } from "@/lib/access"
-import { recordSubscriptionCancelled } from "@/lib/activityFeed"
 import { createStripeClient } from "@/lib/stripe-server"
 import {
     CANCEL_SUBSCRIPTION_POLICY_MESSAGE,
@@ -26,7 +25,7 @@ export async function POST(req: Request) {
         const supabase = createSupabaseServiceRoleClient()
         const { data: student, error: readErr } = await supabase
             .from("trading_students")
-            .select("email, subscription_id, subscription_status, access_expires_at")
+            .select("subscription_id, subscription_status, access_expires_at")
             .eq("id", userId)
             .maybeSingle()
 
@@ -82,16 +81,6 @@ export async function POST(req: Request) {
             })
             return NextResponse.json({ ok: false, error: "Database update failed" }, { status: 500 })
         }
-
-        const studentEmail =
-            typeof (student as { email?: unknown }).email === "string"
-                ? (student as { email: string }).email
-                : null
-        await recordSubscriptionCancelled(supabase, {
-            email: studentEmail,
-            subscriptionId,
-            studentId: userId,
-        })
 
         return NextResponse.json({
             ok: true,

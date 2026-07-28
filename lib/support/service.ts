@@ -1,5 +1,4 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
-import { recordSupportTicketCreated } from "@/lib/activityFeed"
 import { SupportRepository } from "@/lib/support/repository"
 import type {
     AddSupportMessageInput,
@@ -16,10 +15,8 @@ import type {
 
 export class SupportService {
     private readonly repo: SupportRepository
-    private readonly supabase: SupabaseClient
 
     constructor(supabase: SupabaseClient) {
-        this.supabase = supabase
         this.repo = new SupportRepository(supabase)
     }
 
@@ -37,16 +34,10 @@ export class SupportService {
             })
             await this.repo.touchLastMessageAt(ticket.id, message.created_at)
             const refreshed = await this.repo.findTicketById(ticket.id)
-            const finalTicket = refreshed ?? ticket
-            await recordSupportTicketCreated(this.supabase, {
-                ticketId: finalTicket.id,
-                studentEmail: finalTicket.student_email,
-                subject: finalTicket.subject,
-            })
             return {
                 ok: true,
                 data: {
-                    ...finalTicket,
+                    ...(refreshed ?? ticket),
                     messages: [message],
                 },
             }

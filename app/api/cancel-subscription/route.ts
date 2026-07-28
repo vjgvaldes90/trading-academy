@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server"
 import { createSupabaseServiceRoleClient } from "@/lib/access"
-import { recordSubscriptionCancelled } from "@/lib/activityFeed"
 import { createStripeClient } from "@/lib/stripe-server"
 import {
     CANCEL_SUBSCRIPTION_POLICY_MESSAGE,
@@ -72,11 +71,6 @@ export async function POST(req: Request) {
             })
             return NextResponse.json({ ok: false, error: "Database update failed" }, { status: 500 })
         }
-
-        await recordSubscriptionCancelled(supabase, {
-            email,
-            subscriptionId,
-        })
 
         return NextResponse.json({
             ok: true,

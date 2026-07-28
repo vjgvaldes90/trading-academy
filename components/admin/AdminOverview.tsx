@@ -1,42 +1,16 @@
 "use client"
 
-import RecentActivityPanel from "@/components/admin/executive/RecentActivityPanel"
-import UpcomingLiveSessionsPanel from "@/components/admin/executive/UpcomingLiveSessionsPanel"
 import StudentGrowthChart from "@/components/admin/executive/StudentGrowthChart"
-import MonthlyRevenueChart from "@/components/admin/executive/MonthlyRevenueChart"
 import type { AdminDashboardView } from "@/components/admin/AdminSidebar"
-import type { ActivityFeedItem } from "@/lib/activityFeed"
-import type {
-    ExecutiveMetrics,
-    ExecutiveUpcomingSession,
-    StudentGrowthPoint,
-} from "@/lib/executiveDashboard"
+import type { ExecutiveMetrics, StudentGrowthPoint } from "@/lib/executiveDashboard"
 import { useLanguage } from "@/context/LanguageProvider"
 import { BookOpen, CalendarPlus, CreditCard, Users } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 
 type DashboardPayload = {
     metrics?: ExecutiveMetrics
-    activity?: ActivityFeedItem[]
-    upcomingSessions?: ExecutiveUpcomingSession[]
     studentGrowth?: StudentGrowthPoint[]
     error?: string
-}
-
-function formatMetricValue(
-    value: number | null | undefined,
-    opts?: { percent?: boolean; currency?: boolean }
-): string {
-    if (value == null || !Number.isFinite(value)) return "—"
-    if (opts?.percent) return `${Math.round(value)}%`
-    if (opts?.currency) {
-        return new Intl.NumberFormat("en-US", {
-            style: "currency",
-            currency: "USD",
-            maximumFractionDigits: 0,
-        }).format(value)
-    }
-    return String(value)
 }
 
 export default function AdminOverview({
@@ -46,8 +20,6 @@ export default function AdminOverview({
 }) {
     const { t } = useLanguage()
     const [metrics, setMetrics] = useState<ExecutiveMetrics | null>(null)
-    const [activity, setActivity] = useState<ActivityFeedItem[]>([])
-    const [upcoming, setUpcoming] = useState<ExecutiveUpcomingSession[]>([])
     const [growth, setGrowth] = useState<StudentGrowthPoint[]>([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
@@ -70,15 +42,11 @@ export default function AdminOverview({
                 }
                 if (cancelled) return
                 setMetrics(payload.metrics ?? null)
-                setActivity(Array.isArray(payload.activity) ? payload.activity : [])
-                setUpcoming(Array.isArray(payload.upcomingSessions) ? payload.upcomingSessions : [])
                 setGrowth(Array.isArray(payload.studentGrowth) ? payload.studentGrowth : [])
             } catch (e) {
                 if (!cancelled) {
                     setError(e instanceof Error ? e.message : t.failedToLoadOverview)
                     setMetrics(null)
-                    setActivity([])
-                    setUpcoming([])
                     setGrowth([])
                 }
             } finally {
@@ -94,38 +62,11 @@ export default function AdminOverview({
     const statCards = useMemo(() => {
         const m = metrics
         return [
-            {
-                label: t.adminTotalStudents,
-                value: formatMetricValue(m?.totalStudents),
-            },
-            {
-                label: t.adminActiveStudents,
-                value: formatMetricValue(m?.activeStudents),
-            },
-            {
-                label: t.adminLiveSessionsThisWeek,
-                value: formatMetricValue(m?.liveSessionsThisWeek),
-            },
-            {
-                label: t.adminOpenSupportTickets,
-                value: formatMetricValue(m?.openSupportTickets),
-            },
-            {
-                label: t.adminExpiringSubscriptions,
-                value: formatMetricValue(m?.expiringSubscriptions),
-            },
-            {
-                label: t.adminTotalBookedSeatsThisWeek,
-                value: formatMetricValue(m?.totalBookedSeatsThisWeek ?? null),
-            },
-            {
-                label: t.adminSeatOccupancy,
-                value: formatMetricValue(m?.seatOccupancyPercent ?? null, { percent: true }),
-            },
-            {
-                label: t.adminMonthlyRevenue,
-                value: formatMetricValue(m?.monthlyRevenue ?? null, { currency: true }),
-            },
+            { label: t.adminTotalStudents, value: m?.totalStudents },
+            { label: t.adminActiveStudents, value: m?.activeStudents },
+            { label: t.adminNewThisWeek, value: m?.newThisWeek },
+            { label: t.adminNewThisMonth, value: m?.newThisMonth },
+            { label: t.adminOpenSupportTickets, value: m?.openSupportTickets },
         ]
     }, [metrics, t])
 
@@ -168,8 +109,7 @@ export default function AdminOverview({
 
             {error ? <p className="text-sm text-red-400">{error}</p> : null}
 
-            {/* Row 1 — KPI cards */}
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
                 {statCards.map((c) => (
                     <div
                         key={c.label}
@@ -177,23 +117,13 @@ export default function AdminOverview({
                     >
                         <p className="text-sm text-slate-400">{c.label}</p>
                         <p className="mt-2 text-2xl font-semibold tabular-nums text-slate-50">
-                            {loading ? "…" : c.value}
+                            {loading ? "…" : c.value ?? "—"}
                         </p>
                     </div>
                 ))}
             </div>
 
-            {/* Row 2 — Activity + Upcoming */}
-            <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-                <RecentActivityPanel items={activity} loading={loading} />
-                <UpcomingLiveSessionsPanel sessions={upcoming} loading={loading} />
-            </div>
-
-            {/* Row 3 — Charts */}
-            <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-                <StudentGrowthChart points={growth} loading={loading} />
-                <MonthlyRevenueChart />
-            </div>
+            <StudentGrowthChart points={growth} loading={loading} />
 
             <section>
                 <h3 className="text-sm font-extrabold uppercase tracking-wide text-slate-300">

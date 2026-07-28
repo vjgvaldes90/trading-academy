@@ -2,10 +2,6 @@ import Stripe from "stripe"
 import { createStripeClient, getStripeSecretKey, getStripeWebhookSecret } from "@/lib/stripe-server"
 import { createSupabaseServiceRoleClient } from "@/lib/access"
 import {
-    recordSubscriptionCancelled,
-    recordSubscriptionCreated,
-} from "@/lib/activityFeed"
-import {
     notifyNewStudentCreated,
     tradingStudentExistsByEmail,
 } from "@/lib/adminNotifications"
@@ -154,13 +150,6 @@ async function fulfillPaidAccessAndSendWelcomeEmail(args: {
             email: emailForDb,
             studentId: typeof savedRow.id === "string" ? savedRow.id : null,
             name: rawName ?? null,
-        })
-    }
-    if (subscriptionId) {
-        await recordSubscriptionCreated(supabase, {
-            email: emailForDb,
-            subscriptionId,
-            studentId: typeof savedRow.id === "string" ? savedRow.id : null,
         })
     }
     console.log("💾 Saved code:", accessCode)
@@ -434,17 +423,6 @@ export async function handleStripeWebhook(req: Request): Promise<Response> {
             // `access_expires_at` + evaluateAcademyAccess() control access until expiry.
             await updateStudentBySubscriptionId(subscriptionId, {
                 subscription_status: "cancelled",
-            })
-            const supabase = createSupabaseServiceRoleClient()
-            const { data: student } = await supabase
-                .from("trading_students")
-                .select("id, email")
-                .eq("subscription_id", subscriptionId)
-                .maybeSingle()
-            await recordSubscriptionCancelled(supabase, {
-                email: typeof student?.email === "string" ? student.email : null,
-                subscriptionId,
-                studentId: typeof student?.id === "string" ? student.id : null,
             })
             console.log("[stripe-webhook] subscription ended", { subscriptionId })
         } catch (err) {
