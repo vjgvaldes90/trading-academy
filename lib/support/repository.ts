@@ -252,4 +252,73 @@ export class SupportRepository {
         const id = data && typeof (data as { id?: unknown }).id === "string" ? (data as { id: string }).id : null
         return id
     }
+
+    async countByStatus(): Promise<Record<SupportTicketStatus, number>> {
+        const counts: Record<SupportTicketStatus, number> = {
+            open: 0,
+            in_progress: 0,
+            waiting_student: 0,
+            closed: 0,
+        }
+
+        const { data, error } = await this.supabase.from("support_tickets").select("status")
+        if (error) {
+            throw new Error(error.message)
+        }
+
+        for (const row of Array.isArray(data) ? data : []) {
+            const status = typeof (row as { status?: unknown }).status === "string"
+                ? String((row as { status: string }).status)
+                : ""
+            if (status === "open" || status === "in_progress" || status === "waiting_student" || status === "closed") {
+                counts[status] += 1
+            }
+        }
+        return counts
+    }
+
+    async findStudentProfileByEmail(email: string): Promise<{
+        id: string
+        email: string
+        first_name: string | null
+        last_name: string | null
+        phone: string | null
+        profile_completed: boolean | null
+        access_type: string | null
+        is_active: boolean | null
+        access_expires_at: string | null
+        subscription_status: string | null
+        subscription_id: string | null
+        created_at: string | null
+    } | null> {
+        const normalized = email.trim().toLowerCase()
+        const { data, error } = await this.supabase
+            .from("trading_students")
+            .select(
+                "id, email, first_name, last_name, phone, profile_completed, access_type, is_active, access_expires_at, subscription_status, subscription_id, created_at"
+            )
+            .eq("email", normalized)
+            .maybeSingle()
+
+        if (error) {
+            throw new Error(error.message)
+        }
+        if (!data) return null
+
+        const row = data as Record<string, unknown>
+        return {
+            id: typeof row.id === "string" ? row.id : "",
+            email: typeof row.email === "string" ? row.email : normalized,
+            first_name: typeof row.first_name === "string" ? row.first_name : null,
+            last_name: typeof row.last_name === "string" ? row.last_name : null,
+            phone: typeof row.phone === "string" ? row.phone : null,
+            profile_completed: typeof row.profile_completed === "boolean" ? row.profile_completed : null,
+            access_type: typeof row.access_type === "string" ? row.access_type : null,
+            is_active: typeof row.is_active === "boolean" ? row.is_active : null,
+            access_expires_at: typeof row.access_expires_at === "string" ? row.access_expires_at : null,
+            subscription_status: typeof row.subscription_status === "string" ? row.subscription_status : null,
+            subscription_id: typeof row.subscription_id === "string" ? row.subscription_id : null,
+            created_at: typeof row.created_at === "string" ? row.created_at : null,
+        }
+    }
 }

@@ -94,3 +94,20 @@ export type ListSupportTicketsFilters = {
 export type SupportServiceResult<T> =
     | { ok: true; data: T }
     | { ok: false; error: string; code?: string }
+
+export type SupportTicketStatusCounts = Record<SupportTicketStatus, number>
+
+export type SupportStudentProfile = {
+    id: string
+    email: string
+    first_name: string | null
+    last_name: string | null
+    phone: string | null
+    profile_completed: boolean | null
+    access_type: string | null
+    is_active: boolean | null
+    access_expires_at: string | null
+    subscription_status: string | null
+    subscription_id: string | null
+    created_at: string | null
+}

@@ -8,6 +8,8 @@ import type {
     SupportServiceResult,
     SupportTicket,
     SupportTicketWithMessages,
+    SupportTicketStatusCounts,
+    SupportStudentProfile,
     UpdateSupportTicketInput,
 } from "@/lib/support/types"
 
@@ -264,6 +266,39 @@ export class SupportService {
             return {
                 ok: false,
                 error: e instanceof Error ? e.message : "Failed to resolve student",
+                code: "student_lookup_failed",
+            }
+        }
+    }
+
+    async getStatusCounts(): Promise<SupportServiceResult<SupportTicketStatusCounts>> {
+        try {
+            const data = await this.repo.countByStatus()
+            return { ok: true, data }
+        } catch (e) {
+            console.error("[SupportService.getStatusCounts]", e)
+            return {
+                ok: false,
+                error: e instanceof Error ? e.message : "Failed to load ticket counts",
+                code: "counts_failed",
+            }
+        }
+    }
+
+    async getStudentProfile(
+        email: string
+    ): Promise<SupportServiceResult<SupportStudentProfile>> {
+        try {
+            const profile = await this.repo.findStudentProfileByEmail(email)
+            if (!profile) {
+                return { ok: false, error: "Student not found", code: "student_not_found" }
+            }
+            return { ok: true, data: profile }
+        } catch (e) {
+            console.error("[SupportService.getStudentProfile]", e)
+            return {
+                ok: false,
+                error: e instanceof Error ? e.message : "Failed to load student profile",
                 code: "student_lookup_failed",
             }
         }

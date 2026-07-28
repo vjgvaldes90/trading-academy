@@ -11,6 +11,8 @@ export type {
     UpdateSupportTicketInput,
     ListSupportTicketsFilters,
     SupportServiceResult,
+    SupportTicketStatusCounts,
+    SupportStudentProfile,
 } from "@/lib/support/types"
 
 export {

@@ -8,6 +8,7 @@ import {
     Calendar,
     CreditCard,
     LayoutDashboard,
+    LifeBuoy,
     Settings as SettingsIcon,
     Users,
     Video,
@@ -19,6 +20,7 @@ export type AdminDashboardView =
     | "sessions"
     | "students"
     | "subscriptions"
+    | "support"
     | "analytics"
     | "settings"
 
@@ -34,6 +36,7 @@ const NAV_ITEMS: NavItem[] = [
     { labelKey: "adminLiveSessions", view: "sessions", icon: Calendar },
     { labelKey: "adminStudents", view: "students", icon: Users },
     { labelKey: "adminSubscriptions", view: "subscriptions", icon: CreditCard },
+    { labelKey: "adminSupport", view: "support", icon: LifeBuoy },
     { labelKey: "adminAnalytics", view: "analytics", icon: BarChart3 },
     { labelKey: "adminSettings", view: "settings", icon: SettingsIcon },
 ]
@@ -41,9 +44,11 @@ const NAV_ITEMS: NavItem[] = [
 export default function AdminSidebar({
     activeView,
     setActiveView,
+    openSupportCount = 0,
 }: {
     activeView: AdminDashboardView
     setActiveView: (view: AdminDashboardView) => void
+    openSupportCount?: number
 }) {
     const { t } = useLanguage()
 
@@ -85,6 +90,7 @@ export default function AdminSidebar({
                 {navLabels.map((item) => {
                     const Icon = item.icon
                     const isActive = activeView === item.view
+                    const showBadge = item.view === "support" && openSupportCount > 0
                     return (
                         <button
                             key={item.view}
@@ -93,7 +99,12 @@ export default function AdminSidebar({
                             className={[itemBase, isActive ? itemActive : itemNormal].join(" ")}
                         >
                             <Icon size={18} className="opacity-80 shrink-0" />
-                            <span>{item.label}</span>
+                            <span className="min-w-0 flex-1 truncate text-left">{item.label}</span>
+                            {showBadge ? (
+                                <span className="inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-extrabold leading-none text-white">
+                                    {openSupportCount > 99 ? "99+" : openSupportCount}
+                                </span>
+                            ) : null}
                         </button>
                     )
                 })}

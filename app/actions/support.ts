@@ -14,6 +14,8 @@ import {
     type SupportTicket,
     type SupportTicketWithMessages,
     type SupportMessage,
+    type SupportTicketStatusCounts,
+    type SupportStudentProfile,
 } from "@/lib/support"
 
 function fail<T>(error: string, code?: string): SupportServiceResult<T> {
@@ -191,4 +193,32 @@ export async function addAdminSupportMessageAction(
         isInternal: parsed.data.isInternal,
         nextStatus: parsed.data.nextStatus,
     })
+}
+
+export async function getAdminSupportStatusCountsAction(): Promise<
+    SupportServiceResult<SupportTicketStatusCounts>
+> {
+    const adminEmail = await getAuthorizedAdminEmailFromCookies()
+    if (!adminEmail) return fail("Unauthorized", "unauthorized")
+
+    const supabase = createSupabaseServiceRoleClient()
+    const service = createSupportService(supabase)
+    return service.getStatusCounts()
+}
+
+export async function getAdminSupportStudentProfileAction(
+    emailRaw: unknown
+): Promise<SupportServiceResult<SupportStudentProfile>> {
+    const adminEmail = await getAuthorizedAdminEmailFromCookies()
+    if (!adminEmail) return fail("Unauthorized", "unauthorized")
+
+    const email =
+        typeof emailRaw === "string" ? emailRaw.trim().toLowerCase() : ""
+    if (!email || !email.includes("@")) {
+        return fail("Invalid email", "validation_error")
+    }
+
+    const supabase = createSupabaseServiceRoleClient()
+    const service = createSupportService(supabase)
+    return service.getStudentProfile(email)
 }

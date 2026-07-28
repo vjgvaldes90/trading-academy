@@ -8,9 +8,11 @@ import AdminSettings from "@/components/admin/AdminSettings"
 import AdminSidebar, { type AdminDashboardView } from "@/components/admin/AdminSidebar"
 import AdminStudents from "@/components/admin/AdminStudents"
 import AdminSubscriptions from "@/components/admin/AdminSubscriptions"
+import AdminSupport from "@/components/admin/AdminSupport"
 import dashboardTheme from "@/components/dashboard/dashboardTheme.module.css"
 import { useLanguage } from "@/context/LanguageProvider"
-import { useEffect, useMemo, useState } from "react"
+import { getAdminSupportStatusCountsAction } from "@/app/actions/support"
+import { useCallback, useEffect, useMemo, useState } from "react"
 
 export default function AdminDashboardClient({
     initialView,
@@ -19,6 +21,7 @@ export default function AdminDashboardClient({
 }) {
     const { t } = useLanguage()
     const [activeView, setActiveView] = useState<AdminDashboardView>(initialView ?? "overview")
+    const [openSupportCount, setOpenSupportCount] = useState(0)
 
     const sectionTitles = useMemo<Record<AdminDashboardView, string>>(
         () => ({
@@ -27,19 +30,41 @@ export default function AdminDashboardClient({
             sessions: t.adminLiveSessions,
             students: t.adminStudents,
             subscriptions: t.adminSubscriptions,
+            support: t.adminSupport,
             analytics: t.adminAnalytics,
             settings: t.adminSettings,
         }),
         [t]
     )
 
+    const refreshOpenCount = useCallback(async () => {
+        try {
+            const result = await getAdminSupportStatusCountsAction()
+            if (result.ok) setOpenSupportCount(result.data.open)
+        } catch {
+            // Keep last known badge count on transient failures.
+        }
+    }, [])
+
     useEffect(() => {
         if (initialView) setActiveView(initialView)
     }, [initialView])
 
+    useEffect(() => {
+        void refreshOpenCount()
+        const id = window.setInterval(() => {
+            void refreshOpenCount()
+        }, 60_000)
+        return () => window.clearInterval(id)
+    }, [refreshOpenCount])
+
     return (
         <div className={`flex min-h-screen bg-[#0B1120] text-white ${dashboardTheme.shell}`}>
-            <AdminSidebar activeView={activeView} setActiveView={setActiveView} />
+            <AdminSidebar
+                activeView={activeView}
+                setActiveView={setActiveView}
+                openSupportCount={openSupportCount}
+            />
 
             <main className="flex-1 ml-0 lg:ml-64 p-6 lg:p-8">
                 {activeView !== "sessions" ? (
@@ -50,12 +75,20 @@ export default function AdminDashboardClient({
                     </header>
                 ) : null}
 
-                <div key={activeView} className={`${dashboardTheme.viewEnter} ${activeView === "sessions" ? "max-w-7xl" : "max-w-6xl"}`}>
+                <div
+                    key={activeView}
+                    className={`${dashboardTheme.viewEnter} ${
+                        activeView === "sessions" || activeView === "support" ? "max-w-7xl" : "max-w-6xl"
+                    }`}
+                >
                     {activeView === "overview" ? <AdminOverview setActiveView={setActiveView} /> : null}
                     {activeView === "classes" ? <AdminClasses /> : null}
                     {activeView === "sessions" ? <AdminSessions /> : null}
                     {activeView === "students" ? <AdminStudents /> : null}
                     {activeView === "subscriptions" ? <AdminSubscriptions /> : null}
+                    {activeView === "support" ? (
+                        <AdminSupport onOpenCountChange={setOpenSupportCount} />
+                    ) : null}
                     {activeView === "analytics" ? <AdminAnalytics /> : null}
                     {activeView === "settings" ? <AdminSettings /> : null}
                 </div>
