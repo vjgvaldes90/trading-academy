@@ -1,7 +1,7 @@
 "use client"
 
 import { type ComponentType } from "react"
-import { BookOpen, GraduationCap, Home, Settings as SettingsIcon, Video } from "lucide-react"
+import { BookOpen, GraduationCap, Home, LifeBuoy, Settings as SettingsIcon, Video } from "lucide-react"
 import { useLanguage } from "@/context/LanguageProvider"
 
 export type StudentDashboardView =
@@ -9,6 +9,7 @@ export type StudentDashboardView =
     | "classes"
     | "live"
     | "resources"
+    | "support"
     | "settings"
 
 type NavItem = {
@@ -46,6 +47,7 @@ export default function Sidebar({
         { label: t.navMyClasses, view: "classes", icon: BookOpen },
         { label: t.navLiveSessions, view: "live", icon: Video },
         { label: t.navResources, view: "resources", icon: BookOpen },
+        { label: t.navSupport, view: "support", icon: LifeBuoy },
         { label: t.navSettings, view: "settings", icon: SettingsIcon },
     ]
 

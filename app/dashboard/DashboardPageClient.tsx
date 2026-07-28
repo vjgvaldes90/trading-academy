@@ -10,6 +10,7 @@ import ClassesView from "@/components/dashboard/ClassesView"
 import LiveSessionsView from "@/components/dashboard/LiveSessionsView"
 import Resources from "@/components/dashboard/Resources"
 import Settings from "@/components/dashboard/Settings"
+import SupportView from "@/components/dashboard/support/SupportView"
 import { useLanguage } from "@/context/LanguageProvider"
 import { SUBSCRIPTION_STATUS_CANCEL_AT_PERIOD_END } from "@/lib/subscriptionCancellation"
 import { SessionProvider, useSession } from "@/context/SessionContext"
@@ -63,6 +64,7 @@ function DashboardShell({
         classes: t.navMyClasses,
         live: t.navLiveSessions,
         resources: t.navResources,
+        support: t.navSupport,
         settings: t.navSettings,
     }
 
@@ -134,6 +136,7 @@ function DashboardShell({
                     {activeView === "classes" ? <ClassesView /> : null}
                     {activeView === "live" ? <LiveSessionsView /> : null}
                     {activeView === "resources" ? <Resources /> : null}
+                    {activeView === "support" ? <SupportView /> : null}
                     {activeView === "settings" ? (
                         <Settings
                             showCancelSubscription={showCancelButton}
