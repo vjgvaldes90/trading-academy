@@ -1,8 +1,10 @@
 "use client"
 
 import { motion } from "framer-motion"
+import { useLanguage } from "@/context/LanguageProvider"
 
 export default function Pricing() {
+    const { t } = useLanguage()
     return (
         <motion.section
             id="pricing"
@@ -76,7 +78,7 @@ export default function Pricing() {
                             href="/login"
                             className="block w-full rounded-xl border border-blue-300/25 bg-gradient-to-r from-blue-500 to-blue-700 py-4 text-lg font-bold text-white shadow-[0_14px_34px_rgba(37,99,235,0.35)] transition hover:scale-105 hover:brightness-110"
                         >
-                            Comienza tu formación
+                            {t.buyAccess}
                         </a>
 
                         {/* MICRO COPY */}
