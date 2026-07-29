@@ -9,6 +9,7 @@ import {
     CreditCard,
     LayoutDashboard,
     LifeBuoy,
+    Megaphone,
     Settings as SettingsIcon,
     Users,
     Video,
@@ -21,6 +22,7 @@ export type AdminDashboardView =
     | "students"
     | "subscriptions"
     | "support"
+    | "announcements"
     | "analytics"
     | "settings"
 
@@ -37,6 +39,7 @@ const NAV_ITEMS: NavItem[] = [
     { labelKey: "adminStudents", view: "students", icon: Users },
     { labelKey: "adminSubscriptions", view: "subscriptions", icon: CreditCard },
     { labelKey: "adminSupport", view: "support", icon: LifeBuoy },
+    { labelKey: "adminAnnouncements", view: "announcements", icon: Megaphone },
     { labelKey: "adminAnalytics", view: "analytics", icon: BarChart3 },
     { labelKey: "adminSettings", view: "settings", icon: SettingsIcon },
 ]

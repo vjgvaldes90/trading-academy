@@ -1,6 +1,7 @@
 "use client"
 
 import AdminAnalytics from "@/components/admin/AdminAnalytics"
+import AdminAnnouncements from "@/components/admin/AdminAnnouncements"
 import AdminClasses from "@/components/admin/AdminClasses"
 import AdminNotificationsBell from "@/components/admin/AdminNotificationsBell"
 import AdminOverview from "@/components/admin/AdminOverview"
@@ -32,6 +33,7 @@ export default function AdminDashboardClient({
             students: t.adminStudents,
             subscriptions: t.adminSubscriptions,
             support: t.adminSupport,
+            announcements: t.adminAnnouncements,
             analytics: t.adminAnalytics,
             settings: t.adminSettings,
         }),
@@ -82,7 +84,11 @@ export default function AdminDashboardClient({
                 <div
                     key={activeView}
                     className={`${dashboardTheme.viewEnter} ${
-                        activeView === "sessions" || activeView === "support" ? "max-w-7xl" : "max-w-6xl"
+                        activeView === "sessions" ||
+                        activeView === "support" ||
+                        activeView === "announcements"
+                            ? "max-w-7xl"
+                            : "max-w-6xl"
                     }`}
                 >
                     {activeView === "overview" ? <AdminOverview setActiveView={setActiveView} /> : null}
@@ -93,6 +99,7 @@ export default function AdminDashboardClient({
                     {activeView === "support" ? (
                         <AdminSupport onOpenCountChange={setOpenSupportCount} />
                     ) : null}
+                    {activeView === "announcements" ? <AdminAnnouncements /> : null}
                     {activeView === "analytics" ? <AdminAnalytics /> : null}
                     {activeView === "settings" ? <AdminSettings /> : null}
                 </div>

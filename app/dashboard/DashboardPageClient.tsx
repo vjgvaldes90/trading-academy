@@ -5,6 +5,8 @@ import CancelSessionConfirmModal from "@/app/admin/CancelSessionConfirmModal"
 import Sidebar from "@/components/student/Sidebar"
 import dashboardTheme from "@/components/dashboard/dashboardTheme.module.css"
 import type { StudentDashboardView } from "@/components/student/Sidebar"
+import AnnouncementBanner from "@/components/dashboard/AnnouncementBanner"
+import AnnouncementsView from "@/components/dashboard/AnnouncementsView"
 import DashboardHome from "@/components/dashboard/DashboardHome"
 import ClassesView from "@/components/dashboard/ClassesView"
 import LiveSessionsView from "@/components/dashboard/LiveSessionsView"
@@ -13,6 +15,7 @@ import Settings from "@/components/dashboard/Settings"
 import SupportView from "@/components/dashboard/support/SupportView"
 import { useLanguage } from "@/context/LanguageProvider"
 import { SUBSCRIPTION_STATUS_CANCEL_AT_PERIOD_END } from "@/lib/subscriptionCancellation"
+import type { StudentAnnouncementItem, StudentAnnouncementsPayload } from "@/lib/announcements"
 import { SessionProvider, useSession } from "@/context/SessionContext"
 import { supabase } from "@/lib/supabase"
 import {
@@ -22,7 +25,7 @@ import {
     resolveDashboardStudent,
 } from "@/lib/studentLocalStorage"
 import { useRouter } from "next/navigation"
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 
 type DashboardUserSubscription = {
     email: string
@@ -43,6 +46,81 @@ function DashboardShell({
     const [activeView, setActiveView] = useState<StudentDashboardView>("dashboard")
     const [isCancelling, setIsCancelling] = useState(false)
     const [cancelModalOpen, setCancelModalOpen] = useState(false)
+    const [announcements, setAnnouncements] = useState<StudentAnnouncementItem[]>([])
+    const [announcementsLoading, setAnnouncementsLoading] = useState(true)
+    const [announcementsError, setAnnouncementsError] = useState(false)
+    const [unreadAnnouncementsCount, setUnreadAnnouncementsCount] = useState(0)
+    const [focusAnnouncementId, setFocusAnnouncementId] = useState<string | null>(null)
+
+    const loadAnnouncements = useCallback(async () => {
+        setAnnouncementsLoading(true)
+        setAnnouncementsError(false)
+        try {
+            const res = await fetch("/api/student/announcements", {
+                cache: "no-store",
+                credentials: "include",
+            })
+            const payload = (await res.json().catch(() => ({}))) as {
+                ok?: unknown
+                data?: StudentAnnouncementsPayload
+            }
+            if (!res.ok || payload.ok !== true || !payload.data) {
+                setAnnouncements([])
+                setUnreadAnnouncementsCount(0)
+                setAnnouncementsError(true)
+                return
+            }
+            setAnnouncements(payload.data.announcements)
+            setUnreadAnnouncementsCount(payload.data.unreadCount)
+        } catch {
+            setAnnouncements([])
+            setUnreadAnnouncementsCount(0)
+            setAnnouncementsError(true)
+        } finally {
+            setAnnouncementsLoading(false)
+        }
+    }, [])
+
+    useEffect(() => {
+        if (!dashboardDataReady) return
+        void loadAnnouncements()
+    }, [dashboardDataReady, loadAnnouncements])
+
+    const criticalBanner = useMemo(
+        () => announcements.find((a) => a.priority === "critical") ?? null,
+        [announcements]
+    )
+
+    const markAnnouncementRead = useCallback(
+        async (announcement: StudentAnnouncementItem) => {
+            if (announcement.read) return
+            setAnnouncements((prev) =>
+                prev.map((row) => (row.id === announcement.id ? { ...row, read: true } : row))
+            )
+            setUnreadAnnouncementsCount((prev) => Math.max(0, prev - 1))
+            try {
+                const res = await fetch("/api/student/announcements/read", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    credentials: "include",
+                    cache: "no-store",
+                    body: JSON.stringify({ announcementId: announcement.id }),
+                })
+                const payload = (await res.json().catch(() => ({}))) as { ok?: unknown }
+                if (!res.ok || payload.ok !== true) {
+                    await loadAnnouncements()
+                }
+            } catch {
+                await loadAnnouncements()
+            }
+        },
+        [loadAnnouncements]
+    )
+
+    const openAnnouncementFromBanner = useCallback((announcement: StudentAnnouncementItem) => {
+        setFocusAnnouncementId(announcement.id)
+        setActiveView("announcements")
+    }, [])
 
     if (!dashboardDataReady) {
         return (
@@ -65,6 +143,7 @@ function DashboardShell({
         live: t.navLiveSessions,
         resources: t.navResources,
         support: t.navSupport,
+        announcements: t.navAnnouncements,
         settings: t.navSettings,
     }
 
@@ -119,9 +198,22 @@ function DashboardShell({
             className={`flex min-h-screen text-white bg-[#0B1120] ${dashboardTheme.shell}`}
             style={{ background: "#0B1120" }}
         >
-            <Sidebar userName={welcomeName} roleLabel={t.roleStudent} activeView={activeView} setActiveView={setActiveView} />
+            <Sidebar
+                userName={welcomeName}
+                roleLabel={t.roleStudent}
+                activeView={activeView}
+                setActiveView={setActiveView}
+                unreadAnnouncementsCount={unreadAnnouncementsCount}
+            />
 
             <main className="flex-1 ml-0 lg:ml-64 p-8 space-y-6">
+                {criticalBanner ? (
+                    <AnnouncementBanner
+                        announcement={criticalBanner}
+                        onView={openAnnouncementFromBanner}
+                    />
+                ) : null}
+
                 <DashboardHeader welcomeName={welcomeName} sectionTitle={sectionTitles[activeView]} />
 
                 <div key={activeView} className={`${dashboardTheme.contentMax} ${dashboardTheme.viewEnter}`}>
@@ -137,6 +229,18 @@ function DashboardShell({
                     {activeView === "live" ? <LiveSessionsView /> : null}
                     {activeView === "resources" ? <Resources /> : null}
                     {activeView === "support" ? <SupportView /> : null}
+                    {activeView === "announcements" ? (
+                        <AnnouncementsView
+                            announcements={announcements}
+                            loading={announcementsLoading}
+                            error={announcementsError}
+                            focusAnnouncementId={focusAnnouncementId}
+                            onRetry={() => void loadAnnouncements()}
+                            onOpenAnnouncement={(item) => {
+                                void markAnnouncementRead(item)
+                            }}
+                        />
+                    ) : null}
                     {activeView === "settings" ? (
                         <Settings
                             showCancelSubscription={showCancelButton}

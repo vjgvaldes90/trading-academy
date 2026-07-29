@@ -1,7 +1,15 @@
 "use client"
 
 import { type ComponentType } from "react"
-import { BookOpen, GraduationCap, Home, LifeBuoy, Settings as SettingsIcon, Video } from "lucide-react"
+import {
+    BookOpen,
+    GraduationCap,
+    Home,
+    LifeBuoy,
+    Megaphone,
+    Settings as SettingsIcon,
+    Video,
+} from "lucide-react"
 import { useLanguage } from "@/context/LanguageProvider"
 
 export type StudentDashboardView =
@@ -10,6 +18,7 @@ export type StudentDashboardView =
     | "live"
     | "resources"
     | "support"
+    | "announcements"
     | "settings"
 
 type NavItem = {
@@ -32,11 +41,13 @@ export default function Sidebar({
     roleLabel,
     activeView,
     setActiveView,
+    unreadAnnouncementsCount = 0,
 }: {
     userName?: string
     roleLabel?: string
     activeView: StudentDashboardView
     setActiveView: (view: StudentDashboardView) => void
+    unreadAnnouncementsCount?: number
 }) {
     const { t } = useLanguage()
     const displayName = userName?.trim() || t.defaultStudentName
@@ -48,6 +59,7 @@ export default function Sidebar({
         { label: t.navLiveSessions, view: "live", icon: Video },
         { label: t.navResources, view: "resources", icon: BookOpen },
         { label: t.navSupport, view: "support", icon: LifeBuoy },
+        { label: t.navAnnouncements, view: "announcements", icon: Megaphone },
         { label: t.navSettings, view: "settings", icon: SettingsIcon },
     ]
 
@@ -80,6 +92,8 @@ export default function Sidebar({
                 {navItems.map((item) => {
                     const Icon = item.icon
                     const isActive = activeView === item.view
+                    const showBadge =
+                        item.view === "announcements" && unreadAnnouncementsCount > 0
                     return (
                         <button
                             key={item.view}
@@ -88,7 +102,12 @@ export default function Sidebar({
                             className={[itemBase, isActive ? itemActive : itemNormal].join(" ")}
                         >
                             <Icon size={18} className={isActive ? "text-blue-400" : "text-slate-300"} />
-                            <span>{item.label}</span>
+                            <span className="flex-1">{item.label}</span>
+                            {showBadge ? (
+                                <span className="inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-extrabold leading-none text-white">
+                                    {unreadAnnouncementsCount > 99 ? "99+" : unreadAnnouncementsCount}
+                                </span>
+                            ) : null}
                         </button>
                     )
                 })}
