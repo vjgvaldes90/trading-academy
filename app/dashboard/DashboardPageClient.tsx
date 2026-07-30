@@ -25,6 +25,7 @@ import {
     resolveDashboardStudent,
 } from "@/lib/studentLocalStorage"
 import { useRouter } from "next/navigation"
+import { AnimatePresence, motion } from "framer-motion"
 import { useCallback, useEffect, useMemo, useState } from "react"
 
 type DashboardUserSubscription = {
@@ -91,13 +92,11 @@ function DashboardShell({
         [announcements]
     )
 
-    const markAnnouncementRead = useCallback(
+    const acknowledgeAnnouncement = useCallback(
         async (announcement: StudentAnnouncementItem) => {
-            if (announcement.read) return
-            setAnnouncements((prev) =>
-                prev.map((row) => (row.id === announcement.id ? { ...row, read: true } : row))
-            )
+            setAnnouncements((prev) => prev.filter((row) => row.id !== announcement.id))
             setUnreadAnnouncementsCount((prev) => Math.max(0, prev - 1))
+            setFocusAnnouncementId((prev) => (prev === announcement.id ? null : prev))
             try {
                 const res = await fetch("/api/student/announcements/read", {
                     method: "POST",
@@ -119,6 +118,11 @@ function DashboardShell({
 
     const openAnnouncementFromBanner = useCallback((announcement: StudentAnnouncementItem) => {
         setFocusAnnouncementId(announcement.id)
+        setActiveView("announcements")
+    }, [])
+
+    const openAnnouncementsList = useCallback(() => {
+        setFocusAnnouncementId(null)
         setActiveView("announcements")
     }, [])
 
@@ -207,12 +211,24 @@ function DashboardShell({
             />
 
             <main className="flex-1 ml-0 lg:ml-64 p-8 space-y-6">
-                {criticalBanner ? (
-                    <AnnouncementBanner
-                        announcement={criticalBanner}
-                        onView={openAnnouncementFromBanner}
-                    />
-                ) : null}
+                <AnimatePresence initial={false}>
+                    {criticalBanner ? (
+                        <motion.div
+                            key={criticalBanner.id}
+                            initial={{ opacity: 0, y: -8 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -6, height: 0, marginBottom: 0 }}
+                            transition={{ duration: 0.22, ease: "easeOut" }}
+                            className="overflow-hidden"
+                        >
+                            <AnnouncementBanner
+                                announcement={criticalBanner}
+                                onReadNow={openAnnouncementFromBanner}
+                                onAcknowledge={acknowledgeAnnouncement}
+                            />
+                        </motion.div>
+                    ) : null}
+                </AnimatePresence>
 
                 <DashboardHeader welcomeName={welcomeName} sectionTitle={sectionTitles[activeView]} />
 
@@ -223,6 +239,10 @@ function DashboardShell({
                             onWatchNow={() => setActiveView("classes")}
                             activeView={activeView}
                             setActiveView={setActiveView}
+                            pendingAnnouncements={announcements}
+                            onViewAnnouncements={openAnnouncementsList}
+                            onReadAnnouncement={openAnnouncementFromBanner}
+                            onDismissAnnouncement={acknowledgeAnnouncement}
                         />
                     ) : null}
                     {activeView === "classes" ? <ClassesView /> : null}
@@ -236,9 +256,7 @@ function DashboardShell({
                             error={announcementsError}
                             focusAnnouncementId={focusAnnouncementId}
                             onRetry={() => void loadAnnouncements()}
-                            onOpenAnnouncement={(item) => {
-                                void markAnnouncementRead(item)
-                            }}
+                            onAcknowledge={acknowledgeAnnouncement}
                         />
                     ) : null}
                     {activeView === "settings" ? (

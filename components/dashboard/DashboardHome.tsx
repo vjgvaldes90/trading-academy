@@ -10,8 +10,10 @@ import {
     sessionDisplayHour,
 } from "@/lib/sessions"
 import type { StudentDashboardView } from "@/components/student/Sidebar"
+import PendingAnnouncementsCard from "@/components/dashboard/PendingAnnouncementsCard"
 import QuickActions from "@/components/dashboard/QuickActions"
 import { useLanguage } from "@/context/LanguageProvider"
+import type { StudentAnnouncementItem } from "@/lib/announcements"
 import { useEffect, useMemo, useState } from "react"
 
 type Lesson = {
@@ -44,11 +46,19 @@ export default function DashboardHome({
     onWatchNow,
     activeView,
     setActiveView,
+    pendingAnnouncements = [],
+    onViewAnnouncements,
+    onReadAnnouncement,
+    onDismissAnnouncement,
 }: {
     userName: string
     onWatchNow: () => void
     activeView: StudentDashboardView
     setActiveView: (view: StudentDashboardView) => void
+    pendingAnnouncements?: StudentAnnouncementItem[]
+    onViewAnnouncements?: () => void
+    onReadAnnouncement?: (announcement: StudentAnnouncementItem) => void
+    onDismissAnnouncement?: (announcement: StudentAnnouncementItem) => Promise<void>
 }) {
     const { sessions, academyAccess, userEmail } = useSession()
     const { t } = useLanguage()
@@ -124,6 +134,21 @@ export default function DashboardHome({
                 </h1>
                 <p className="text-white/60 mt-1">{t.continueLearningSubtitle}</p>
             </header>
+
+            <PendingAnnouncementsCard
+                announcements={pendingAnnouncements}
+                onReadNow={(announcement) => {
+                    if (onReadAnnouncement) onReadAnnouncement(announcement)
+                    else setActiveView("announcements")
+                }}
+                onOpenAnnouncements={() => {
+                    if (onViewAnnouncements) onViewAnnouncements()
+                    else setActiveView("announcements")
+                }}
+                onDismiss={async (announcement) => {
+                    if (onDismissAnnouncement) await onDismissAnnouncement(announcement)
+                }}
+            />
 
             <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2 bg-gradient-to-r from-[#111827] to-[#0B1120] rounded-2xl p-6 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 border border-white/10 shadow-sm">

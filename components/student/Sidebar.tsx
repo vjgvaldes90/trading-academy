@@ -10,6 +10,7 @@ import {
     Settings as SettingsIcon,
     Video,
 } from "lucide-react"
+import { AnimatePresence, motion } from "framer-motion"
 import { useLanguage } from "@/context/LanguageProvider"
 
 export type StudentDashboardView =
@@ -103,11 +104,22 @@ export default function Sidebar({
                         >
                             <Icon size={18} className={isActive ? "text-blue-400" : "text-slate-300"} />
                             <span className="flex-1">{item.label}</span>
-                            {showBadge ? (
-                                <span className="inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-extrabold leading-none text-white">
-                                    {unreadAnnouncementsCount > 99 ? "99+" : unreadAnnouncementsCount}
-                                </span>
-                            ) : null}
+                            <AnimatePresence initial={false} mode="popLayout">
+                                {showBadge ? (
+                                    <motion.span
+                                        key={unreadAnnouncementsCount}
+                                        initial={{ opacity: 0, scale: 0.85 }}
+                                        animate={{ opacity: 1, scale: 1 }}
+                                        exit={{ opacity: 0, scale: 0.85 }}
+                                        transition={{ duration: 0.18, ease: "easeOut" }}
+                                        className="inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-extrabold leading-none text-white"
+                                    >
+                                        {unreadAnnouncementsCount > 99
+                                            ? "99+"
+                                            : unreadAnnouncementsCount}
+                                    </motion.span>
+                                ) : null}
+                            </AnimatePresence>
                         </button>
                     )
                 })}

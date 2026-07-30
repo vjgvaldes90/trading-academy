@@ -50,16 +50,17 @@ export class AnnouncementsService {
                 published: true,
             })
             const readIds = await this.repo.listReadAnnouncementIds(studentId)
-            const announcements: StudentAnnouncementItem[] = published.map((row) => ({
-                id: row.id,
-                title: row.title,
-                message: row.message,
-                priority: row.priority,
-                created_at: row.created_at,
-                read: readIds.has(row.id),
-            }))
-            const unreadCount = announcements.filter((a) => !a.read).length
-            return { ok: true, data: { announcements, unreadCount } }
+            const announcements: StudentAnnouncementItem[] = published
+                .filter((row) => !readIds.has(row.id))
+                .map((row) => ({
+                    id: row.id,
+                    title: row.title,
+                    message: row.message,
+                    priority: row.priority,
+                    created_at: row.created_at,
+                    read: false,
+                }))
+            return { ok: true, data: { announcements, unreadCount: announcements.length } }
         } catch (e) {
             console.error("[AnnouncementsService.listForStudent]", e)
             return {
