@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { getAppUrl } from "@/lib/app-url"
 import { createStripeClient, getStripePriceId, getStripeSecretKey } from "@/lib/stripe-server"
 
 export const runtime = "nodejs"
@@ -6,11 +7,6 @@ export const runtime = "nodejs"
 // IMPORTANT:
 // Do NOT create live-session reservations here.
 // Live join happens only from the dashboard via secure join.
-
-function appOrigin(): string {
-    const raw = process.env.NEXT_PUBLIC_APP_URL?.trim() ?? "http://localhost:3000"
-    return raw.replace(/\/$/, "")
-}
 
 export async function POST(req: Request) {
     console.log("Stripe key exists:", !!getStripeSecretKey())
@@ -41,7 +37,7 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: "Email requerido" }, { status: 400 })
         }
 
-        const DOMAIN = appOrigin()
+        const DOMAIN = getAppUrl()
         const success_url = `${DOMAIN}/success?session_id={CHECKOUT_SESSION_ID}`
         const cancel_url = `${DOMAIN}/`
 

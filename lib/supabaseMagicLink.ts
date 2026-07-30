@@ -1,12 +1,14 @@
 import { createSupabaseServiceRoleClient } from "@/lib/access"
+import { getAppUrl, getAuthCallbackUrl } from "@/lib/app-url"
 
+/** @deprecated Prefer `getAppUrl` from `@/lib/app-url`. */
 export function getSiteBaseUrl(): string {
-    return (process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000").replace(/\/$/, "")
+    return getAppUrl()
 }
 
 /** Where Supabase redirects after the user clicks the magic link (allowlist in Supabase Dashboard). */
 export function getAuthMagicCallbackUrl(): string {
-    return `${getSiteBaseUrl()}/auth/callback`
+    return getAuthCallbackUrl()
 }
 
 /**

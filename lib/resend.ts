@@ -1,5 +1,5 @@
 import { Resend } from "resend"
-import { getSiteBaseUrl } from "@/lib/supabaseMagicLink"
+import { getAppLoginUrl } from "@/lib/app-url"
 import { createWelcomeEmail } from "@/lib/welcomeEmail"
 
 /** Must match a verified domain in Resend (server-only; never import this module from client code). */
@@ -39,10 +39,23 @@ export async function sendEmail(
     const trimmedTo = to.trim()
     const deliveryTo = trimmedTo
 
-    const magicLink =
+    let magicLink =
         typeof magicLoginLink === "string" && magicLoginLink.trim().length > 0
             ? magicLoginLink.trim().replace(/\/$/, "")
-            : `${getSiteBaseUrl()}/login`
+            : getAppLoginUrl()
+
+    // Never ship localhost login links from production email sends.
+    if (
+        (process.env.VERCEL_ENV === "production" || process.env.NODE_ENV === "production") &&
+        /localhost|127\.0\.0\.1/i.test(magicLink)
+    ) {
+        console.error("[resend] Rejecting localhost login URL in production; using getAppLoginUrl()", {
+            magicLink,
+        })
+        magicLink = getAppLoginUrl()
+    }
+
+    console.log("[resend] email login URL", magicLink)
 
     const displayName =
         typeof name === "string" && name.trim().length > 0 ? name.trim() : "estudiante"
