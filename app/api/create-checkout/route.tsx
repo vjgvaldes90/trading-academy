@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { getAppUrl } from "@/lib/app-url"
+import { resolveAppUrl } from "@/lib/app-url"
 import { createStripeClient, getStripePriceId, getStripeSecretKey } from "@/lib/stripe-server"
 
 export const runtime = "nodejs"
@@ -37,9 +37,21 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: "Email requerido" }, { status: 400 })
         }
 
-        const DOMAIN = getAppUrl()
+        const resolved = resolveAppUrl()
+        const DOMAIN = resolved.url
         const success_url = `${DOMAIN}/success?session_id={CHECKOUT_SESSION_ID}`
         const cancel_url = `${DOMAIN}/`
+
+        console.log("[checkout] getAppUrl source=", resolved.source)
+        console.log("[checkout] getAppUrl()=", DOMAIN)
+        console.log("[checkout] success_url=", success_url)
+        console.log("[checkout] cancel_url=", cancel_url)
+        console.log("[checkout] VERCEL_URL (not used for redirects)=", process.env.VERCEL_URL ?? "(unset)")
+        console.log(
+            "[checkout] NEXT_PUBLIC_APP_URL=",
+            process.env.NEXT_PUBLIC_APP_URL ?? "(unset)"
+        )
+        console.log("[checkout] APP_URL=", process.env.APP_URL ?? "(unset)")
 
         const metadata: Record<string, string> = {
             email: email.toLowerCase(),
@@ -114,12 +126,23 @@ export async function POST(req: Request) {
             cancel_url,
         })
 
-        console.log("SUCCESS URL:", success_url)
-        console.log("STRIPE URL:", session.url)
-        console.log("[checkout] new session (no reuse):", session.id)
+        console.log("[checkout] Stripe session created", {
+            id: session.id,
+            success_url,
+            cancel_url,
+            stripe_checkout_url: session.url,
+        })
 
         return NextResponse.json(
-            { url: session.url },
+            {
+                url: session.url,
+                debug: {
+                    getAppUrl: DOMAIN,
+                    getAppUrlSource: resolved.source,
+                    success_url,
+                    cancel_url,
+                },
+            },
             {
                 headers: {
                     "Cache-Control": "no-store, no-cache, must-revalidate",

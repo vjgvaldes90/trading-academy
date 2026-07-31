@@ -2,20 +2,23 @@
  * Single source of truth for absolute application URLs
  * (welcome/access emails, Stripe redirects, auth callbacks).
  *
- * Canonical env (required in production):
- *   NEXT_PUBLIC_APP_URL=https://your-production-domain.com
+ * Required in production (no trailing slash):
+ *   NEXT_PUBLIC_APP_URL=https://your-custom-domain.com
  *
- * Optional server-only override (recommended on Vercel for webhooks/emails):
- *   APP_URL=https://your-production-domain.com
+ * Optional server-only runtime override (recommended for Stripe webhooks/checkout):
+ *   APP_URL=https://your-custom-domain.com
  *
- * Why APP_URL exists:
- *   NEXT_PUBLIC_* values are inlined at build time. If a production build was
- *   created while a local .env had NEXT_PUBLIC_APP_URL=http://localhost:3000,
- *   that localhost value can be baked into the server bundle. APP_URL is read
- *   at runtime and is not inlined, so it can correct that misconfiguration.
- *
- * Localhost is returned ONLY when not running in production.
+ * IMPORTANT:
+ * Never use VERCEL_URL for customer-facing redirects. Preview/protected
+ * deployments redirect to https://vercel.com/login?next=...
  */
+
+export type AppUrlSource = "NEXT_PUBLIC_APP_URL" | "APP_URL" | "dev-fallback"
+
+export type AppUrlResolution = {
+    url: string
+    source: AppUrlSource
+}
 
 function isProductionRuntime(): boolean {
     return (
@@ -33,6 +36,16 @@ function isLocalhostOrigin(origin: string): boolean {
     }
 }
 
+/** Vercel deployment hosts must not be used for Stripe success/cancel or student emails. */
+function isVercelDeploymentHost(origin: string): boolean {
+    try {
+        const { hostname } = new URL(origin)
+        return hostname === "vercel.com" || hostname.endsWith(".vercel.app")
+    } catch {
+        return /\.vercel\.app$/i.test(origin) || /vercel\.com/i.test(origin)
+    }
+}
+
 function normalizeOrigin(raw: string): string {
     let value = raw.trim().replace(/\/$/, "")
     if (!/^https?:\/\//i.test(value)) {
@@ -41,49 +54,57 @@ function normalizeOrigin(raw: string): string {
     return value
 }
 
-function readConfiguredAppUrl(): string | null {
-    // Canonical first; APP_URL as runtime override when NEXT_PUBLIC was baked wrong.
-    const candidates = [process.env.NEXT_PUBLIC_APP_URL, process.env.APP_URL]
-    for (const raw of candidates) {
+function readConfiguredAppUrl(): AppUrlResolution | null {
+    const candidates: Array<{ source: AppUrlSource; raw: string | undefined }> = [
+        { source: "NEXT_PUBLIC_APP_URL", raw: process.env.NEXT_PUBLIC_APP_URL },
+        { source: "APP_URL", raw: process.env.APP_URL },
+    ]
+
+    for (const { source, raw } of candidates) {
         const trimmed = typeof raw === "string" ? raw.trim() : ""
         if (!trimmed) continue
         const origin = normalizeOrigin(trimmed)
+
         if (isProductionRuntime() && isLocalhostOrigin(origin)) {
+            console.error(`[app-url] Ignoring localhost ${source} in production:`, origin)
+            continue
+        }
+        if (isProductionRuntime() && isVercelDeploymentHost(origin)) {
             console.error(
-                "[app-url] Ignoring localhost value from env in production:",
+                `[app-url] Ignoring Vercel deployment host from ${source} in production (causes vercel.com/login redirects):`,
                 origin
             )
             continue
         }
-        return origin
+        return { url: origin, source }
     }
     return null
 }
 
 /**
- * Canonical app origin with no trailing slash.
+ * Resolve app origin + which env provided it (for checkout/email logging).
  */
-export function getAppUrl(): string {
+export function resolveAppUrl(): AppUrlResolution {
     const configured = readConfiguredAppUrl()
     if (configured) return configured
 
     if (!isProductionRuntime()) {
-        return "http://localhost:3000"
-    }
-
-    const vercel = process.env.VERCEL_URL?.trim()
-    if (vercel) {
-        const origin = normalizeOrigin(vercel.startsWith("http") ? vercel : `https://${vercel}`)
-        console.warn(
-            "[app-url] NEXT_PUBLIC_APP_URL missing; using VERCEL_URL as production fallback:",
-            origin
-        )
-        return origin
+        return { url: "http://localhost:3000", source: "dev-fallback" }
     }
 
     throw new Error(
-        "Missing NEXT_PUBLIC_APP_URL. Set it in Vercel Production to your public origin (no trailing slash)."
+        "Missing NEXT_PUBLIC_APP_URL (or APP_URL). Set it to your public production domain " +
+            "(e.g. https://smartoptionacademy.com). Do NOT use *.vercel.app — protected " +
+            "deployments redirect Stripe success_url to https://vercel.com/login."
     )
+}
+
+/**
+ * Canonical app origin with no trailing slash.
+ * Does NOT fall back to VERCEL_URL (that causes vercel.com/login redirects).
+ */
+export function getAppUrl(): string {
+    return resolveAppUrl().url
 }
 
 /** Absolute URL for a path on this app (path should start with `/`). */
