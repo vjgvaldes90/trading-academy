@@ -8,32 +8,32 @@ export default function ChartSection() {
 
     return (
         <motion.section
-            className="bg-black py-14 text-white md:py-16"
+            className="bg-[#020617] py-14 text-white md:py-16"
             initial={{ opacity: 0, y: 60 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
             viewport={{ once: true }}
         >
-            <div className="mx-auto max-w-6xl px-8 text-center">
-                <p className="mb-2 text-sm font-semibold uppercase tracking-[0.2em] text-red-400 md:text-base">
+            <div className="mx-auto max-w-6xl px-6 text-center sm:px-8">
+                <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.22em] text-red-300/90 md:text-xs">
                     {t.chartEyebrow}
                 </p>
 
-                <h2 className="mb-3 text-3xl font-bold leading-tight md:text-4xl">
+                <h2 className="mb-3 text-balance text-3xl font-extrabold leading-tight tracking-tight text-slate-50 md:text-4xl">
                     {t.chartTitle}
                 </h2>
 
-                <p className="mx-auto mb-7 max-w-xl text-base text-slate-300 md:text-lg">
+                <p className="mx-auto mb-7 max-w-xl text-pretty text-base leading-relaxed text-slate-300 md:text-lg">
                     {t.chartSubtitle}
                 </p>
 
                 <motion.div
-                    className="group relative overflow-hidden rounded-3xl border border-white/15 shadow-[0_35px_90px_rgba(0,0,0,0.65)]"
+                    className="group relative overflow-hidden rounded-2xl border border-white/15 shadow-[0_28px_64px_rgba(2,6,23,0.7)]"
                     whileHover={{ scale: 1.01 }}
                     transition={{ duration: 0.3, ease: "easeOut" }}
                 >
-                    <div className="pointer-events-none absolute inset-0 rounded-3xl border border-red-500/25 shadow-[0_0_36px_rgba(239,68,68,0.18)] transition-all duration-500 group-hover:shadow-[0_0_48px_rgba(239,68,68,0.3)]" />
-                    <div className="pointer-events-none absolute inset-0 rounded-3xl border border-sky-400/15 opacity-60 blur-[1px] transition-all duration-500 group-hover:opacity-90" />
+                    <div className="pointer-events-none absolute inset-0 rounded-2xl border border-red-500/20 shadow-[0_0_28px_rgba(239,68,68,0.12)] transition-all duration-500 group-hover:shadow-[0_0_36px_rgba(239,68,68,0.2)]" />
+                    <div className="pointer-events-none absolute inset-0 rounded-2xl border border-sky-400/15 opacity-60 blur-[1px] transition-all duration-500 group-hover:opacity-90" />
                     <div
                         className="absolute inset-0 bg-cover bg-center opacity-45"
                         style={{ backgroundImage: "url('/images/trading-preview-poster.jpg')" }}
@@ -164,7 +164,7 @@ export default function ChartSection() {
                         <div className="flex items-end justify-end gap-3">
                             <a
                                 href="/login"
-                                className="pointer-events-auto inline-flex shrink-0 items-center justify-center rounded-xl bg-gradient-to-r from-red-600 to-red-700 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_12px_30px_rgba(220,38,38,0.4)] transition-all duration-300 hover:brightness-110 sm:px-5"
+                                className="pointer-events-auto inline-flex shrink-0 items-center justify-center rounded-xl border border-red-300/30 bg-gradient-to-r from-red-600 to-red-700 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_12px_30px_rgba(220,38,38,0.35)] transition duration-200 hover:scale-[1.02] hover:brightness-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-400 sm:px-5"
                             >
                                 {t.chartViewClass}
                             </a>

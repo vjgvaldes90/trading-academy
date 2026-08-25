@@ -9,11 +9,12 @@ import Schedule from "@/components/landing/Schedule"
 import WhatYouLearn from "@/components/landing/WhatYouLearn"
 import Instructor from "@/components/landing/Instructor"
 import ImportantDisclaimer from "@/components/landing/ImportantDisclaimer"
+import MarketTicker from "@/components/landing/MarketTicker"
 import SiteFooter from "@/components/shared/SiteFooter"
 
 export default function Home() {
   return (
-    <main className="min-h-screen bg-[#020617] text-white">
+    <main className="min-h-screen overflow-x-hidden bg-[#020617] text-white">
       <Navbar />
       <Hero />
       <HowItWorks />
@@ -24,6 +25,7 @@ export default function Home() {
       <Schedule />
       <Pricing />
       <ImportantDisclaimer />
+      <MarketTicker />
       <SiteFooter />
     </main>
   )

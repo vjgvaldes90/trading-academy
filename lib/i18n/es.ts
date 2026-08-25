@@ -14,6 +14,10 @@ export const es: TranslationKeys = {
         "Genera ingresos diarios aprendiendo opciones financieras, Calls-Puts- Covered Calls and Cash secured puts.",
     buyAccess: "Comienza tu formación",
     heroSocialProof: "La mejor inversión está en tu conocimiento.",
+    heroChipOptions: "Opciones",
+    heroChipStocks: "Acciones",
+    heroChipEtfs: "ETFs",
+    heroChipLiveMentorship: "Mentoría en vivo",
 
     // How It Works
     howItWorksTitle: "De principiante a trader profesional",
@@ -57,6 +61,7 @@ export const es: TranslationKeys = {
     scheduleFootnote: "*Todos los horarios en hora de Nueva York (EST)",
 
     // What You Learn
+    whatYouLearnPathLabel: "Ruta de aprendizaje",
     whatYouLearnTitle: "No arriesgues tu dinero sin educación.",
     whatYouLearnSubtitle:
         "Aprende primero a invertir con conocimiento, análisis técnico y gestión de riesgo antes de operar capital real.",
@@ -89,6 +94,7 @@ export const es: TranslationKeys = {
 
     // Instructor
     instructorEyebrow: "Instructor de Smart Option Academy",
+    instructorMentorLabel: "El mentor detrás del método",
     instructorTitle: "Mentoría institucional en vivo con Tony Linares",
     instructorParagraph1:
         "Tony forma inversionistas con estándar profesional: análisis fundamentado, Acciones-ETFS-Opciones, y control del riesgo.",
@@ -97,6 +103,10 @@ export const es: TranslationKeys = {
     instructorParagraph3:
         "En vivo recibes preguntas, feedback y frameworks que usan inversionistas profesionales.",
     instructorImageAlt: "Tony Linares",
+    instructorFocusStocks: "Acciones",
+    instructorFocusEtfs: "ETFs",
+    instructorFocusOptions: "Opciones",
+    instructorFocusRisk: "Control del riesgo",
 
     // Important Disclaimer
     importantDisclaimerTitle: "Disclaimer Importante",
@@ -108,12 +118,13 @@ export const es: TranslationKeys = {
     pricingTitle: "Smart Option Academy: educación financiera elite en vivo",
     pricingSubtitle:
         "Acciones,ETFS y Opciones con metodología profesional, análisis técnico y gestión de riesgo frente al mercado en tiempo real.",
-    pricingFeature1: "✔ Mentoría en vivo: opciones, stocks y ETFs",
-    pricingFeature2: "✔ Análisis técnico y lectura del mercado en tiempo real",
-    pricingFeature3: "✔ Estructura de alto rendimiento y gestión del riesgo",
-    pricingFeature4: "✔ Metodología profesional repetible paso a paso",
-    pricingFeature5: "✔ Acceso privado para miembros enfocados en la excelencia.",
-    pricingLimitedBadge: "🔥 Acceso limitado",
+    pricingFeature1: "Mentoría en vivo: opciones, stocks y ETFs",
+    pricingFeature2: "Análisis técnico y lectura del mercado en tiempo real",
+    pricingFeature3: "Estructura de alto rendimiento y gestión del riesgo",
+    pricingFeature4: "Metodología profesional repetible paso a paso",
+    pricingFeature5: "Acceso privado para miembros enfocados en la excelencia.",
+    pricingMembershipBadge: "Membresía",
+    pricingLimitedBadge: "Acceso limitado",
     pricingAnchorPrice: "Valor real $399/mes",
     pricingPerMonth: "/ mes",
     pricingLiveSessions: "Sesiones en vivo disponibles",

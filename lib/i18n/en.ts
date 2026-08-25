@@ -12,6 +12,10 @@ export const en = {
         "Generate daily income by learning financial options: Calls, Puts, Covered Calls, and Cash Secured Puts.",
     buyAccess: "Start your training",
     heroSocialProof: "The best investment is in your knowledge.",
+    heroChipOptions: "Options",
+    heroChipStocks: "Stocks",
+    heroChipEtfs: "ETFs",
+    heroChipLiveMentorship: "Live mentorship",
 
     // How It Works
     howItWorksTitle: "From beginner to professional trader",
@@ -55,6 +59,7 @@ export const en = {
     scheduleFootnote: "*All times in New York time (EST)",
 
     // What You Learn
+    whatYouLearnPathLabel: "Learning path",
     whatYouLearnTitle: "Don't risk your money without education.",
     whatYouLearnSubtitle:
         "Learn to invest with knowledge, technical analysis and risk management before trading real capital.",
@@ -87,6 +92,7 @@ export const en = {
 
     // Instructor
     instructorEyebrow: "Smart Option Academy Instructor",
+    instructorMentorLabel: "The mentor behind the method",
     instructorTitle: "Live institutional mentorship with Tony Linares",
     instructorParagraph1:
         "Tony trains investors to professional standards: grounded analysis, Stocks-ETFs-Options, and risk control.",
@@ -95,6 +101,10 @@ export const en = {
     instructorParagraph3:
         "Live you receive questions, feedback and frameworks used by professional investors.",
     instructorImageAlt: "Tony Linares",
+    instructorFocusStocks: "Stocks",
+    instructorFocusEtfs: "ETFs",
+    instructorFocusOptions: "Options",
+    instructorFocusRisk: "Risk control",
 
     // Important Disclaimer
     importantDisclaimerTitle: "Important Disclaimer",
@@ -106,12 +116,13 @@ export const en = {
     pricingTitle: "Smart Option Academy: elite live financial education",
     pricingSubtitle:
         "Stocks, ETFs and Options with professional methodology, technical analysis and risk management in front of the real-time market.",
-    pricingFeature1: "✔ Live mentorship: options, stocks and ETFs",
-    pricingFeature2: "✔ Technical analysis and real-time market reading",
-    pricingFeature3: "✔ High-performance structure and risk management",
-    pricingFeature4: "✔ Repeatable professional step-by-step methodology",
-    pricingFeature5: "✔ Private access for members focused on excellence.",
-    pricingLimitedBadge: "🔥 Limited access",
+    pricingFeature1: "Live mentorship: options, stocks and ETFs",
+    pricingFeature2: "Technical analysis and real-time market reading",
+    pricingFeature3: "High-performance structure and risk management",
+    pricingFeature4: "Repeatable professional step-by-step methodology",
+    pricingFeature5: "Private access for members focused on excellence.",
+    pricingMembershipBadge: "Membership",
+    pricingLimitedBadge: "Limited access",
     pricingAnchorPrice: "Real value $399/mo",
     pricingPerMonth: "/ month",
     pricingLiveSessions: "Live sessions available",
