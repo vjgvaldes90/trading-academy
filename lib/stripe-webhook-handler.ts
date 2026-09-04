@@ -1,5 +1,11 @@
 import Stripe from "stripe"
-import { createStripeClient, getStripeSecretKey, getStripeWebhookSecret } from "@/lib/stripe-server"
+import {
+    createStripeClient,
+    getStripePriceId,
+    getStripePriceIdFullProgram,
+    getStripeSecretKey,
+    getStripeWebhookSecret,
+} from "@/lib/stripe-server"
 import { createSupabaseServiceRoleClient } from "@/lib/access"
 import {
     notifyNewStudentCreated,
@@ -7,12 +13,37 @@ import {
 } from "@/lib/adminNotifications"
 import { sendEmail } from "@/lib/sendEmail"
 import { computeRenewalAccessExpiresAtIso } from "@/lib/studentSubscriptionRenewal"
+import { SUBSCRIPTION_STATUS_CANCEL_AT_PERIOD_END } from "@/lib/subscriptionCancellation"
 import {
-    SUBSCRIPTION_STATUS_CANCEL_AT_PERIOD_END,
-} from "@/lib/subscriptionCancellation"
+    isValidSubscriptionPlan,
+    resolveSubscriptionPlan,
+    type SubscriptionPlanId,
+} from "@/lib/subscriptionPlans"
+import {
+    ensureFullProgramSubscriptionSchedule,
+    getSubscriptionItemPeriodEndUnix,
+    unixSecondsToIso,
+} from "@/lib/stripeFullProgramSchedule"
+import {
+    claimStripeWebhookEvent,
+    releaseStripeWebhookEventClaim,
+} from "@/lib/stripeWebhookIdempotency"
 
 function generateAccessCode(): string {
     return Math.random().toString(36).substring(2, 8).toUpperCase()
+}
+
+function maskAccessCode(code: string): string {
+    if (code.length <= 2) return "**"
+    return `${code.slice(0, 1)}***${code.slice(-1)}`
+}
+
+function planFromMetadata(meta: Stripe.Metadata | null | undefined): SubscriptionPlanId {
+    const raw = typeof meta?.plan === "string" ? meta.plan : null
+    if (raw && isValidSubscriptionPlan(raw.trim().toLowerCase())) {
+        return raw.trim().toLowerCase() as SubscriptionPlanId
+    }
+    return "trading_only"
 }
 
 async function resolveInvoiceCustomerEmail(
@@ -40,7 +71,6 @@ async function resolveInvoiceCustomerEmail(
     return em || null
 }
 
-/** Email on PaymentIntent: receipt_email, metadata.email, charge billing, or Customer. */
 async function resolvePaymentIntentCustomerEmail(
     stripe: Stripe,
     pi: Stripe.PaymentIntent
@@ -82,6 +112,44 @@ async function resolveSubscriptionIdFromPaymentIntent(
     return null
 }
 
+function resolveInvoiceSubscriptionId(invoice: Stripe.Invoice): string | null {
+    const sub = (invoice as unknown as { subscription?: string | Stripe.Subscription | null }).subscription
+    if (typeof sub === "string" && sub.trim()) return sub.trim()
+    if (sub && typeof sub === "object" && "id" in sub && typeof (sub as { id: string }).id === "string") {
+        return (sub as { id: string }).id
+    }
+    return null
+}
+
+async function resolveAccessExpiresAtFromInvoice(
+    stripe: Stripe,
+    invoice: Stripe.Invoice,
+    currentExpiresAt: string | null | undefined
+): Promise<string> {
+    const linePeriodEnd = invoice.lines?.data?.[0]?.period?.end
+    if (typeof linePeriodEnd === "number" && Number.isFinite(linePeriodEnd) && linePeriodEnd > 0) {
+        return unixSecondsToIso(linePeriodEnd)
+    }
+
+    const subscriptionId = resolveInvoiceSubscriptionId(invoice)
+    if (subscriptionId) {
+        try {
+            const sub = await stripe.subscriptions.retrieve(subscriptionId)
+            const periodEnd = getSubscriptionItemPeriodEndUnix(sub)
+            if (periodEnd) {
+                return unixSecondsToIso(periodEnd)
+            }
+        } catch (err) {
+            console.error("[stripe-webhook] failed to load subscription for period end", {
+                subscriptionId,
+                err,
+            })
+        }
+    }
+
+    return computeRenewalAccessExpiresAtIso(currentExpiresAt)
+}
+
 async function updateStudentBySubscriptionId(
     subscriptionId: string,
     patch: Record<string, unknown>
@@ -95,24 +163,30 @@ async function updateStudentBySubscriptionId(
     if (error) {
         console.error("[stripe-webhook] trading_students update by subscription_id failed", {
             subscriptionId,
-            patch,
+            patchKeys: Object.keys(patch),
             error,
         })
     }
 }
 
-/**
- * Persists paid student row and sends welcome email (access code + magic link). Server-only.
- */
-async function fulfillPaidAccessAndSendWelcomeEmail(args: {
+type StudentPlanRow = {
+    id: string | null
+    access_code: string | null
+    subscription_schedule_id: string | null
+    plan: string | null
+}
+
+async function fulfillPaidAccess(args: {
+    stripe: Stripe
     emailForDb: string
     emailForDelivery: string
-    accessCode: string
     rawName?: string | null
     subscriptionId: string | null
+    plan: SubscriptionPlanId
     resendApiKey: string | undefined
 }): Promise<void> {
-    const { emailForDb, emailForDelivery, accessCode, rawName, subscriptionId, resendApiKey } = args
+    const { stripe, emailForDb, emailForDelivery, rawName, subscriptionId, plan, resendApiKey } =
+        args
 
     if (!resendApiKey) {
         throw new Error("Missing RESEND_API_KEY")
@@ -121,19 +195,106 @@ async function fulfillPaidAccessAndSendWelcomeEmail(args: {
     const supabase = createSupabaseServiceRoleClient()
     const existed = await tradingStudentExistsByEmail(supabase, emailForDb)
 
+    const { data: existingRow, error: existingErr } = await supabase
+        .from("trading_students")
+        .select("id, access_code, subscription_schedule_id, plan")
+        .eq("email", emailForDb)
+        .maybeSingle()
+
+    if (existingErr) {
+        console.error("[stripe-webhook] existing student lookup failed", existingErr)
+        throw new Error("Failed to load existing student")
+    }
+
+    const existing = existingRow as StudentPlanRow | null
+    const existingCode =
+        typeof existing?.access_code === "string" && existing.access_code.trim()
+            ? existing.access_code.trim()
+            : null
+    const accessCode = existingCode ?? generateAccessCode()
+    const isNewAccessCode = !existingCode
+
+    let programTheoryUntil: string | null = null
+    const stripePriceId: string | null =
+        plan === "full_program" ? getStripePriceIdFullProgram() : getStripePriceId()
+    let subscriptionScheduleId: string | null =
+        typeof existing?.subscription_schedule_id === "string" && existing.subscription_schedule_id.trim()
+            ? existing.subscription_schedule_id.trim()
+            : null
+    let accessExpiresAt: string | null = null
+
+    if (subscriptionId) {
+        try {
+            const sub = await stripe.subscriptions.retrieve(subscriptionId)
+            const periodEndUnix = getSubscriptionItemPeriodEndUnix(sub)
+            if (periodEndUnix) {
+                accessExpiresAt = unixSecondsToIso(periodEndUnix)
+                if (plan === "full_program") {
+                    programTheoryUntil = accessExpiresAt
+                }
+            }
+        } catch (err) {
+            console.error("[stripe-webhook] subscription retrieve for period failed", {
+                subscriptionId,
+                err,
+            })
+        }
+    }
+
+    if (plan === "full_program" && subscriptionId) {
+        try {
+            const scheduleResult = await ensureFullProgramSubscriptionSchedule({
+                stripe,
+                subscriptionId,
+                existingScheduleId: subscriptionScheduleId,
+            })
+            subscriptionScheduleId = scheduleResult.scheduleId
+            console.log("[stripe-webhook] full_program schedule ensured", {
+                subscriptionId,
+                scheduleId: subscriptionScheduleId,
+                created: scheduleResult.created,
+                reusedExisting: scheduleResult.reusedExisting,
+                programTheoryUntil,
+            })
+        } catch (scheduleErr) {
+            console.error("[stripe-webhook] CRITICAL: full_program schedule creation failed", {
+                email: emailForDb,
+                subscriptionId,
+                plan,
+                error: scheduleErr instanceof Error ? scheduleErr.message : String(scheduleErr),
+            })
+        }
+    }
+
+    const upsertPayload: Record<string, unknown> = {
+        email: emailForDb,
+        access_code: accessCode,
+        access_type: "paid",
+        is_active: true,
+        subscription_id: subscriptionId,
+        subscription_status: "active",
+        plan,
+        stripe_price_id: stripePriceId,
+    }
+
+    if (accessExpiresAt) {
+        upsertPayload.access_expires_at = accessExpiresAt
+    }
+
+    if (plan === "full_program") {
+        if (programTheoryUntil) {
+            upsertPayload.program_theory_until = programTheoryUntil
+        }
+        if (subscriptionScheduleId) {
+            upsertPayload.subscription_schedule_id = subscriptionScheduleId
+        }
+    } else {
+        upsertPayload.program_theory_until = null
+    }
+
     const { data: savedRow, error: dbErr } = await supabase
         .from("trading_students")
-        .upsert(
-            {
-                email: emailForDb,
-                access_code: accessCode,
-                access_type: "paid",
-                is_active: true,
-                subscription_id: subscriptionId,
-                subscription_status: "active",
-            },
-            { onConflict: "email" }
-        )
+        .upsert(upsertPayload, { onConflict: "email" })
         .select("id, email, access_code")
         .single()
 
@@ -142,9 +303,13 @@ async function fulfillPaidAccessAndSendWelcomeEmail(args: {
         throw new Error("Failed to save access code")
     }
     if (!savedRow?.access_code || savedRow.access_code !== accessCode) {
-        console.error("❌ trading_students upsert: row mismatch", { savedRow, accessCode })
+        console.error("❌ trading_students upsert: row mismatch", {
+            savedId: savedRow?.id,
+            expectedMasked: maskAccessCode(accessCode),
+        })
         throw new Error("Failed to save access code")
     }
+
     if (!existed) {
         await notifyNewStudentCreated(supabase, {
             email: emailForDb,
@@ -152,16 +317,34 @@ async function fulfillPaidAccessAndSendWelcomeEmail(args: {
             name: rawName ?? null,
         })
     }
-    console.log("💾 Saved code:", accessCode)
 
-    console.log("💰 PAYMENT SUCCESS:", emailForDelivery)
-    console.log("📧 SENDING EMAIL AFTER PAYMENT")
-    const sendResult = await sendEmail(emailForDelivery, accessCode, rawName || undefined)
-    if (!sendResult.ok) {
-        throw new Error(sendResult.error)
+    console.log("[stripe-webhook] student fulfilled", {
+        email: emailForDb,
+        plan,
+        subscriptionId,
+        scheduleId: subscriptionScheduleId,
+        programTheoryUntil,
+        accessExpiresAt,
+        reusedAccessCode: !isNewAccessCode,
+        codeMasked: maskAccessCode(accessCode),
+    })
+
+    if (isNewAccessCode) {
+        console.log("📧 SENDING EMAIL AFTER PAYMENT")
+        const sendResult = await sendEmail(emailForDelivery, accessCode, rawName || undefined)
+        if (!sendResult.ok) {
+            console.error(
+                "[stripe-webhook] welcome email failed after fulfill (manual resend may be needed)",
+                { email: emailForDb, error: sendResult.error }
+            )
+        } else {
+            console.log("✅ Email enviado (Resend)")
+        }
+    } else {
+        console.log("[stripe-webhook] welcome email skipped (existing access_code)", {
+            email: emailForDb,
+        })
     }
-
-    console.log("✅ Email enviado (Resend)")
 }
 
 export async function handleStripeWebhook(req: Request): Promise<Response> {
@@ -199,64 +382,62 @@ export async function handleStripeWebhook(req: Request): Promise<Response> {
         return new Response("Webhook error", { status: 400 })
     }
 
-    console.log("🔥 WEBHOOK TRIGGERED:", event.type)
+    console.log("🔥 WEBHOOK TRIGGERED:", event.type, event.id)
 
+    const supabase = createSupabaseServiceRoleClient()
+    let claim: "claimed" | "duplicate"
     try {
-        console.log("STRIPE EVENT:", JSON.stringify(event, null, 2))
-    } catch (stringifyErr) {
-        console.log("STRIPE EVENT: (could not JSON.stringify)", stringifyErr)
-        console.log("STRIPE EVENT type:", event.type, "id:", event.id)
+        claim = await claimStripeWebhookEvent(supabase, event.id, event.type)
+    } catch (claimErr) {
+        console.error("[stripe-webhook] idempotency claim failed", claimErr)
+        return new Response("Webhook claim error", { status: 500 })
     }
 
-    if (event.type === "checkout.session.completed") {
-        const session = event.data.object as Stripe.Checkout.Session
-        const subscriptionId = session.subscription as string | null
+    if (claim === "duplicate") {
+        return new Response(JSON.stringify({ received: true, duplicate: true }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+        })
+    }
 
-        try {
-            console.log("STRIPE SESSION:", JSON.stringify(session, null, 2))
-        } catch (stringifyErr) {
-            console.log("STRIPE SESSION: (could not JSON.stringify)", stringifyErr)
-            console.log("STRIPE SESSION id:", session.id, "customer_email:", session.customer_email)
-        }
+    try {
+        if (event.type === "checkout.session.completed") {
+            const session = event.data.object as Stripe.Checkout.Session
+            const subscriptionId =
+                typeof session.subscription === "string" && session.subscription.trim()
+                    ? session.subscription.trim()
+                    : null
 
-        const customerEmail =
-            (typeof session.customer_email === "string" && session.customer_email.trim()
-                ? session.customer_email.trim()
-                : null) ||
-            (typeof session.customer_details?.email === "string" && session.customer_details.email.trim()
-                ? session.customer_details.email.trim()
-                : null)
+            const customerEmail =
+                (typeof session.customer_email === "string" && session.customer_email.trim()
+                    ? session.customer_email.trim()
+                    : null) ||
+                (typeof session.customer_details?.email === "string" &&
+                session.customer_details.email.trim()
+                    ? session.customer_details.email.trim()
+                    : null)
 
-        console.log("📧 Email (checkout):", customerEmail)
+            console.log("[stripe-webhook] checkout.session.completed", {
+                sessionId: session.id,
+                subscriptionId,
+                planMeta: session.metadata?.plan ?? null,
+            })
 
-        const rawName = session.customer_details?.name?.trim()
-
-        try {
             if (!customerEmail) {
                 throw new Error("Missing customer_email / customer_details.email on session")
             }
 
-            const emailForDb = customerEmail.toLowerCase()
-            const accessCode = generateAccessCode()
-
-            await fulfillPaidAccessAndSendWelcomeEmail({
-                emailForDb,
+            await fulfillPaidAccess({
+                stripe,
+                emailForDb: customerEmail.toLowerCase(),
                 emailForDelivery: customerEmail,
-                accessCode,
-                rawName,
+                rawName: session.customer_details?.name?.trim() ?? null,
                 subscriptionId,
+                plan: planFromMetadata(session.metadata),
                 resendApiKey,
             })
-        } catch (error) {
-            console.error("❌ Error enviando email:", error)
-        }
-    }
-
-    if (event.type === "payment_intent.succeeded") {
-        const paymentIntent = event.data.object as Stripe.PaymentIntent
-        try {
-            console.log("💰 PAYMENT OBJECT:", paymentIntent)
-
+        } else if (event.type === "payment_intent.succeeded") {
+            const paymentIntent = event.data.object as Stripe.PaymentIntent
             const piFull = await stripe.paymentIntents.retrieve(paymentIntent.id, {
                 expand: ["latest_charge"],
             })
@@ -266,116 +447,115 @@ export async function handleStripeWebhook(req: Request): Promise<Response> {
                 limit: 1,
             })
 
-            let email: string | null | undefined =
-                piFull.receipt_email?.trim() ||
-                (piFull as unknown as { customer_details?: { email?: string | null } }).customer_details?.email?.trim()
-
-            const chargesData = (piFull as unknown as { charges?: { data?: Stripe.Charge[] } }).charges?.data
-            if (!email && chargesData?.[0]?.billing_details?.email) {
-                email = chargesData[0].billing_details.email.trim()
-            }
-
-            if (!email && typeof piFull.latest_charge === "object" && piFull.latest_charge) {
-                const ch = piFull.latest_charge as Stripe.Charge
-                email = ch.billing_details?.email?.trim() || null
-            }
-
-            if (!email && linkedCheckout.data[0]) {
-                const sess = await stripe.checkout.sessions.retrieve(linkedCheckout.data[0].id)
-                const fromSession =
-                    (typeof sess.customer_email === "string" && sess.customer_email.trim()
-                        ? sess.customer_email.trim()
-                        : null) ||
-                    (typeof sess.customer_details?.email === "string" && sess.customer_details.email.trim()
-                        ? sess.customer_details.email.trim()
-                        : null)
-                email = fromSession
-            }
-
-            if (!email) {
-                email = await resolvePaymentIntentCustomerEmail(stripe, piFull)
-            }
-
-            console.log("📧 EXTRACTED EMAIL:", email)
-
-            if (!email) {
-                console.error("❌ NO EMAIL FOUND IN PAYMENT")
-            } else if (linkedCheckout.data.length > 0) {
+            if (linkedCheckout.data.length > 0) {
                 console.log(
-                    "[stripe-webhook] payment_intent.succeeded: Checkout linked — DB + sendEmail run from checkout.session.completed (enable that event to avoid missing email)"
+                    "[stripe-webhook] payment_intent.succeeded: Checkout linked — skip fulfill (checkout.session.completed owns fulfillment + schedule)"
                 )
             } else {
-                const subscriptionId: string | null = await resolveSubscriptionIdFromPaymentIntent(stripe, piFull)
+                let email: string | null | undefined =
+                    piFull.receipt_email?.trim() ||
+                    (
+                        piFull as unknown as { customer_details?: { email?: string | null } }
+                    ).customer_details?.email?.trim()
 
-                console.log("📨 CALLING sendEmail...")
-                const accessCode = generateAccessCode()
-                await fulfillPaidAccessAndSendWelcomeEmail({
-                    emailForDb: email.trim().toLowerCase(),
-                    emailForDelivery: email.trim(),
-                    accessCode,
-                    rawName: null,
-                    subscriptionId,
-                    resendApiKey,
-                })
-                console.log("✅ sendEmail CALLED SUCCESSFULLY")
+                const chargesData = (piFull as unknown as { charges?: { data?: Stripe.Charge[] } })
+                    .charges?.data
+                if (!email && chargesData?.[0]?.billing_details?.email) {
+                    email = chargesData[0].billing_details.email.trim()
+                }
+
+                if (!email && typeof piFull.latest_charge === "object" && piFull.latest_charge) {
+                    const ch = piFull.latest_charge as Stripe.Charge
+                    email = ch.billing_details?.email?.trim() || null
+                }
+
+                if (!email) {
+                    email = await resolvePaymentIntentCustomerEmail(stripe, piFull)
+                }
+
+                if (!email) {
+                    console.error("❌ NO EMAIL FOUND IN PAYMENT")
+                } else {
+                    const subscriptionId = await resolveSubscriptionIdFromPaymentIntent(stripe, piFull)
+                    let plan: SubscriptionPlanId = "trading_only"
+                    if (subscriptionId) {
+                        try {
+                            const sub = await stripe.subscriptions.retrieve(subscriptionId)
+                            plan = planFromMetadata(sub.metadata)
+                        } catch (err) {
+                            console.warn(
+                                "[stripe-webhook] could not load subscription metadata for PI fallback",
+                                err
+                            )
+                        }
+                    }
+
+                    await fulfillPaidAccess({
+                        stripe,
+                        emailForDb: email.trim().toLowerCase(),
+                        emailForDelivery: email.trim(),
+                        rawName: null,
+                        subscriptionId,
+                        plan,
+                        resendApiKey,
+                    })
+                }
             }
-        } catch (error) {
-            console.error("[stripe-webhook] payment_intent.succeeded handler:", error)
-        }
-    }
-
-    if (event.type === "invoice.payment_succeeded") {
-        const invoice = event.data.object as Stripe.Invoice
-        try {
+        } else if (event.type === "invoice.payment_succeeded") {
+            const invoice = event.data.object as Stripe.Invoice
             const email = await resolveInvoiceCustomerEmail(stripe, invoice)
             if (!email) {
                 console.warn("[stripe-webhook] invoice.payment_succeeded: no customer email", {
                     invoiceId: invoice.id,
                 })
             } else {
-                const supabase = createSupabaseServiceRoleClient()
                 const { data: row, error: selErr } = await supabase
                     .from("trading_students")
-                    .select("access_expires_at")
+                    .select("access_expires_at, plan")
                     .eq("email", email)
                     .maybeSingle()
 
                 if (selErr) {
                     console.error("[stripe-webhook] invoice.payment_succeeded select:", selErr)
-                } else {
-                    const accessExpiresAt = computeRenewalAccessExpiresAtIso(
-                        (row as { access_expires_at?: string | null } | null)?.access_expires_at
-                    )
-                    const { error: upErr } = await supabase
-                        .from("trading_students")
-                        .update({
-                            is_active: true,
-                            access_expires_at: accessExpiresAt,
-                        })
-                        .eq("email", email)
-
-                    if (upErr) {
-                        console.error("[stripe-webhook] invoice.payment_succeeded update:", upErr)
-                    } else {
-                        console.log("[stripe-webhook] access extended after invoice payment", { email })
-                    }
+                    throw new Error("Failed to load student for invoice renewal")
                 }
-            }
-        } catch (err) {
-            console.error("[stripe-webhook] invoice.payment_succeeded handler:", err)
-        }
-    }
 
-    if (event.type === "invoice.payment_failed") {
-        const invoice = event.data.object as Stripe.Invoice
-        try {
+                const accessExpiresAt = await resolveAccessExpiresAtFromInvoice(
+                    stripe,
+                    invoice,
+                    (row as { access_expires_at?: string | null } | null)?.access_expires_at
+                )
+
+                const { error: upErr } = await supabase
+                    .from("trading_students")
+                    .update({
+                        is_active: true,
+                        access_expires_at: accessExpiresAt,
+                    })
+                    .eq("email", email)
+
+                if (upErr) {
+                    console.error("[stripe-webhook] invoice.payment_succeeded update:", upErr)
+                    throw new Error("Failed to extend access after invoice payment")
+                }
+
+                console.log("[stripe-webhook] access extended after invoice payment", {
+                    email,
+                    accessExpiresAt,
+                    plan: (row as { plan?: string | null } | null)?.plan ?? null,
+                    resolvedPlan: resolveSubscriptionPlan(
+                        (row as { plan?: string | null } | null)?.plan
+                    ),
+                })
+            }
+        } else if (event.type === "invoice.payment_failed") {
+            const invoice = event.data.object as Stripe.Invoice
             const email = await resolveInvoiceCustomerEmail(stripe, invoice)
             if (!email) {
                 console.warn("[stripe-webhook] invoice.payment_failed: no customer email", {
                     invoiceId: invoice.id,
                 })
             } else {
-                const supabase = createSupabaseServiceRoleClient()
                 const { error: upErr } = await supabase
                     .from("trading_students")
                     .update({ is_active: false })
@@ -383,20 +563,15 @@ export async function handleStripeWebhook(req: Request): Promise<Response> {
 
                 if (upErr) {
                     console.error("[stripe-webhook] invoice.payment_failed update:", upErr)
-                } else {
-                    console.log("[stripe-webhook] access deactivated after failed invoice payment", {
-                        email,
-                    })
+                    throw new Error("Failed to deactivate after failed invoice")
                 }
-            }
-        } catch (err) {
-            console.error("[stripe-webhook] invoice.payment_failed handler:", err)
-        }
-    }
 
-    if (event.type === "customer.subscription.updated") {
-        const subscription = event.data.object as Stripe.Subscription
-        try {
+                console.log("[stripe-webhook] access deactivated after failed invoice payment", {
+                    email,
+                })
+            }
+        } else if (event.type === "customer.subscription.updated") {
+            const subscription = event.data.object as Stripe.Subscription
             const subscriptionId = subscription.id
             if (subscription.cancel_at_period_end) {
                 await updateStudentBySubscriptionId(subscriptionId, {
@@ -410,28 +585,36 @@ export async function handleStripeWebhook(req: Request): Promise<Response> {
                     subscription_status: "active",
                 })
             }
-        } catch (err) {
-            console.error("[stripe-webhook] customer.subscription.updated handler:", err)
-        }
-    }
-
-    if (event.type === "customer.subscription.deleted") {
-        const subscription = event.data.object as Stripe.Subscription
-        try {
-            const subscriptionId = subscription.id
-            // Period ended — mark subscription cancelled. Do not revoke access here;
-            // `access_expires_at` + evaluateAcademyAccess() control access until expiry.
-            await updateStudentBySubscriptionId(subscriptionId, {
+        } else if (event.type === "customer.subscription.deleted") {
+            const subscription = event.data.object as Stripe.Subscription
+            await updateStudentBySubscriptionId(subscription.id, {
                 subscription_status: "cancelled",
             })
-            console.log("[stripe-webhook] subscription ended", { subscriptionId })
-        } catch (err) {
-            console.error("[stripe-webhook] customer.subscription.deleted handler:", err)
+            console.log("[stripe-webhook] subscription ended", { subscriptionId: subscription.id })
+        } else if (
+            event.type === "subscription_schedule.updated" ||
+            event.type === "subscription_schedule.completed" ||
+            event.type === "subscription_schedule.released"
+        ) {
+            const schedule = event.data.object as Stripe.SubscriptionSchedule
+            console.log("[stripe-webhook] subscription_schedule event", {
+                type: event.type,
+                scheduleId: schedule.id,
+                status: schedule.status,
+            })
         }
-    }
 
-    return new Response(JSON.stringify({ received: true }), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-    })
+        return new Response(JSON.stringify({ received: true }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+        })
+    } catch (err) {
+        console.error("[stripe-webhook] handler failed — releasing event claim for retry", {
+            eventId: event.id,
+            type: event.type,
+            err,
+        })
+        await releaseStripeWebhookEventClaim(supabase, event.id)
+        return new Response("Webhook handler error", { status: 500 })
+    }
 }

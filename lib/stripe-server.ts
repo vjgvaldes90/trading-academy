@@ -11,8 +11,18 @@ export function getStripeWebhookSecret(): string | null {
     return secret || null
 }
 
+/** Solo Trading ($150/mo) — existing production price. */
 export function getStripePriceId(): string | null {
     const priceId = process.env.STRIPE_PRICE_ID?.trim()
+    return priceId || null
+}
+
+/**
+ * Programa Completo intro price ($450 first month).
+ * Optional until the Stripe Price is created; missing must not break trading_only.
+ */
+export function getStripePriceIdFullProgram(): string | null {
+    const priceId = process.env.STRIPE_PRICE_ID_FULL_PROGRAM?.trim()
     return priceId || null
 }
 

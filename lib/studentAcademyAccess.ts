@@ -1,4 +1,5 @@
 import { getTranslations, readStoredLanguage, type Language } from "@/lib/i18n"
+import { canAccessTheory } from "@/lib/subscriptionPlans"
 
 /**
  * Academy-wide access (trading_students), independent of live-session join windows.
@@ -12,12 +13,19 @@ export type TradingStudentAccessRow = {
     access_type?: string | null
     is_active?: boolean | null
     access_expires_at?: string | null
+    /** NULL = legacy Solo Trading */
+    plan?: string | null
+    program_theory_until?: string | null
 }
 
 export type AcademyAccessEvaluation = {
     ok: boolean
-    /** Machine-readable when ok is false */
     reason?: "inactive" | "expired" | "unpaid" | "not_found"
+}
+
+export type TheoryAccessEvaluation = {
+    ok: boolean
+    reason?: "inactive" | "expired" | "unpaid" | "not_found" | "no_theory"
 }
 
 export function normalizeAccessType(raw: string | null | undefined): string {
@@ -55,6 +63,34 @@ export function evaluateAcademyAccess(row: TradingStudentAccessRow | null | unde
     return { ok: false, reason: "unpaid" }
 }
 
+/**
+ * Theory entitlement: academy OK + full_program + program_theory_until in the future.
+ * Not wired to /api/lessons yet (Etapa 4).
+ */
+export function evaluateTheoryAccess(
+    row: TradingStudentAccessRow | null | undefined,
+    now: Date = new Date()
+): TheoryAccessEvaluation {
+    const academy = evaluateAcademyAccess(row)
+    if (!academy.ok) {
+        return { ok: false, reason: academy.reason ?? "not_found" }
+    }
+
+    if (
+        !canAccessTheory(
+            {
+                plan: row?.plan,
+                program_theory_until: row?.program_theory_until,
+            },
+            now
+        )
+    ) {
+        return { ok: false, reason: "no_theory" }
+    }
+
+    return { ok: true }
+}
+
 export function academyAccessDeniedMessage(
     reason: AcademyAccessEvaluation["reason"] | undefined,
     lang?: Language
@@ -73,7 +109,7 @@ export function academyAccessDeniedMessage(
     }
 }
 
-/** @deprecated Prefer academyAccessDeniedMessage — kept for existing API imports. */
+/** @deprecated Prefer academyAccessDeniedMessage */
 export function academyAccessDeniedMessageEs(
     reason: AcademyAccessEvaluation["reason"] | undefined
 ): string {
