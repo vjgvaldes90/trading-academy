@@ -1,7 +1,7 @@
 "use client"
 
 import LoginTabs from "./LoginTabs"
-import PurchaseForm from "./PurchaseForm"
+import PurchaseForm, { type CheckoutPlanId } from "./PurchaseForm"
 import AccessForm from "./AccessForm"
 import { motion, AnimatePresence } from "framer-motion"
 import { useEffect } from "react"
@@ -21,6 +21,8 @@ type LoginCardProps = {
     onClearAccessError?: () => void
     /** Desde email CTA: `/login?redirect=...` — mostrar ya el formulario de código */
     startOnAccessTab?: boolean
+    /** From `/login?plan=trading_only|full_program` */
+    checkoutPlan?: CheckoutPlanId
 }
 
 export default function LoginCard({
@@ -34,6 +36,7 @@ export default function LoginCard({
     accessError,
     onClearAccessError,
     startOnAccessTab = false,
+    checkoutPlan = "trading_only",
 }: LoginCardProps) {
     const { t } = useLanguage()
 
@@ -72,7 +75,7 @@ export default function LoginCard({
                         exit={{ opacity: 0, y: -25 }}
                         transition={{ duration: 0.3 }}
                     >
-                        <PurchaseForm email={email} setEmail={setEmail} />
+                        <PurchaseForm email={email} setEmail={setEmail} plan={checkoutPlan} />
                     </motion.div>
                 )}
 

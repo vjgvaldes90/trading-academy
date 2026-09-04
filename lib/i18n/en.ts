@@ -128,6 +128,30 @@ export const en = {
     pricingLiveSessions: "Live sessions available",
     pricingTagline: "Premium financial education in front of the market, no shortcuts",
     pricingMicroCopy: "No contracts • Cancel anytime",
+    pricingChoosePlan: "Choose your plan",
+    pricingTradingOnlyName: "Solo Trading",
+    pricingTradingOnlyPrice: "$150",
+    pricingTradingOnlyCadence: "/ month",
+    pricingTradingOnlyTagline: "Live trading sessions Monday–Wednesday",
+    pricingTradingOnlyFeature1: "Live trading sessions",
+    pricingTradingOnlyFeature2: "Monday, Tuesday and Wednesday",
+    pricingTradingOnlyFeature3: "Access to the student dashboard",
+    pricingTradingOnlyFeature4: "Session reservations",
+    pricingTradingOnlyCta: "Start Solo Trading",
+    pricingFullProgramName: "Full Program",
+    pricingFullProgramBadge: "Most Complete",
+    pricingFullProgramFirstMonthLabel: "First month",
+    pricingFullProgramFirstMonthPrice: "$450",
+    pricingFullProgramThen: "Then $150/month",
+    pricingFullProgramAutoNote:
+        "Your subscription automatically continues at $150/month after the first billing period.",
+    pricingFullProgramTagline: "Theoretical classes + live trading in the first period",
+    pricingFullProgramFeature1: "2 theoretical classes",
+    pricingFullProgramFeature2: "Live trading sessions Monday–Wednesday",
+    pricingFullProgramFeature3: "Student dashboard",
+    pricingFullProgramFeature4: "Session reservations",
+    pricingFullProgramFeature5: "Theoretical classes during the first billing period",
+    pricingFullProgramCta: "Start Full Program",
 
     // Footer
     footerCopyright: "© 2026 Smart Option Academy. All rights reserved.",
@@ -188,6 +212,11 @@ export const en = {
         "I confirm that I understand this program is for educational purposes only and does not represent personalized financial advice.",
     purchaseProcessing: "Processing…",
     purchaseBuyButton: "🚀 Buy access ($150)",
+    purchaseBuyTradingOnly: "🚀 Start Solo Trading ($150/mo)",
+    purchaseBuyFullProgram: "🚀 Start Full Program ($450 first month)",
+    purchasePlanTradingOnlyLabel: "Selected plan: Solo Trading — $150/month",
+    purchasePlanFullProgramLabel:
+        "Selected plan: Full Program — $450 first month, then $150/month",
     purchaseSecurePayment: "Secure payment • Immediate access",
 
     // Complete Profile

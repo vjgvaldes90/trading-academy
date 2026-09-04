@@ -130,6 +130,30 @@ export const es: TranslationKeys = {
     pricingLiveSessions: "Sesiones en vivo disponibles",
     pricingTagline: "Educación financiera premium frente al mercado, sin atajos",
     pricingMicroCopy: "Sin contratos • Cancela cuando quieras",
+    pricingChoosePlan: "Elige tu plan",
+    pricingTradingOnlyName: "Solo Trading",
+    pricingTradingOnlyPrice: "$150",
+    pricingTradingOnlyCadence: "/ mes",
+    pricingTradingOnlyTagline: "Sesiones de trading en vivo de lunes a miércoles",
+    pricingTradingOnlyFeature1: "Sesiones de trading en vivo",
+    pricingTradingOnlyFeature2: "Lunes, martes y miércoles",
+    pricingTradingOnlyFeature3: "Acceso al dashboard del estudiante",
+    pricingTradingOnlyFeature4: "Reservas de sesiones",
+    pricingTradingOnlyCta: "Empezar Solo Trading",
+    pricingFullProgramName: "Programa Completo",
+    pricingFullProgramBadge: "Más completo",
+    pricingFullProgramFirstMonthLabel: "Primer mes",
+    pricingFullProgramFirstMonthPrice: "$450",
+    pricingFullProgramThen: "Después $150/mes",
+    pricingFullProgramAutoNote:
+        "Tu suscripción continúa automáticamente a $150/mes después del primer período de facturación.",
+    pricingFullProgramTagline: "Clases teóricas + trading en vivo en el primer período",
+    pricingFullProgramFeature1: "2 clases teóricas",
+    pricingFullProgramFeature2: "Sesiones de trading en vivo de lunes a miércoles",
+    pricingFullProgramFeature3: "Dashboard del estudiante",
+    pricingFullProgramFeature4: "Reservas de sesiones",
+    pricingFullProgramFeature5: "Clases teóricas durante el primer período de facturación",
+    pricingFullProgramCta: "Empezar Programa Completo",
 
     // Footer
     footerCopyright: "© 2026 Smart Option Academy. Todos los derechos reservados.",
@@ -190,6 +214,11 @@ export const es: TranslationKeys = {
         "Confirmo que entiendo que este programa es unicamente educativo y no representa asesoria financiera personalizada.",
     purchaseProcessing: "Procesando…",
     purchaseBuyButton: "🚀 Comprar acceso ($150)",
+    purchaseBuyTradingOnly: "🚀 Empezar Solo Trading ($150/mes)",
+    purchaseBuyFullProgram: "🚀 Empezar Programa Completo ($450 primer mes)",
+    purchasePlanTradingOnlyLabel: "Plan seleccionado: Solo Trading — $150/mes",
+    purchasePlanFullProgramLabel:
+        "Plan seleccionado: Programa Completo — $450 el primer mes, después $150/mes",
     purchaseSecurePayment: "Pago seguro • Acceso inmediato",
 
     // Complete Profile

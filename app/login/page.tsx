@@ -19,6 +19,9 @@ function LoginPageInner() {
     const searchParams = useSearchParams()
     const rawRedirect = searchParams.get("redirect")
     const magicToken = searchParams.get("token")?.trim() ?? ""
+    const planParam = searchParams.get("plan")?.trim().toLowerCase() ?? ""
+    const checkoutPlan =
+        planParam === "full_program" ? ("full_program" as const) : ("trading_only" as const)
 
     const afterLoginTarget =
         rawRedirect != null && rawRedirect !== ""
@@ -144,6 +147,7 @@ function LoginPageInner() {
                     accessError={accessError ?? queryAccessError}
                     onClearAccessError={() => setAccessError(null)}
                     startOnAccessTab={fromEmailCta}
+                    checkoutPlan={checkoutPlan}
                 />
             </div>
             <div className="absolute bottom-5 left-0 right-0 z-20 flex justify-center px-6">
