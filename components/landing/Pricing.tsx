@@ -7,6 +7,11 @@ import { useLanguage } from "@/context/LanguageProvider"
 
 type CheckoutPlanId = "trading_only" | "full_program"
 
+type PlanFeature = {
+    title: string
+    detail?: string
+}
+
 function PlanCard({
     plan,
     highlighted,
@@ -21,7 +26,7 @@ function PlanCard({
     highlighted?: boolean
     name: string
     priceBlock: ReactNode
-    features: string[]
+    features: PlanFeature[]
     cta: string
     microCopy: string
     motionSafe: boolean
@@ -57,11 +62,20 @@ function PlanCard({
 
                 <ul className="mb-7 flex-1 space-y-2.5 text-left">
                     {features.map((feature) => (
-                        <li key={feature} className="flex items-start gap-2.5">
+                        <li key={feature.title} className="flex items-start gap-2.5">
                             <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border border-emerald-400/25 bg-emerald-500/10 text-emerald-300">
                                 <Check className="h-3 w-3" strokeWidth={2.75} aria-hidden />
                             </span>
-                            <span className="text-sm leading-snug text-slate-300">{feature}</span>
+                            <span className="min-w-0">
+                                <span className="block text-sm leading-snug text-slate-300">
+                                    {feature.title}
+                                </span>
+                                {feature.detail ? (
+                                    <span className="mt-0.5 block text-xs leading-snug text-slate-400 sm:text-[13px]">
+                                        {feature.detail}
+                                    </span>
+                                ) : null}
+                            </span>
                         </li>
                     ))}
                 </ul>
@@ -105,17 +119,23 @@ export default function Pricing() {
               viewport: { once: true },
           }
 
-    const tradingFeatures = [
-        t.pricingTradingOnlyFeature1,
-        t.pricingTradingOnlyFeature2,
-        t.pricingTradingOnlyFeature3,
+    const tradingFeatures: PlanFeature[] = [
+        {
+            title: t.pricingTradingOnlyFeature1,
+            detail: t.pricingTradingSessionsSchedule,
+        },
+        { title: t.pricingTradingOnlyFeature2 },
+        { title: t.pricingTradingOnlyFeature3 },
     ]
 
-    const fullFeatures = [
-        t.pricingFullProgramFeature1,
-        t.pricingFullProgramFeature2,
-        t.pricingFullProgramFeature3,
-        t.pricingFullProgramFeature4,
+    const fullFeatures: PlanFeature[] = [
+        { title: t.pricingFullProgramFeature1 },
+        {
+            title: t.pricingFullProgramFeature2,
+            detail: t.pricingTradingSessionsSchedule,
+        },
+        { title: t.pricingFullProgramFeature3 },
+        { title: t.pricingFullProgramFeature4 },
     ]
 
     return (
