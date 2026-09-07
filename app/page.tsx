@@ -16,12 +16,12 @@ export default function Home() {
     <main className="min-h-screen overflow-x-hidden bg-[#020617] text-white">
       <Navbar />
       <Hero />
+      <Pricing />
       <HowItWorks />
       <Testimonials />
       <Instructor />
       <WhatYouLearn />
       <Schedule />
-      <Pricing />
       <ImportantDisclaimer />
       <MarketTicker />
       <SiteFooter />
