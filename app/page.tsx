@@ -3,7 +3,6 @@ import Navbar from "@/components/landing/Navbar"
 import Hero from "@/components/landing/Hero"
 import HowItWorks from "@/components/landing/HowItWorks"
 import Pricing from "@/components/landing/Pricing"
-import ChartSection from "@/components/landing/ChartSection"
 import Testimonials from "@/components/landing/Testimonials"
 import Schedule from "@/components/landing/Schedule"
 import WhatYouLearn from "@/components/landing/WhatYouLearn"
@@ -18,7 +17,6 @@ export default function Home() {
       <Navbar />
       <Hero />
       <HowItWorks />
-      <ChartSection />
       <Testimonials />
       <Instructor />
       <WhatYouLearn />
