@@ -17,11 +17,11 @@ export default function Home() {
       <Navbar />
       <Hero />
       <Pricing />
+      <Schedule />
+      <Instructor />
       <HowItWorks />
       <Testimonials />
-      <Instructor />
       <WhatYouLearn />
-      <Schedule />
       <ImportantDisclaimer />
       <MarketTicker />
       <SiteFooter />
