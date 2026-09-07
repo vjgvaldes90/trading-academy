@@ -49,15 +49,24 @@ export const es: TranslationKeys = {
     chartTagNasdaq: "NASDAQ",
 
     // Schedule
-    scheduleEyebrow: "Sesiones en vivo disponibles",
-    scheduleTitle: "Horarios de las sesiones en vivo",
+    scheduleEyebrow: "Modalidades de formación",
+    scheduleTitle: "Horarios y clases",
     scheduleSubtitle:
-        "Acciones,Opciones y ETFS con mentoría en vivo y proceso estructurado frente al mercado real.",
+        "Aprende con diferentes modalidades de formación según tus objetivos: trading en vivo, teoría y clase privada 1:1.",
     scheduleMonday: "Lunes",
     scheduleTuesday: "Martes",
     scheduleWednesday: "Miércoles",
     scheduleSessionTitle: "Análisis y trading en vivo",
     scheduleSessionTime: "9:30 AM (EST)",
+    scheduleTradingTimeRange: "9:30 AM – 10:30 AM EST",
+    scheduleTradingCardTitle: "Trading en vivo",
+    scheduleTradingCardBlurb: "Sesiones regulares de trading en vivo",
+    scheduleTheoryCardTitle: "Clases teóricas",
+    scheduleTheoryWeekly: "2 clases teóricas por semana",
+    scheduleTheoryPlanNote: "Incluidas en el Programa Completo",
+    schedulePrivateCardTitle: "Clase privada 1:1",
+    schedulePrivateByRequest: "Bajo solicitud",
+    schedulePrivateCardBlurb: "Sesión privada con el instructor",
     scheduleFootnote: "*Todos los horarios en hora de Nueva York (EST)",
 
     // What You Learn

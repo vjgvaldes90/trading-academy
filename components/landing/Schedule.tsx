@@ -1,7 +1,7 @@
 "use client"
 
 import { motion, useReducedMotion } from "framer-motion"
-import { CalendarDays, Clock } from "lucide-react"
+import { BookOpen, CalendarDays, Clock, UserRound } from "lucide-react"
 import { useLanguage } from "@/context/LanguageProvider"
 
 /** Decorative mini chart — no market data. */
@@ -43,15 +43,18 @@ function ScheduleDecorChart({ reduceMotion }: { reduceMotion: boolean }) {
     )
 }
 
+const cardShell =
+    "group relative flex h-full flex-col overflow-hidden rounded-2xl border border-white/12 bg-[#0B1220]/88 p-6 shadow-[0_18px_44px_rgba(2,6,23,0.55)] backdrop-blur-xl sm:p-7 before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-blue-300/40 before:to-transparent"
+
 export default function Schedule() {
     const { t } = useLanguage()
     const reduceMotion = useReducedMotion()
     const motionSafe = !reduceMotion
 
-    const sessions = [
-        { day: t.scheduleMonday, title: t.scheduleSessionTitle, time: t.scheduleSessionTime },
-        { day: t.scheduleTuesday, title: t.scheduleSessionTitle, time: t.scheduleSessionTime },
-        { day: t.scheduleWednesday, title: t.scheduleSessionTitle, time: t.scheduleSessionTime },
+    const tradingDays = [
+        { day: t.scheduleMonday, time: t.scheduleTradingTimeRange },
+        { day: t.scheduleTuesday, time: t.scheduleTradingTimeRange },
+        { day: t.scheduleWednesday, time: t.scheduleTradingTimeRange },
     ]
 
     const sectionReveal = motionSafe
@@ -68,6 +71,25 @@ export default function Schedule() {
               viewport: { once: true },
           }
 
+    const cardMotion = (i: number) =>
+        motionSafe
+            ? {
+                  initial: { opacity: 0, y: 20 },
+                  whileInView: { opacity: 1, y: 0 },
+                  transition: {
+                      duration: 0.45,
+                      delay: 0.08 * i,
+                      ease: [0.22, 1, 0.36, 1] as const,
+                  },
+                  viewport: { once: true, margin: "-40px" as const },
+              }
+            : {
+                  initial: { opacity: 1, y: 0 },
+                  whileInView: { opacity: 1, y: 0 },
+                  transition: { duration: 0 },
+                  viewport: { once: true },
+              }
+
     return (
         <section className="relative overflow-hidden bg-[#020617] py-24 text-white sm:py-28">
             <div className="pointer-events-none absolute inset-0" aria-hidden>
@@ -79,8 +101,7 @@ export default function Schedule() {
                         backgroundImage:
                             "linear-gradient(rgba(148,163,184,0.055) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,0.055) 1px, transparent 1px)",
                         backgroundSize: "56px 56px",
-                        maskImage:
-                            "radial-gradient(ellipse at center, black 18%, transparent 72%)",
+                        maskImage: "radial-gradient(ellipse at center, black 18%, transparent 72%)",
                         WebkitMaskImage:
                             "radial-gradient(ellipse at center, black 18%, transparent 72%)",
                     }}
@@ -88,7 +109,7 @@ export default function Schedule() {
             </div>
 
             <motion.div
-                className="relative mx-auto max-w-5xl px-6 text-center sm:px-8"
+                className="relative mx-auto max-w-6xl px-6 text-center sm:px-8"
                 {...sectionReveal}
             >
                 <ScheduleDecorChart reduceMotion={!motionSafe} />
@@ -116,78 +137,120 @@ export default function Schedule() {
                     {t.scheduleSubtitle}
                 </p>
 
-                <ol className="relative mx-auto grid max-w-4xl gap-5 text-left sm:gap-6 md:grid-cols-3">
-                    {/* Decorative timeline connector — desktop */}
-                    <div
-                        className="pointer-events-none absolute left-[8%] right-[8%] top-[2.35rem] hidden h-px bg-gradient-to-r from-transparent via-blue-400/35 to-transparent md:block"
-                        aria-hidden
-                    />
-
-                    {sessions.map((s, i) => (
-                        <motion.li
-                            key={`${s.day}-${s.time}`}
-                            className="relative list-none"
-                            initial={motionSafe ? { opacity: 0, y: 20 } : false}
-                            whileInView={motionSafe ? { opacity: 1, y: 0 } : undefined}
-                            transition={
-                                motionSafe
-                                    ? {
-                                          duration: 0.45,
-                                          delay: 0.08 * i,
-                                          ease: [0.22, 1, 0.36, 1],
-                                      }
-                                    : { duration: 0 }
-                            }
-                            viewport={{ once: true, margin: "-40px" }}
-                        >
-                            <article
-                                className={[
-                                    "group relative flex h-full flex-col overflow-hidden rounded-2xl border border-white/12 bg-[#0B1220]/88 p-6 shadow-[0_18px_44px_rgba(2,6,23,0.55)] backdrop-blur-xl sm:p-7",
-                                    "before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-blue-300/40 before:to-transparent",
-                                    motionSafe
-                                        ? "transition duration-300 hover:-translate-y-1 hover:border-blue-300/35 hover:shadow-[0_26px_56px_rgba(2,6,23,0.72)]"
-                                        : "",
-                                ].join(" ")}
-                            >
-                                <div
-                                    className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_0%,rgba(59,130,246,0.1),transparent_55%)]"
-                                    aria-hidden
-                                />
-
-                                {/* Timeline node */}
-                                <div className="relative mb-5 flex justify-center md:mb-6">
-                                    <span className="flex h-3 w-3 items-center justify-center rounded-full border border-blue-300/50 bg-blue-500 shadow-[0_0_14px_rgba(59,130,246,0.55)] ring-4 ring-[#020617]" />
-                                </div>
-
-                                <div className="relative mb-4 flex items-center gap-2 text-blue-300">
-                                    <CalendarDays
-                                        className={[
-                                            "h-4 w-4 shrink-0",
-                                            motionSafe
-                                                ? "transition duration-300 group-hover:text-blue-200"
-                                                : "",
-                                        ].join(" ")}
-                                        aria-hidden
-                                    />
-                                    <h3 className="text-lg font-bold tracking-tight sm:text-xl">
-                                        {s.day}
-                                    </h3>
-                                </div>
-
-                                <p className="relative mb-5 text-[15px] leading-relaxed text-slate-300 sm:text-base">
-                                    {s.title}
-                                </p>
-
-                                <div className="relative mt-auto flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5">
-                                    <Clock className="h-3.5 w-3.5 shrink-0 text-slate-400" aria-hidden />
-                                    <p className="font-mono text-sm font-semibold tabular-nums text-slate-200">
-                                        {s.time}
+                <div className="mx-auto grid max-w-6xl gap-5 text-left sm:gap-6 lg:grid-cols-3">
+                    {/* Trading — primary recurring schedule */}
+                    <motion.article
+                        className={[
+                            cardShell,
+                            motionSafe
+                                ? "transition duration-300 hover:-translate-y-1 hover:border-blue-300/35 hover:shadow-[0_26px_56px_rgba(2,6,23,0.72)]"
+                                : "",
+                        ].join(" ")}
+                        {...cardMotion(0)}
+                    >
+                        <div
+                            className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_0%,rgba(59,130,246,0.12),transparent_55%)]"
+                            aria-hidden
+                        />
+                        <div className="relative mb-4 flex items-center gap-2.5 text-blue-300">
+                            <CalendarDays className="h-5 w-5 shrink-0" aria-hidden />
+                            <h3 className="text-lg font-bold tracking-tight sm:text-xl">
+                                {t.scheduleTradingCardTitle}
+                            </h3>
+                        </div>
+                        <p className="relative mb-5 text-sm leading-relaxed text-slate-400">
+                            {t.scheduleTradingCardBlurb}
+                        </p>
+                        <ul className="relative space-y-3">
+                            {tradingDays.map((row) => (
+                                <li
+                                    key={row.day}
+                                    className="rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-3"
+                                >
+                                    <p className="text-sm font-semibold text-slate-100">{row.day}</p>
+                                    <p className="mt-1 flex items-center gap-1.5 font-mono text-xs font-semibold tabular-nums text-slate-300 sm:text-sm">
+                                        <Clock className="h-3.5 w-3.5 shrink-0 text-slate-500" aria-hidden />
+                                        {row.time}
                                     </p>
-                                </div>
-                            </article>
-                        </motion.li>
-                    ))}
-                </ol>
+                                </li>
+                            ))}
+                        </ul>
+                        <p className="relative mt-4 text-xs leading-relaxed text-slate-500">
+                            {t.scheduleSessionTitle}
+                        </p>
+                    </motion.article>
+
+                    {/* Theory — Full Program only; no invented day/time */}
+                    <motion.article
+                        className={[
+                            cardShell,
+                            motionSafe
+                                ? "transition duration-300 hover:-translate-y-1 hover:border-violet-300/35 hover:shadow-[0_26px_56px_rgba(2,6,23,0.72)]"
+                                : "",
+                        ].join(" ")}
+                        {...cardMotion(1)}
+                    >
+                        <div
+                            className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_0%,rgba(139,92,246,0.12),transparent_55%)]"
+                            aria-hidden
+                        />
+                        <div className="relative mb-4 flex items-center gap-2.5 text-violet-300">
+                            <BookOpen className="h-5 w-5 shrink-0" aria-hidden />
+                            <h3 className="text-lg font-bold tracking-tight sm:text-xl">
+                                {t.scheduleTheoryCardTitle}
+                            </h3>
+                        </div>
+                        <p className="relative mb-5 text-sm leading-relaxed text-slate-400">
+                            {t.scheduleTheoryWeekly}
+                        </p>
+                        <div className="relative mt-auto rounded-xl border border-violet-400/25 bg-violet-500/10 px-3.5 py-3">
+                            <p className="text-sm font-semibold text-violet-100">
+                                {t.scheduleTheoryPlanNote}
+                            </p>
+                            <p className="mt-1 text-xs text-violet-200/80">{t.pricingFullProgramName}</p>
+                        </div>
+                    </motion.article>
+
+                    {/* Private 1:1 — marketing only */}
+                    <motion.article
+                        className={[
+                            cardShell,
+                            motionSafe
+                                ? "transition duration-300 hover:-translate-y-1 hover:border-amber-300/35 hover:shadow-[0_26px_56px_rgba(2,6,23,0.72)]"
+                                : "",
+                        ].join(" ")}
+                        {...cardMotion(2)}
+                    >
+                        <div
+                            className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_0%,rgba(245,158,11,0.1),transparent_55%)]"
+                            aria-hidden
+                        />
+                        <div className="relative mb-4 flex items-center gap-2.5 text-amber-300">
+                            <UserRound className="h-5 w-5 shrink-0" aria-hidden />
+                            <h3 className="text-lg font-bold tracking-tight sm:text-xl">
+                                {t.schedulePrivateCardTitle}
+                            </h3>
+                        </div>
+                        <p className="relative mb-5 text-sm leading-relaxed text-slate-400">
+                            {t.schedulePrivateCardBlurb}
+                        </p>
+                        <div className="relative space-y-3">
+                            <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-3">
+                                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                    {t.privateClassDurationDisplay}
+                                </p>
+                                <p className="mt-1 text-2xl font-extrabold text-amber-300">
+                                    {t.privateClassPriceDisplay}
+                                </p>
+                            </div>
+                            <div className="rounded-xl border border-amber-400/25 bg-amber-500/10 px-3.5 py-3">
+                                <p className="text-sm font-semibold text-amber-100">
+                                    {t.schedulePrivateByRequest}
+                                </p>
+                            </div>
+                        </div>
+                    </motion.article>
+                </div>
 
                 <a
                     href="/login"
@@ -203,9 +266,7 @@ export default function Schedule() {
                     {t.buyAccess}
                 </a>
 
-                <p className="mt-5 text-xs text-slate-500 sm:mt-6 sm:text-sm">
-                    {t.scheduleFootnote}
-                </p>
+                <p className="mt-5 text-xs text-slate-500 sm:mt-6 sm:text-sm">{t.scheduleFootnote}</p>
             </motion.div>
 
             <style jsx>{`

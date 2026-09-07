@@ -47,15 +47,24 @@ export const en = {
     chartTagNasdaq: "NASDAQ",
 
     // Schedule
-    scheduleEyebrow: "Live sessions available",
-    scheduleTitle: "Live session schedule",
+    scheduleEyebrow: "Training modalities",
+    scheduleTitle: "Schedule & classes",
     scheduleSubtitle:
-        "Stocks, ETFs and Options with live mentorship and a structured process in front of the real market.",
+        "Learn with different training formats according to your goals — live trading, theory, and private 1:1.",
     scheduleMonday: "Monday",
     scheduleTuesday: "Tuesday",
     scheduleWednesday: "Wednesday",
     scheduleSessionTitle: "Live analysis and trading",
     scheduleSessionTime: "9:30 AM (EST)",
+    scheduleTradingTimeRange: "9:30 AM – 10:30 AM EST",
+    scheduleTradingCardTitle: "Live Trading",
+    scheduleTradingCardBlurb: "Regular live trading sessions",
+    scheduleTheoryCardTitle: "Theory Classes",
+    scheduleTheoryWeekly: "2 theoretical classes per week",
+    scheduleTheoryPlanNote: "Included in Full Program",
+    schedulePrivateCardTitle: "Private Class 1:1",
+    schedulePrivateByRequest: "By request",
+    schedulePrivateCardBlurb: "Private session with the instructor",
     scheduleFootnote: "*All times in New York time (EST)",
 
     // What You Learn
