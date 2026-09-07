@@ -1,117 +1,369 @@
 "use client"
 
-import { motion, useReducedMotion } from "framer-motion"
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
+import { useId, useState } from "react"
 import { useLanguage } from "@/context/LanguageProvider"
 
-/** Purely decorative mock chart — no market data APIs. */
+type TerminalTab = "stocks" | "options" | "etfs"
+type TerminalRange = "1D" | "1W" | "1M"
+
+const DEMO = {
+    stocks: {
+        symbol: "NASDAQ",
+        price: "21,482.15",
+        change: "+0.67%",
+        byRange: {
+            "1D": { price: "21,482.15", change: "+0.67%" },
+            "1W": { price: "21,318.40", change: "+1.24%" },
+            "1M": { price: "20,864.90", change: "+3.18%" },
+        },
+    },
+    options: {
+        underlying: "AAPL",
+        strike: "$250",
+        expiration: "SEP 19",
+        premium: "$2.35",
+    },
+    etfs: {
+        symbol: "SPY",
+        price: "$658.42",
+        change: "+0.42%",
+    },
+} as const
+
+function SimulatedCandlesChart({
+    variant,
+    gradientId,
+    reduceMotion,
+}: {
+    variant: TerminalTab
+    gradientId: string
+    reduceMotion: boolean
+}) {
+    const candles =
+        variant === "options"
+            ? [
+                  { x: 36, wickTop: 92, wickBot: 128, bodyY: 100, h: 20, up: true },
+                  { x: 78, wickTop: 78, wickBot: 122, bodyY: 86, h: 26, up: false },
+                  { x: 120, wickTop: 70, wickBot: 110, bodyY: 76, h: 22, up: true },
+                  { x: 162, wickTop: 58, wickBot: 98, bodyY: 64, h: 24, up: true },
+                  { x: 204, wickTop: 52, wickBot: 96, bodyY: 60, h: 28, up: false },
+                  { x: 246, wickTop: 44, wickBot: 84, bodyY: 50, h: 22, up: true },
+                  { x: 288, wickTop: 38, wickBot: 76, bodyY: 44, h: 20, up: true },
+              ]
+            : variant === "etfs"
+              ? [
+                    { x: 36, wickTop: 100, wickBot: 132, bodyY: 108, h: 18, up: true },
+                    { x: 78, wickTop: 88, wickBot: 126, bodyY: 94, h: 24, up: true },
+                    { x: 120, wickTop: 76, wickBot: 118, bodyY: 84, h: 26, up: false },
+                    { x: 162, wickTop: 68, wickBot: 108, bodyY: 74, h: 22, up: true },
+                    { x: 204, wickTop: 58, wickBot: 98, bodyY: 66, h: 24, up: true },
+                    { x: 246, wickTop: 50, wickBot: 90, bodyY: 58, h: 22, up: false },
+                    { x: 288, wickTop: 42, wickBot: 80, bodyY: 48, h: 20, up: true },
+                ]
+              : [
+                    { x: 36, wickTop: 96, wickBot: 134, bodyY: 104, h: 22, up: true },
+                    { x: 78, wickTop: 82, wickBot: 128, bodyY: 90, h: 28, up: false },
+                    { x: 120, wickTop: 68, wickBot: 112, bodyY: 74, h: 26, up: true },
+                    { x: 162, wickTop: 56, wickBot: 100, bodyY: 62, h: 24, up: true },
+                    { x: 204, wickTop: 48, wickBot: 94, bodyY: 56, h: 28, up: false },
+                    { x: 246, wickTop: 40, wickBot: 82, bodyY: 46, h: 24, up: true },
+                    { x: 288, wickTop: 32, wickBot: 72, bodyY: 38, h: 22, up: true },
+                ]
+
+    const linePath =
+        variant === "options"
+            ? "M0 120 C40 114, 70 100, 100 96 C140 90, 170 78, 210 70 C250 62, 290 54, 340 48"
+            : variant === "etfs"
+              ? "M0 124 C36 118, 68 108, 104 100 C148 90, 186 84, 228 72 C268 62, 304 56, 340 50"
+              : "M0 122 C32 116, 58 104, 96 98 C136 90, 168 76, 208 64 C248 52, 286 44, 340 36"
+
+    const areaPath = `${linePath} L340 160 L0 160 Z`
+
+    return (
+        <motion.svg
+            key={variant}
+            viewBox="0 0 340 160"
+            className="h-32 w-full sm:h-36"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            initial={reduceMotion ? false : { opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: reduceMotion ? 0 : 0.35, ease: [0.22, 1, 0.36, 1] }}
+            aria-hidden
+        >
+            <defs>
+                <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="rgb(59,130,246)" stopOpacity="0.32" />
+                    <stop offset="100%" stopColor="rgb(59,130,246)" stopOpacity="0" />
+                </linearGradient>
+            </defs>
+            {[32, 64, 96, 128].map((y) => (
+                <line
+                    key={y}
+                    x1="0"
+                    y1={y}
+                    x2="340"
+                    y2={y}
+                    stroke="rgba(148,163,184,0.12)"
+                    strokeWidth="1"
+                />
+            ))}
+            <path d={areaPath} fill={`url(#${gradientId})`} />
+            <path
+                d={linePath}
+                stroke="rgb(96,165,250)"
+                strokeWidth="2"
+                strokeLinecap="round"
+                className={reduceMotion ? undefined : "soa-hero-chart-draw"}
+            />
+            <g opacity="0.9">
+                {candles.map((c) => (
+                    <g key={c.x}>
+                        <line
+                            x1={c.x}
+                            y1={c.wickTop}
+                            x2={c.x}
+                            y2={c.wickBot}
+                            stroke="#64748b"
+                            strokeWidth="1"
+                        />
+                        <rect
+                            x={c.x - 5}
+                            y={c.bodyY}
+                            width="10"
+                            height={c.h}
+                            rx="1"
+                            fill={c.up ? "#34d399" : "#f87171"}
+                        />
+                    </g>
+                ))}
+            </g>
+        </motion.svg>
+    )
+}
+
+/** Interactive demo market terminal — no market data APIs. */
 function HeroMarketVisual({ reduceMotion }: { reduceMotion: boolean }) {
+    const { t } = useLanguage()
+    const gradientId = useId().replace(/:/g, "")
+    const [tab, setTab] = useState<TerminalTab>("stocks")
+    const [range, setRange] = useState<TerminalRange>("1W")
+
+    const tabs: { id: TerminalTab; label: string }[] = [
+        { id: "stocks", label: t.heroTerminalTabStocks },
+        { id: "options", label: t.heroTerminalTabOptions },
+        { id: "etfs", label: t.heroTerminalTabEtfs },
+    ]
+
+    const ranges: TerminalRange[] = ["1D", "1W", "1M"]
+    const rangeLabels: Record<TerminalRange, string> = {
+        "1D": t.heroTerminalRange1D,
+        "1W": t.heroTerminalRange1W,
+        "1M": t.heroTerminalRange1M,
+    }
+
+    const stocksQuote = DEMO.stocks.byRange[range]
+
     return (
         <div
             className={[
                 "relative mx-auto w-full max-w-md lg:max-w-none",
                 reduceMotion ? "" : "soa-hero-float",
             ].join(" ")}
-            aria-hidden
         >
-            <div className="absolute -inset-6 rounded-[2rem] bg-gradient-to-br from-blue-500/20 via-transparent to-red-500/10 blur-2xl" />
-            <div className="relative overflow-hidden rounded-2xl border border-white/15 bg-[#0B1220]/80 shadow-[0_24px_60px_rgba(2,6,23,0.65)] backdrop-blur-xl">
-                <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
-                    <div className="flex items-center gap-2">
-                        <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.8)]" />
-                        <span className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-slate-300">
-                            SPX · Live
+            <div
+                className="absolute -inset-6 rounded-[2rem] bg-gradient-to-br from-blue-500/20 via-transparent to-red-500/10 blur-2xl"
+                aria-hidden
+            />
+            <div className="relative overflow-hidden rounded-2xl border border-white/15 bg-[#0B1220]/88 shadow-[0_24px_60px_rgba(2,6,23,0.65)] backdrop-blur-xl">
+                <div className="flex items-center justify-between gap-3 border-b border-white/10 px-3 py-2.5 sm:px-4">
+                    <div className="flex min-w-0 items-center gap-2">
+                        <span className="relative flex h-2 w-2 shrink-0" aria-hidden>
+                            <span
+                                className={[
+                                    "absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-60",
+                                    reduceMotion ? "" : "soa-hero-sim-ping",
+                                ].join(" ")}
+                            />
+                            <span className="relative inline-flex h-2 w-2 rounded-full bg-amber-400 shadow-[0_0_10px_rgba(251,191,36,0.7)]" />
+                        </span>
+                        <span className="truncate text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-300">
+                            {t.heroTerminalSimulation}
                         </span>
                     </div>
-                    <div className="flex gap-1.5">
-                        <span className="rounded-md border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] font-semibold text-slate-400">
-                            1D
-                        </span>
-                        <span className="rounded-md border border-blue-400/30 bg-blue-500/15 px-2 py-0.5 text-[10px] font-semibold text-blue-200">
-                            1W
-                        </span>
-                    </div>
+                    <p className="shrink-0 text-[9px] font-medium text-slate-500 sm:text-[10px]">
+                        {t.heroTerminalDemoHint}
+                    </p>
                 </div>
 
-                <div className="relative px-3 pb-3 pt-4 sm:px-4">
-                    <div className="mb-3 flex items-end justify-between gap-3 px-1">
-                        <div>
-                            <p className="font-mono text-2xl font-bold tabular-nums text-slate-50 sm:text-3xl">
-                                7,658.70
-                            </p>
-                            <p className="mt-1 font-mono text-xs font-semibold text-emerald-400">
-                                +32.18 · +0.42%
-                            </p>
-                        </div>
-                        <div className="text-right text-[10px] text-slate-500">
-                            <p>Vol 4.2B</p>
-                            <p className="mt-0.5">RTH</p>
-                        </div>
-                    </div>
+                <div
+                    className="flex gap-1 border-b border-white/10 p-1.5 sm:p-2"
+                    role="tablist"
+                    aria-label={t.heroTerminalSimulation}
+                >
+                    {tabs.map((item) => {
+                        const active = tab === item.id
+                        return (
+                            <button
+                                key={item.id}
+                                type="button"
+                                role="tab"
+                                aria-selected={active}
+                                onClick={() => setTab(item.id)}
+                                className={[
+                                    "flex-1 rounded-lg px-2 py-2 text-[10px] font-bold uppercase tracking-[0.12em] transition duration-200 sm:text-[11px]",
+                                    "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400",
+                                    active
+                                        ? "border border-blue-300/35 bg-blue-500/20 text-blue-100 shadow-[0_0_20px_rgba(37,99,235,0.18)]"
+                                        : "border border-transparent text-slate-400 hover:bg-white/[0.04] hover:text-slate-200",
+                                ].join(" ")}
+                            >
+                                {item.label}
+                            </button>
+                        )
+                    })}
+                </div>
 
-                    <svg
-                        viewBox="0 0 360 160"
-                        className="h-36 w-full sm:h-40"
-                        fill="none"
-                        xmlns="http://www.w3.org/2000/svg"
-                    >
-                        <defs>
-                            <linearGradient id="soaHeroChartFill" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%" stopColor="rgb(59,130,246)" stopOpacity="0.35" />
-                                <stop offset="100%" stopColor="rgb(59,130,246)" stopOpacity="0" />
-                            </linearGradient>
-                        </defs>
-                        {[32, 64, 96, 128].map((y) => (
-                            <line
-                                key={y}
-                                x1="0"
-                                y1={y}
-                                x2="360"
-                                y2={y}
-                                stroke="rgba(148,163,184,0.12)"
-                                strokeWidth="1"
-                            />
-                        ))}
-                        <path
-                            d="M0 118 C28 112, 46 98, 72 102 C98 106, 118 78, 148 72 C178 66, 198 88, 224 58 C250 28, 278 42, 304 36 C322 32, 340 24, 360 28 L360 160 L0 160 Z"
-                            fill="url(#soaHeroChartFill)"
-                        />
-                        <path
-                            d="M0 118 C28 112, 46 98, 72 102 C98 106, 118 78, 148 72 C178 66, 198 88, 224 58 C250 28, 278 42, 304 36 C322 32, 340 24, 360 28"
-                            stroke="rgb(96,165,250)"
-                            strokeWidth="2.25"
-                            strokeLinecap="round"
-                        />
-                        {/* Stylized candlesticks */}
-                        <g opacity="0.85">
-                            <line x1="40" y1="88" x2="40" y2="128" stroke="#64748b" strokeWidth="1" />
-                            <rect x="35" y="96" width="10" height="24" rx="1" fill="#34d399" />
-                            <line x1="88" y1="72" x2="88" y2="118" stroke="#64748b" strokeWidth="1" />
-                            <rect x="83" y="78" width="10" height="28" rx="1" fill="#f87171" />
-                            <line x1="136" y1="58" x2="136" y2="102" stroke="#64748b" strokeWidth="1" />
-                            <rect x="131" y="64" width="10" height="26" rx="1" fill="#34d399" />
-                            <line x1="184" y1="48" x2="184" y2="92" stroke="#64748b" strokeWidth="1" />
-                            <rect x="179" y="54" width="10" height="22" rx="1" fill="#34d399" />
-                            <line x1="232" y1="38" x2="232" y2="86" stroke="#64748b" strokeWidth="1" />
-                            <rect x="227" y="46" width="10" height="28" rx="1" fill="#f87171" />
-                            <line x1="280" y1="30" x2="280" y2="68" stroke="#64748b" strokeWidth="1" />
-                            <rect x="275" y="34" width="10" height="22" rx="1" fill="#34d399" />
-                        </g>
-                    </svg>
+                <div className="relative px-3 pb-3 pt-3.5 sm:px-4 sm:pt-4">
+                    <AnimatePresence mode="wait">
+                        <motion.div
+                            key={tab}
+                            initial={reduceMotion ? false : { opacity: 0, y: 8 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={reduceMotion ? undefined : { opacity: 0, y: -6 }}
+                            transition={{ duration: reduceMotion ? 0 : 0.28, ease: [0.22, 1, 0.36, 1] }}
+                        >
+                            {tab === "stocks" && (
+                                <>
+                                    <div className="mb-3 flex items-end justify-between gap-3 px-0.5">
+                                        <div>
+                                            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+                                                {DEMO.stocks.symbol}
+                                            </p>
+                                            <motion.p
+                                                key={stocksQuote.price}
+                                                className="mt-1 font-mono text-2xl font-bold tabular-nums text-slate-50 sm:text-3xl"
+                                                initial={reduceMotion ? false : { opacity: 0.4 }}
+                                                animate={{ opacity: 1 }}
+                                                transition={{ duration: 0.25 }}
+                                            >
+                                                {stocksQuote.price}
+                                            </motion.p>
+                                            <p className="mt-1 font-mono text-xs font-semibold text-emerald-400">
+                                                {stocksQuote.change}
+                                            </p>
+                                        </div>
+                                        <div
+                                            className="flex gap-1"
+                                            role="group"
+                                            aria-label="Range"
+                                        >
+                                            {ranges.map((r) => {
+                                                const active = range === r
+                                                return (
+                                                    <button
+                                                        key={r}
+                                                        type="button"
+                                                        onClick={() => setRange(r)}
+                                                        className={[
+                                                            "rounded-md px-2 py-0.5 text-[10px] font-semibold transition",
+                                                            "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400",
+                                                            active
+                                                                ? "border border-blue-400/30 bg-blue-500/15 text-blue-200"
+                                                                : "border border-white/10 bg-white/5 text-slate-400 hover:text-slate-200",
+                                                        ].join(" ")}
+                                                    >
+                                                        {rangeLabels[r]}
+                                                    </button>
+                                                )
+                                            })}
+                                        </div>
+                                    </div>
+                                    <SimulatedCandlesChart
+                                        variant="stocks"
+                                        gradientId={`${gradientId}-stocks`}
+                                        reduceMotion={reduceMotion}
+                                    />
+                                </>
+                            )}
 
-                    <div className="mt-2 grid grid-cols-3 gap-2 border-t border-white/10 pt-3 text-[10px]">
-                        <div className="rounded-lg border border-white/10 bg-white/[0.03] px-2 py-1.5">
-                            <p className="text-slate-500">Options</p>
-                            <p className="mt-0.5 font-semibold text-slate-200">Calls · Puts</p>
-                        </div>
-                        <div className="rounded-lg border border-white/10 bg-white/[0.03] px-2 py-1.5">
-                            <p className="text-slate-500">Equities</p>
-                            <p className="mt-0.5 font-semibold text-slate-200">Stocks · ETFs</p>
-                        </div>
-                        <div className="rounded-lg border border-white/10 bg-white/[0.03] px-2 py-1.5">
-                            <p className="text-slate-500">Format</p>
-                            <p className="mt-0.5 font-semibold text-slate-200">Live sessions</p>
-                        </div>
-                    </div>
+                            {tab === "options" && (
+                                <>
+                                    <div className="mb-3 flex items-start justify-between gap-3 px-0.5">
+                                        <div>
+                                            <p className="font-mono text-xl font-bold tracking-tight text-slate-50 sm:text-2xl">
+                                                {DEMO.options.underlying}
+                                            </p>
+                                            <span className="mt-1.5 inline-flex rounded-md border border-emerald-400/30 bg-emerald-500/15 px-2 py-0.5 text-[10px] font-extrabold tracking-wide text-emerald-200">
+                                                {t.heroTerminalCall}
+                                            </span>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="text-[10px] uppercase tracking-wide text-slate-500">
+                                                {t.heroTerminalPremium}
+                                            </p>
+                                            <p className="mt-0.5 font-mono text-lg font-bold tabular-nums text-blue-200 sm:text-xl">
+                                                {DEMO.options.premium}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="mb-3 grid grid-cols-2 gap-2">
+                                        <div className="rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-2">
+                                            <p className="text-[10px] text-slate-500">
+                                                {t.heroTerminalStrike}
+                                            </p>
+                                            <p className="mt-0.5 font-mono text-sm font-semibold text-slate-100">
+                                                {DEMO.options.strike}
+                                            </p>
+                                        </div>
+                                        <div className="rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-2">
+                                            <p className="text-[10px] text-slate-500">
+                                                {t.heroTerminalExpiration}
+                                            </p>
+                                            <p className="mt-0.5 font-mono text-sm font-semibold text-slate-100">
+                                                {DEMO.options.expiration}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <SimulatedCandlesChart
+                                        variant="options"
+                                        gradientId={`${gradientId}-options`}
+                                        reduceMotion={reduceMotion}
+                                    />
+                                </>
+                            )}
+
+                            {tab === "etfs" && (
+                                <>
+                                    <div className="mb-3 flex items-end justify-between gap-3 px-0.5">
+                                        <div>
+                                            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+                                                {DEMO.etfs.symbol}
+                                            </p>
+                                            <p className="mt-1 font-mono text-2xl font-bold tabular-nums text-slate-50 sm:text-3xl">
+                                                {DEMO.etfs.price}
+                                            </p>
+                                            <p className="mt-1 font-mono text-xs font-semibold text-emerald-400">
+                                                {DEMO.etfs.change}
+                                            </p>
+                                        </div>
+                                        <div className="rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-2 text-right">
+                                            <p className="text-[10px] text-slate-500">ETF</p>
+                                            <p className="mt-0.5 text-[11px] font-semibold text-slate-200">
+                                                S&amp;P 500
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <SimulatedCandlesChart
+                                        variant="etfs"
+                                        gradientId={`${gradientId}-etfs`}
+                                        reduceMotion={reduceMotion}
+                                    />
+                                </>
+                            )}
+                        </motion.div>
+                    </AnimatePresence>
                 </div>
             </div>
         </div>
@@ -263,15 +515,43 @@ export default function Hero() {
                         opacity: 0.75;
                     }
                 }
-                .soa-hero-float {
+                @keyframes soaHeroSimPing {
+                    0% {
+                        transform: scale(1);
+                        opacity: 0.6;
+                    }
+                    75%,
+                    100% {
+                        transform: scale(2.1);
+                        opacity: 0;
+                    }
+                }
+                @keyframes soaHeroChartDraw {
+                    from {
+                        stroke-dashoffset: 420;
+                    }
+                    to {
+                        stroke-dashoffset: 0;
+                    }
+                }
+                :global(.soa-hero-float) {
                     animation: soaHeroFloat 7s ease-in-out infinite;
                 }
                 .soa-hero-glow {
                     animation: soaHeroGlow 6s ease-in-out infinite;
                 }
+                :global(.soa-hero-sim-ping) {
+                    animation: soaHeroSimPing 2.2s cubic-bezier(0, 0, 0.2, 1) infinite;
+                }
+                :global(.soa-hero-chart-draw) {
+                    stroke-dasharray: 420;
+                    animation: soaHeroChartDraw 1.1s ease-out both;
+                }
                 @media (prefers-reduced-motion: reduce) {
-                    .soa-hero-float,
-                    .soa-hero-glow {
+                    :global(.soa-hero-float),
+                    .soa-hero-glow,
+                    :global(.soa-hero-sim-ping),
+                    :global(.soa-hero-chart-draw) {
                         animation: none;
                     }
                 }

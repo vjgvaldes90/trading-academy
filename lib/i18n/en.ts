@@ -16,6 +16,18 @@ export const en = {
     heroChipStocks: "Stocks",
     heroChipEtfs: "ETFs",
     heroChipLiveMentorship: "Live mentorship",
+    heroTerminalSimulation: "Market simulation",
+    heroTerminalTabStocks: "Stocks",
+    heroTerminalTabOptions: "Options",
+    heroTerminalTabEtfs: "ETFs",
+    heroTerminalStrike: "Strike",
+    heroTerminalExpiration: "Expiration",
+    heroTerminalPremium: "Premium",
+    heroTerminalCall: "CALL",
+    heroTerminalRange1D: "1D",
+    heroTerminalRange1W: "1W",
+    heroTerminalRange1M: "1M",
+    heroTerminalDemoHint: "Demo data · Not live quotes",
 
     // How It Works
     howItWorksTitle: "From beginner to professional trader",

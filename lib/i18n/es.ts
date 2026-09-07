@@ -18,6 +18,18 @@ export const es: TranslationKeys = {
     heroChipStocks: "Acciones",
     heroChipEtfs: "ETFs",
     heroChipLiveMentorship: "Mentoría en vivo",
+    heroTerminalSimulation: "Simulación de mercado",
+    heroTerminalTabStocks: "Acciones",
+    heroTerminalTabOptions: "Opciones",
+    heroTerminalTabEtfs: "ETFS",
+    heroTerminalStrike: "Strike",
+    heroTerminalExpiration: "Vencimiento",
+    heroTerminalPremium: "Prima",
+    heroTerminalCall: "CALL",
+    heroTerminalRange1D: "1D",
+    heroTerminalRange1W: "1W",
+    heroTerminalRange1M: "1M",
+    heroTerminalDemoHint: "Datos demo · No son cotizaciones reales",
 
     // How It Works
     howItWorksTitle: "De principiante a trader profesional",
