@@ -29,6 +29,10 @@ import {
     claimStripeWebhookEvent,
     releaseStripeWebhookEventClaim,
 } from "@/lib/stripeWebhookIdempotency"
+import {
+    handlePrivateClassCheckoutPaidEvent,
+    isPrivateClassCheckoutSession,
+} from "@/lib/privateClassStripe"
 
 function generateAccessCode(): string {
     return Math.random().toString(36).substring(2, 8).toUpperCase()
@@ -463,40 +467,73 @@ export async function handleStripeWebhook(req: Request): Promise<Response> {
     try {
         if (event.type === "checkout.session.completed") {
             const session = event.data.object as Stripe.Checkout.Session
-            const subscriptionId =
-                typeof session.subscription === "string" && session.subscription.trim()
-                    ? session.subscription.trim()
-                    : null
 
-            const customerEmail =
-                (typeof session.customer_email === "string" && session.customer_email.trim()
-                    ? session.customer_email.trim()
-                    : null) ||
-                (typeof session.customer_details?.email === "string" &&
-                session.customer_details.email.trim()
-                    ? session.customer_details.email.trim()
-                    : null)
+            if (isPrivateClassCheckoutSession(session)) {
+                console.log("[stripe-webhook] private_class checkout.session.completed", {
+                    sessionId: session.id,
+                    payment_status: session.payment_status,
+                    mode: session.mode,
+                    requestId: session.metadata?.private_class_request_id ?? null,
+                })
+                await handlePrivateClassCheckoutPaidEvent({
+                    supabase,
+                    session,
+                    source: "checkout.session.completed",
+                })
+            } else {
+                const subscriptionId =
+                    typeof session.subscription === "string" && session.subscription.trim()
+                        ? session.subscription.trim()
+                        : null
 
-            console.log("[stripe-webhook] checkout.session.completed", {
-                sessionId: session.id,
-                subscriptionId,
-                planMeta: session.metadata?.plan ?? null,
-            })
+                const customerEmail =
+                    (typeof session.customer_email === "string" && session.customer_email.trim()
+                        ? session.customer_email.trim()
+                        : null) ||
+                    (typeof session.customer_details?.email === "string" &&
+                    session.customer_details.email.trim()
+                        ? session.customer_details.email.trim()
+                        : null)
 
-            if (!customerEmail) {
-                throw new Error("Missing customer_email / customer_details.email on session")
+                console.log("[stripe-webhook] checkout.session.completed", {
+                    sessionId: session.id,
+                    subscriptionId,
+                    planMeta: session.metadata?.plan ?? null,
+                })
+
+                if (!customerEmail) {
+                    throw new Error("Missing customer_email / customer_details.email on session")
+                }
+
+                await fulfillPaidAccess({
+                    stripe,
+                    emailForDb: customerEmail.toLowerCase(),
+                    emailForDelivery: customerEmail,
+                    rawName: session.customer_details?.name?.trim() ?? null,
+                    subscriptionId,
+                    plan: planFromMetadata(session.metadata),
+                    resendApiKey,
+                    eventId: event.id,
+                })
             }
-
-            await fulfillPaidAccess({
-                stripe,
-                emailForDb: customerEmail.toLowerCase(),
-                emailForDelivery: customerEmail,
-                rawName: session.customer_details?.name?.trim() ?? null,
-                subscriptionId,
-                plan: planFromMetadata(session.metadata),
-                resendApiKey,
-                eventId: event.id,
-            })
+        } else if (event.type === "checkout.session.async_payment_succeeded") {
+            const session = event.data.object as Stripe.Checkout.Session
+            if (isPrivateClassCheckoutSession(session)) {
+                console.log("[stripe-webhook] private_class checkout.session.async_payment_succeeded", {
+                    sessionId: session.id,
+                    requestId: session.metadata?.private_class_request_id ?? null,
+                })
+                await handlePrivateClassCheckoutPaidEvent({
+                    supabase,
+                    session,
+                    source: "checkout.session.async_payment_succeeded",
+                })
+            } else {
+                console.log(
+                    "[stripe-webhook] checkout.session.async_payment_succeeded ignored (not private_class)",
+                    { sessionId: session.id }
+                )
+            }
         } else if (event.type === "payment_intent.succeeded") {
             const paymentIntent = event.data.object as Stripe.PaymentIntent
             const piFull = await stripe.paymentIntents.retrieve(paymentIntent.id, {

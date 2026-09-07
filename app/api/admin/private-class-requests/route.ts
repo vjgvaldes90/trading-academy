@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { createSupabaseServiceRoleClient } from "@/lib/access"
 import { requireAuthorizedAdminFromCookies } from "@/lib/adminAuth"
 import {
+    PRIVATE_CLASS_REQUEST_SELECT,
     PRIVATE_CLASS_STATUSES,
     isPrivateClassStatus,
     publicPrivateClassRequest,
@@ -21,9 +22,7 @@ export async function GET(req: Request) {
         const supabase = createSupabaseServiceRoleClient()
         let query = supabase
             .from("private_class_requests")
-            .select(
-                "id, student_id, student_email, requested_date, requested_time, duration_minutes, price_cents, currency, status, student_message, admin_notes, approved_by_admin_email, rejected_by_admin_email, approved_at, rejected_at, cancelled_at, completed_at, created_at, updated_at"
-            )
+            .select(PRIVATE_CLASS_REQUEST_SELECT)
             .order("created_at", { ascending: false })
 
         if (statusRaw) {

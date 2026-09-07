@@ -43,7 +43,17 @@ export type PrivateClassRequestRow = {
     completed_at: string | null
     created_at: string
     updated_at: string
+    stripe_checkout_session_id?: string | null
+    stripe_payment_intent_id?: string | null
+    stripe_payment_status?: string | null
+    paid_at?: string | null
 }
+
+/** Columns returned to student/admin list UIs (no secret Stripe objects). */
+export const PRIVATE_CLASS_REQUEST_SELECT =
+    "id, student_id, student_email, requested_date, requested_time, duration_minutes, price_cents, currency, status, student_message, admin_notes, approved_by_admin_email, rejected_by_admin_email, approved_at, rejected_at, cancelled_at, completed_at, created_at, updated_at, stripe_checkout_session_id, stripe_payment_intent_id, stripe_payment_status, paid_at"
+
+export const PRIVATE_CLASS_PRODUCT_TYPE = "private_class" as const
 
 export const privateClassRequestIdSchema = z.string().uuid()
 
@@ -165,5 +175,9 @@ export function publicPrivateClassRequest(row: PrivateClassRequestRow) {
         completed_at: row.completed_at,
         created_at: row.created_at,
         updated_at: row.updated_at,
+        stripe_payment_status: row.stripe_payment_status ?? null,
+        paid_at: row.paid_at ?? null,
+        // Session id is useful for admin ops; not a secret key.
+        stripe_checkout_session_id: row.stripe_checkout_session_id ?? null,
     }
 }

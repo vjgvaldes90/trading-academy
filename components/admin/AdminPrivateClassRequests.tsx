@@ -12,7 +12,6 @@ import StudentToast, {
 } from "@/components/dashboard/support/StudentToast"
 import { useLanguage } from "@/context/LanguageProvider"
 import {
-    PRIVATE_CLASS_STATUSES,
     type PrivateClassRequestRow,
     type PrivateClassStatus,
 } from "@/lib/privateClassRequests"
@@ -188,7 +187,7 @@ export default function AdminPrivateClassRequests() {
                                     <span
                                         className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-bold ${privateClassStatusBadgeClass(status)}`}
                                     >
-                                        {privateClassStatusLabel(status, t)}
+                                        {privateClassStatusLabel(status, t, { forAdmin: true })}
                                     </span>
                                 </div>
 
@@ -215,13 +214,24 @@ export default function AdminPrivateClassRequests() {
                                     </p>
                                     <p>
                                         <span className="font-semibold text-slate-500">
-                                            {t.adminPrivateClassStatus}:{" "}
+                                            {t.adminPrivateClassPaidAt}:{" "}
                                         </span>
-                                        {PRIVATE_CLASS_STATUSES.includes(status as PrivateClassStatus)
-                                            ? privateClassStatusLabel(status, t)
-                                            : status}
+                                        {row.paid_at
+                                            ? new Date(row.paid_at).toLocaleString()
+                                            : t.adminPrivateClassNoNotes}
                                     </p>
                                 </div>
+
+                                <p className="mt-2 text-sm text-slate-400">
+                                    <span className="font-semibold text-slate-500">
+                                        {t.adminPrivateClassPaymentStatus}:{" "}
+                                    </span>
+                                    {row.stripe_payment_status?.trim()
+                                        ? row.stripe_payment_status
+                                        : status === "paid"
+                                          ? "paid"
+                                          : t.adminPrivateClassNoNotes}
+                                </p>
 
                                 <p className="mt-3 text-sm text-slate-400">
                                     <span className="font-semibold text-slate-500">

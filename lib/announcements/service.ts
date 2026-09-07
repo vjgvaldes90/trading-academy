@@ -22,7 +22,14 @@ export class AnnouncementsService {
         filters: ListAnnouncementsFilters = {}
     ): Promise<AnnouncementServiceResult<Announcement[]>> {
         try {
-            const data = await this.repo.getAnnouncements(filters)
+            // Best-effort cleanup so expired rows disappear without waiting solely on cron.
+            await this.repo.deleteExpiredAnnouncements().catch((err) => {
+                console.warn("[AnnouncementsService] expired cleanup skipped", err)
+            })
+            const data = await this.repo.getAnnouncements({
+                ...filters,
+                onlyUnexpired: filters.onlyUnexpired !== false,
+            })
             return { ok: true, data }
         } catch (e) {
             console.error("[AnnouncementsService.getAnnouncements]", e)
@@ -45,9 +52,13 @@ export class AnnouncementsService {
         filters: Omit<ListAnnouncementsFilters, "published"> = {}
     ): Promise<AnnouncementServiceResult<StudentAnnouncementsPayload>> {
         try {
+            await this.repo.deleteExpiredAnnouncements().catch((err) => {
+                console.warn("[AnnouncementsService.listForStudent] expired cleanup skipped", err)
+            })
             const published = await this.repo.getAnnouncements({
                 ...filters,
                 published: true,
+                onlyUnexpired: true,
             })
             const readIds = await this.repo.listReadAnnouncementIds(studentId)
             const announcements: StudentAnnouncementItem[] = published
@@ -58,6 +69,7 @@ export class AnnouncementsService {
                     message: row.message,
                     priority: row.priority,
                     created_at: row.created_at,
+                    expires_at: row.expires_at,
                     read: false,
                 }))
             return { ok: true, data: { announcements, unreadCount: announcements.length } }
@@ -108,7 +120,10 @@ export class AnnouncementsService {
         try {
             const existing = await this.repo.getAnnouncement(input.id)
             if (!existing) return { ok: false, error: "Announcement not found", code: "not_found" }
-            const data = await this.repo.updateAnnouncement(input)
+            const data = await this.repo.updateAnnouncement(input, {
+                resetExpiresAtOnFirstPublish: true,
+                wasPublished: existing.published,
+            })
             return { ok: true, data }
         } catch (e) {
             console.error("[AnnouncementsService.updateAnnouncement]", e)
@@ -152,6 +167,13 @@ export class AnnouncementsService {
                     code: "not_published",
                 }
             }
+            if (Date.parse(announcement.expires_at) <= Date.now()) {
+                return {
+                    ok: false,
+                    error: "Announcement has expired",
+                    code: "expired",
+                }
+            }
             const data = await this.repo.markAsRead(announcementId, studentId)
             return { ok: true, data }
         } catch (e) {
@@ -166,6 +188,9 @@ export class AnnouncementsService {
 
     async getUnreadCount(studentId: string): Promise<AnnouncementServiceResult<number>> {
         try {
+            await this.repo.deleteExpiredAnnouncements().catch((err) => {
+                console.warn("[AnnouncementsService.getUnreadCount] expired cleanup skipped", err)
+            })
             const data = await this.repo.getUnreadCount(studentId)
             return { ok: true, data }
         } catch (e) {
@@ -174,6 +199,20 @@ export class AnnouncementsService {
                 ok: false,
                 error: e instanceof Error ? e.message : "Failed to load unread count",
                 code: "unread_count_failed",
+            }
+        }
+    }
+
+    async deleteExpiredAnnouncements(): Promise<AnnouncementServiceResult<{ deleted: number }>> {
+        try {
+            const deleted = await this.repo.deleteExpiredAnnouncements()
+            return { ok: true, data: { deleted } }
+        } catch (e) {
+            console.error("[AnnouncementsService.deleteExpiredAnnouncements]", e)
+            return {
+                ok: false,
+                error: e instanceof Error ? e.message : "Failed to delete expired announcements",
+                code: "cleanup_failed",
             }
         }
     }

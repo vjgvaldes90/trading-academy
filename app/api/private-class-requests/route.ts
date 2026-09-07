@@ -5,6 +5,7 @@ import {
     PRIVATE_CLASS_CURRENCY,
     PRIVATE_CLASS_DURATION_MINUTES,
     PRIVATE_CLASS_PRICE_CENTS,
+    PRIVATE_CLASS_REQUEST_SELECT,
     createPrivateClassRequestSchema,
     isPrivateClassSlotInPast,
     normalizeRequestedTime,
@@ -52,9 +53,7 @@ export async function GET() {
 
         const { data, error } = await supabase
             .from("private_class_requests")
-            .select(
-                "id, student_id, student_email, requested_date, requested_time, duration_minutes, price_cents, currency, status, student_message, admin_notes, approved_by_admin_email, rejected_by_admin_email, approved_at, rejected_at, cancelled_at, completed_at, created_at, updated_at"
-            )
+            .select(PRIVATE_CLASS_REQUEST_SELECT)
             .eq("student_id", student.id)
             .order("created_at", { ascending: false })
 
@@ -156,9 +155,7 @@ export async function POST(req: Request) {
                 status: "pending",
                 student_message: studentMessage,
             })
-            .select(
-                "id, student_id, student_email, requested_date, requested_time, duration_minutes, price_cents, currency, status, student_message, admin_notes, approved_by_admin_email, rejected_by_admin_email, approved_at, rejected_at, cancelled_at, completed_at, created_at, updated_at"
-            )
+            .select(PRIVATE_CLASS_REQUEST_SELECT)
             .single()
 
         if (insertErr || !created) {

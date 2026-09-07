@@ -17,6 +17,7 @@ type AnnouncementRow = {
     created_by: string | null
     created_at: string
     updated_at: string
+    expires_at: string
 }
 
 type AnnouncementReadRow = {
@@ -26,9 +27,16 @@ type AnnouncementReadRow = {
 }
 
 const ANNOUNCEMENT_SELECT =
-    "id, title, message, priority, published, created_by, created_at, updated_at"
+    "id, title, message, priority, published, created_by, created_at, updated_at, expires_at"
 
 const READ_SELECT = "announcement_id, student_id, read_at"
+
+/** Fixed 24h lifetime — computed server-side only. */
+export const ANNOUNCEMENT_TTL_MS = 24 * 60 * 60 * 1000
+
+export function computeAnnouncementExpiresAt(from: Date = new Date()): string {
+    return new Date(from.getTime() + ANNOUNCEMENT_TTL_MS).toISOString()
+}
 
 function mapAnnouncement(row: AnnouncementRow): Announcement {
     return {
@@ -40,6 +48,7 @@ function mapAnnouncement(row: AnnouncementRow): Announcement {
         created_by: row.created_by,
         created_at: row.created_at,
         updated_at: row.updated_at,
+        expires_at: row.expires_at,
     }
 }
 
@@ -62,6 +71,7 @@ export class AnnouncementsRepository {
     async getAnnouncements(filters: ListAnnouncementsFilters = {}): Promise<Announcement[]> {
         const limit = filters.limit ?? 50
         const offset = filters.offset ?? 0
+        const onlyUnexpired = filters.onlyUnexpired !== false
 
         let query = this.supabase
             .from("academy_announcements")
@@ -71,6 +81,10 @@ export class AnnouncementsRepository {
 
         if (filters.published !== undefined) {
             query = query.eq("published", filters.published)
+        }
+
+        if (onlyUnexpired) {
+            query = query.gt("expires_at", new Date().toISOString())
         }
 
         const priorities = asArray(filters.priority)
@@ -97,6 +111,7 @@ export class AnnouncementsRepository {
     }
 
     async createAnnouncement(input: CreateAnnouncementInput): Promise<Announcement> {
+        const expiresAt = computeAnnouncementExpiresAt()
         const { data, error } = await this.supabase
             .from("academy_announcements")
             .insert({
@@ -105,6 +120,7 @@ export class AnnouncementsRepository {
                 priority: input.priority ?? "normal",
                 published: input.published ?? true,
                 created_by: input.createdBy ?? null,
+                expires_at: expiresAt,
             })
             .select(ANNOUNCEMENT_SELECT)
             .single()
@@ -113,12 +129,25 @@ export class AnnouncementsRepository {
         return mapAnnouncement(data as AnnouncementRow)
     }
 
-    async updateAnnouncement(input: UpdateAnnouncementInput): Promise<Announcement> {
+    async updateAnnouncement(
+        input: UpdateAnnouncementInput,
+        options?: { resetExpiresAtOnFirstPublish?: boolean; wasPublished?: boolean }
+    ): Promise<Announcement> {
         const patch: Record<string, unknown> = {}
         if (input.title !== undefined) patch.title = input.title.trim()
         if (input.message !== undefined) patch.message = input.message.trim()
         if (input.priority !== undefined) patch.priority = input.priority
         if (input.published !== undefined) patch.published = input.published
+
+        // Draft → published: start the 24h window at first publish.
+        // Edits to already-published content never reset expires_at.
+        if (
+            options?.resetExpiresAtOnFirstPublish &&
+            input.published === true &&
+            options.wasPublished === false
+        ) {
+            patch.expires_at = computeAnnouncementExpiresAt()
+        }
 
         const { data, error } = await this.supabase
             .from("academy_announcements")
@@ -134,6 +163,18 @@ export class AnnouncementsRepository {
     async deleteAnnouncement(id: string): Promise<void> {
         const { error } = await this.supabase.from("academy_announcements").delete().eq("id", id)
         if (error) throw new Error(error.message)
+    }
+
+    /** Hard-delete expired announcements (reads CASCADE). Returns deleted count. */
+    async deleteExpiredAnnouncements(now: Date = new Date()): Promise<number> {
+        const { data, error } = await this.supabase
+            .from("academy_announcements")
+            .delete()
+            .lte("expires_at", now.toISOString())
+            .select("id")
+
+        if (error) throw new Error(error.message)
+        return Array.isArray(data) ? data.length : 0
     }
 
     async markAsRead(announcementId: string, studentId: string): Promise<AnnouncementRead> {
@@ -186,10 +227,12 @@ export class AnnouncementsRepository {
     }
 
     async getUnreadCount(studentId: string): Promise<number> {
+        const nowIso = new Date().toISOString()
         const { data: published, error: pubErr } = await this.supabase
             .from("academy_announcements")
             .select("id")
             .eq("published", true)
+            .gt("expires_at", nowIso)
 
         if (pubErr) throw new Error(pubErr.message)
 

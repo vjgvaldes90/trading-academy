@@ -11,6 +11,7 @@ export type Announcement = {
     created_by: string | null
     created_at: string
     updated_at: string
+    expires_at: string
 }
 
 export type AnnouncementRead = {
@@ -25,6 +26,7 @@ export type StudentAnnouncementItem = {
     message: string
     priority: AnnouncementPriority
     created_at: string
+    expires_at: string
     read: boolean
 }
 
@@ -52,6 +54,8 @@ export type UpdateAnnouncementInput = {
 export type ListAnnouncementsFilters = {
     published?: boolean
     priority?: AnnouncementPriority | AnnouncementPriority[]
+    /** When true (default for student paths), only expires_at > now(). */
+    onlyUnexpired?: boolean
     limit?: number
     offset?: number
 }

@@ -26,6 +26,15 @@ export function getStripePriceIdFullProgram(): string | null {
     return priceId || null
 }
 
+/**
+ * Private Class 1:1 one-time price ($250).
+ * Never fall back to subscription Price IDs.
+ */
+export function getStripePriceIdPrivateClass(): string | null {
+    const priceId = process.env.STRIPE_PRICE_ID_PRIVATE_CLASS?.trim()
+    return priceId || null
+}
+
 export function createStripeClient(): Stripe {
     const key = getStripeSecretKey()
     if (!key) {

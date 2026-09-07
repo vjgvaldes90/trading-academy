@@ -13,16 +13,22 @@ export function formatPrivateClassPriceCents(cents: number | null | undefined): 
     return `$${(cents / 100).toFixed(cents % 100 === 0 ? 0 : 2)}`
 }
 
-export function privateClassStatusLabel(status: string, t: TranslationKeys): string {
+export function privateClassStatusLabel(
+    status: string,
+    t: TranslationKeys,
+    opts?: { forAdmin?: boolean }
+): string {
     switch (status as PrivateClassStatus) {
         case "pending":
             return t.privateClassStatusPending
         case "rejected":
             return t.privateClassStatusRejected
         case "awaiting_payment":
-            return t.privateClassStatusAwaitingPayment
+            return opts?.forAdmin
+                ? t.adminPrivateClassFilterAwaitingPayment
+                : t.privateClassStatusAwaitingPayment
         case "paid":
-            return t.privateClassStatusPaid
+            return opts?.forAdmin ? t.adminPrivateClassFilterPaid : t.privateClassStatusPaid
         case "confirmed":
             return t.privateClassStatusConfirmed
         case "completed":
