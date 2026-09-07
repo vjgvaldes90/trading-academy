@@ -13,7 +13,7 @@ import StudentToast, {
 import { useLanguage } from "@/context/LanguageProvider"
 import { useSession } from "@/context/SessionContext"
 import type { PrivateClassRequestRow } from "@/lib/privateClassRequests"
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 
 export default function PrivateClassSection() {
     const { t } = useLanguage()
@@ -24,9 +24,7 @@ export default function PrivateClassSection() {
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
     const [modalOpen, setModalOpen] = useState(false)
-    const [payingId, setPayingId] = useState<string | null>(null)
     const [toast, setToast] = useState<{ message: string; tone: StudentToastTone } | null>(null)
-    const successPollStarted = useRef(false)
 
     const load = useCallback(async () => {
         if (!canAccess) {
@@ -67,56 +65,6 @@ export default function PrivateClassSection() {
     useEffect(() => {
         void load()
     }, [load])
-
-    // After Stripe success redirect: refresh until webhook marks paid (do not trust URL alone).
-    useEffect(() => {
-        if (typeof window === "undefined" || successPollStarted.current) return
-        const params = new URLSearchParams(window.location.search)
-        if (params.get("private_class") !== "success") return
-        successPollStarted.current = true
-        setToast({ message: t.privateClassPaymentProcessing, tone: "success" })
-
-        let attempts = 0
-        const maxAttempts = 8
-        const timer = window.setInterval(() => {
-            attempts += 1
-            void load()
-            if (attempts >= maxAttempts) {
-                window.clearInterval(timer)
-            }
-        }, 2500)
-
-        return () => window.clearInterval(timer)
-    }, [load, t])
-
-    const handlePay = async (requestId: string) => {
-        if (payingId) return
-        setPayingId(requestId)
-        try {
-            const res = await fetch(`/api/private-class-requests/${requestId}/checkout`, {
-                method: "POST",
-                credentials: "include",
-                cache: "no-store",
-            })
-            const payload = (await res.json().catch(() => ({}))) as {
-                url?: string
-                error?: string
-            }
-            if (!res.ok || typeof payload.url !== "string" || !payload.url.trim()) {
-                const msg =
-                    typeof payload.error === "string" && payload.error.trim()
-                        ? payload.error
-                        : t.privateClassCheckoutError
-                setToast({ message: msg, tone: "error" })
-                return
-            }
-            window.location.assign(payload.url)
-        } catch {
-            setToast({ message: t.privateClassCheckoutError, tone: "error" })
-        } finally {
-            setPayingId(null)
-        }
-    }
 
     return (
         <div className="space-y-5">
@@ -175,8 +123,6 @@ export default function PrivateClassSection() {
                     <ul className="space-y-3">
                         {requests.map((row) => {
                             const status = String(row.status)
-                            const isAwaitingPayment = status === "awaiting_payment"
-                            const isPaying = payingId === row.id
                             return (
                                 <li
                                     key={row.id}
@@ -217,20 +163,6 @@ export default function PrivateClassSection() {
                                             </span>
                                             {row.admin_notes}
                                         </p>
-                                    ) : null}
-                                    {isAwaitingPayment ? (
-                                        <div className="mt-4">
-                                            <button
-                                                type="button"
-                                                disabled={payingId !== null}
-                                                onClick={() => void handlePay(row.id)}
-                                                className="rounded-lg border border-amber-400/45 bg-gradient-to-b from-amber-300 to-amber-500 px-4 py-2.5 text-sm font-extrabold text-slate-950 transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60"
-                                            >
-                                                {isPaying
-                                                    ? t.privateClassPaymentProcessing
-                                                    : t.privateClassPayButton}
-                                            </button>
-                                        </div>
                                     ) : null}
                                 </li>
                             )

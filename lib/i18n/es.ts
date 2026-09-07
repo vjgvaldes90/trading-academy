@@ -533,7 +533,7 @@ export const es: TranslationKeys = {
     privateClassNyHint: "La fecha y la hora están en hora de Nueva York (ET).",
     privateClassStatusPending: "Pendiente",
     privateClassStatusRejected: "Rechazada",
-    privateClassStatusAwaitingPayment: "Aprobada",
+    privateClassStatusAwaitingPayment: "Aprobada — Pago próximamente",
     privateClassStatusPaid: "Pago recibido",
     privateClassStatusConfirmed: "Confirmada",
     privateClassStatusCompleted: "Completada",

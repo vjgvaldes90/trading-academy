@@ -530,7 +530,7 @@ export const en = {
     privateClassNyHint: "Date and time are in New York time (ET).",
     privateClassStatusPending: "Pending",
     privateClassStatusRejected: "Rejected",
-    privateClassStatusAwaitingPayment: "Approved",
+    privateClassStatusAwaitingPayment: "Approved — Payment Coming Soon",
     privateClassStatusPaid: "Payment Received",
     privateClassStatusConfirmed: "Confirmed",
     privateClassStatusCompleted: "Completed",

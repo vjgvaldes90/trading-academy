@@ -24,9 +24,7 @@ export function privateClassStatusLabel(
         case "rejected":
             return t.privateClassStatusRejected
         case "awaiting_payment":
-            return opts?.forAdmin
-                ? t.adminPrivateClassFilterAwaitingPayment
-                : t.privateClassStatusAwaitingPayment
+            return t.privateClassStatusAwaitingPayment
         case "paid":
             return opts?.forAdmin ? t.adminPrivateClassFilterPaid : t.privateClassStatusPaid
         case "confirmed":
