@@ -29,7 +29,7 @@ export const es: TranslationKeys = {
     howItWorksStep2Title: "Gráficos y mercado en tiempo real",
     howItWorksStep2Text:
         "Aprende a analizar gráficos en tiempo real con mentoría en vivo y metodología estructurada.",
-    howItWorksStep3Title: "Acciones,ETFS y Opciones",
+    howItWorksStep3Title: "Acciones,Opciones y ETFS",
     howItWorksStep3Text:
         "Domina la compra y venta de opciones con fundamentos institucionales y gestión profesional del riesgo.",
     howItWorksStep4Title: "Ingresos consistentes con método",
@@ -52,7 +52,7 @@ export const es: TranslationKeys = {
     scheduleEyebrow: "Sesiones en vivo disponibles",
     scheduleTitle: "Horarios de las sesiones en vivo",
     scheduleSubtitle:
-        "Acciones,ETFS y Opciones con mentoría en vivo y proceso estructurado frente al mercado real.",
+        "Acciones,Opciones y ETFS con mentoría en vivo y proceso estructurado frente al mercado real.",
     scheduleMonday: "Lunes",
     scheduleTuesday: "Martes",
     scheduleWednesday: "Miércoles",
@@ -117,7 +117,7 @@ export const es: TranslationKeys = {
     // Pricing
     pricingTitle: "Smart Option Academy: educación financiera elite en vivo",
     pricingSubtitle:
-        "Acciones,ETFS y Opciones con metodología profesional, análisis técnico y gestión de riesgo frente al mercado en tiempo real.",
+        "Acciones,Opciones y ETFS con metodología profesional, análisis técnico y gestión de riesgo frente al mercado en tiempo real.",
     pricingFeature1: "Mentoría en vivo: opciones, stocks y ETFs",
     pricingFeature2: "Análisis técnico y lectura del mercado en tiempo real",
     pricingFeature3: "Estructura de alto rendimiento y gestión del riesgo",
