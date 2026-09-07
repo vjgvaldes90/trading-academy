@@ -22,7 +22,7 @@ export const es: TranslationKeys = {
     // How It Works
     howItWorksTitle: "De principiante a trader profesional",
     howItWorksSubtitle:
-        "Educación financiera premium con enfoque en opciones, acciones y ETFs, mentoría en vivo y proceso claro paso a paso.",
+        "Educación financiera premium con enfoque en acciones, opciones y ETFS, mentoría en vivo y proceso claro paso a paso.",
     howItWorksStep1Title: "Formación de alto rendimiento",
     howItWorksStep1Text:
         "Programa elite de educación financiera orientado a inversionistas disciplinados y metódicos.",
@@ -38,7 +38,7 @@ export const es: TranslationKeys = {
 
     // Chart Section
     chartEyebrow: "Análisis de Mercado en Vivo",
-    chartTitle: "Acciones • ETFS • Opciones",
+    chartTitle: "Acciones • Opciones • ETFS",
     chartSubtitle:
         "Accede a análisis de mercado en tiempo real y aprende estrategias profesionales junto a expertos.",
     chartLiveBadge: "EN VIVO",
@@ -79,7 +79,7 @@ export const es: TranslationKeys = {
         "Lee el mercado con criterio profesional antes de ejecutar cualquier estrategia con capital real.",
     whatYouLearnItem2Title: "Aprende gestión de riesgo",
     whatYouLearnItem2Text:
-        "Protege capital y tamaño de posición con reglas institucionales aplicables en opciones, stocks y ETFs.",
+        "Protege capital y tamaño de posición con reglas institucionales aplicables en acciones, opciones y ETFS.",
     whatYouLearnItem3Title: "Metodología profesional estructurada",
     whatYouLearnItem3Text:
         "Sigue un proceso claro y repetible, alineado a educación financiera de alto nivel, no improvisación.",
@@ -106,7 +106,7 @@ export const es: TranslationKeys = {
     instructorMentorLabel: "El mentor detrás del método",
     instructorTitle: "Mentoría institucional en vivo con Tony Linares",
     instructorParagraph1:
-        "Tony forma inversionistas con estándar profesional: análisis fundamentado, Acciones-ETFS-Opciones, y control del riesgo.",
+        "Tony forma inversionistas con estándar profesional: análisis fundamentado, Acciones-Opciones-ETFS, y control del riesgo.",
     instructorParagraph2:
         "Priorizamos metodología clara: ves el análisis técnico, la lógica del trading y la gestión de riesgo aplicada paso a paso.",
     instructorParagraph3:
@@ -127,7 +127,7 @@ export const es: TranslationKeys = {
     pricingTitle: "Smart Option Academy: educación financiera elite en vivo",
     pricingSubtitle:
         "Acciones,Opciones y ETFS con metodología profesional, análisis técnico y gestión de riesgo frente al mercado en tiempo real.",
-    pricingFeature1: "Mentoría en vivo: opciones, stocks y ETFs",
+    pricingFeature1: "Mentoría en vivo: acciones, opciones y ETFS",
     pricingFeature2: "Análisis técnico y lectura del mercado en tiempo real",
     pricingFeature3: "Estructura de alto rendimiento y gestión del riesgo",
     pricingFeature4: "Metodología profesional repetible paso a paso",

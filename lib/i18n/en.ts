@@ -20,14 +20,14 @@ export const en = {
     // How It Works
     howItWorksTitle: "From beginner to professional trader",
     howItWorksSubtitle:
-        "Premium financial education focused on options, stocks and ETFs, live mentorship and a clear step-by-step process.",
+        "Premium financial education focused on stocks, options and ETFs, live mentorship and a clear step-by-step process.",
     howItWorksStep1Title: "High-performance training",
     howItWorksStep1Text:
         "Elite financial education program for disciplined, methodical investors.",
     howItWorksStep2Title: "Charts and real-time market",
     howItWorksStep2Text:
         "Learn to analyze charts in real time with live mentorship and structured methodology.",
-    howItWorksStep3Title: "Stocks, ETFs and Options",
+    howItWorksStep3Title: "Stocks, Options and ETFs",
     howItWorksStep3Text:
         "Master buying and selling options with institutional fundamentals and professional risk management.",
     howItWorksStep4Title: "Consistent income with method",
@@ -36,7 +36,7 @@ export const en = {
 
     // Chart Section
     chartEyebrow: "Live Market Analysis",
-    chartTitle: "Stocks • ETFs • Options",
+    chartTitle: "Stocks • Options • ETFs",
     chartSubtitle:
         "Access real-time market analysis and learn professional strategies alongside experts.",
     chartLiveBadge: "LIVE",
@@ -77,7 +77,7 @@ export const en = {
         "Read the market with professional criteria before executing any strategy with real capital.",
     whatYouLearnItem2Title: "Learn risk management",
     whatYouLearnItem2Text:
-        "Protect capital and position sizing with institutional rules applicable to options, stocks and ETFs.",
+        "Protect capital and position sizing with institutional rules applicable to stocks, options and ETFs.",
     whatYouLearnItem3Title: "Structured professional methodology",
     whatYouLearnItem3Text:
         "Follow a clear, repeatable process aligned with high-level financial education — not improvisation.",
@@ -104,7 +104,7 @@ export const en = {
     instructorMentorLabel: "The mentor behind the method",
     instructorTitle: "Live institutional mentorship with Tony Linares",
     instructorParagraph1:
-        "Tony trains investors to professional standards: grounded analysis, Stocks-ETFs-Options, and risk control.",
+        "Tony trains investors to professional standards: grounded analysis, Stocks-Options-ETFs, and risk control.",
     instructorParagraph2:
         "We prioritize clear methodology: you see technical analysis, trading logic and risk management applied step by step.",
     instructorParagraph3:
@@ -124,8 +124,8 @@ export const en = {
     // Pricing
     pricingTitle: "Smart Option Academy: elite live financial education",
     pricingSubtitle:
-        "Stocks, ETFs and Options with professional methodology, technical analysis and risk management in front of the real-time market.",
-    pricingFeature1: "Live mentorship: options, stocks and ETFs",
+        "Stocks, Options and ETFs with professional methodology, technical analysis and risk management in front of the real-time market.",
+    pricingFeature1: "Live mentorship: stocks, options and ETFs",
     pricingFeature2: "Technical analysis and real-time market reading",
     pricingFeature3: "High-performance structure and risk management",
     pricingFeature4: "Repeatable professional step-by-step methodology",

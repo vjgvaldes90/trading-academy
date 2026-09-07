@@ -201,8 +201,8 @@ export default function Hero() {
                             {...fadeUp(0.22)}
                         >
                             {[
-                                t.heroChipOptions,
                                 t.heroChipStocks,
+                                t.heroChipOptions,
                                 t.heroChipEtfs,
                                 t.heroChipLiveMentorship,
                             ].map((label) => (

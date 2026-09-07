@@ -77,8 +77,8 @@ export default function Instructor() {
 
     const focusTags = [
         t.instructorFocusStocks,
-        t.instructorFocusEtfs,
         t.instructorFocusOptions,
+        t.instructorFocusEtfs,
         t.instructorFocusRisk,
     ]
 
