@@ -11,6 +11,7 @@ import {
     LifeBuoy,
     Megaphone,
     Settings as SettingsIcon,
+    UserRound,
     Users,
     Video,
 } from "lucide-react"
@@ -19,6 +20,7 @@ export type AdminDashboardView =
     | "overview"
     | "classes"
     | "sessions"
+    | "privateClasses"
     | "students"
     | "subscriptions"
     | "support"
@@ -36,6 +38,7 @@ const NAV_ITEMS: NavItem[] = [
     { labelKey: "adminOverview", view: "overview", icon: LayoutDashboard },
     { labelKey: "adminRecordedClasses", view: "classes", icon: Video },
     { labelKey: "adminLiveSessions", view: "sessions", icon: Calendar },
+    { labelKey: "adminPrivateClassRequests", view: "privateClasses", icon: UserRound },
     { labelKey: "adminStudents", view: "students", icon: Users },
     { labelKey: "adminSubscriptions", view: "subscriptions", icon: CreditCard },
     { labelKey: "adminSupport", view: "support", icon: LifeBuoy },

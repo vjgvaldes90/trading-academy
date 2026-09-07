@@ -5,6 +5,7 @@ import AdminAnnouncements from "@/components/admin/AdminAnnouncements"
 import AdminClasses from "@/components/admin/AdminClasses"
 import AdminNotificationsBell from "@/components/admin/AdminNotificationsBell"
 import AdminOverview from "@/components/admin/AdminOverview"
+import AdminPrivateClassRequests from "@/components/admin/AdminPrivateClassRequests"
 import AdminSessions from "@/components/admin/AdminSessions"
 import AdminSettings from "@/components/admin/AdminSettings"
 import AdminSidebar, { type AdminDashboardView } from "@/components/admin/AdminSidebar"
@@ -30,6 +31,7 @@ export default function AdminDashboardClient({
             overview: t.adminOverview,
             classes: t.adminRecordedClasses,
             sessions: t.adminLiveSessions,
+            privateClasses: t.adminPrivateClassRequests,
             students: t.adminStudents,
             subscriptions: t.adminSubscriptions,
             support: t.adminSupport,
@@ -85,6 +87,7 @@ export default function AdminDashboardClient({
                     key={activeView}
                     className={`${dashboardTheme.viewEnter} ${
                         activeView === "sessions" ||
+                        activeView === "privateClasses" ||
                         activeView === "support" ||
                         activeView === "announcements"
                             ? "max-w-7xl"
@@ -94,6 +97,7 @@ export default function AdminDashboardClient({
                     {activeView === "overview" ? <AdminOverview setActiveView={setActiveView} /> : null}
                     {activeView === "classes" ? <AdminClasses /> : null}
                     {activeView === "sessions" ? <AdminSessions /> : null}
+                    {activeView === "privateClasses" ? <AdminPrivateClassRequests /> : null}
                     {activeView === "students" ? <AdminStudents /> : null}
                     {activeView === "subscriptions" ? <AdminSubscriptions /> : null}
                     {activeView === "support" ? (

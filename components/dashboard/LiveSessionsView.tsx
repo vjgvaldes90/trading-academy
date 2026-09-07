@@ -1,6 +1,7 @@
 "use client"
 
 import BookSessionSection from "@/components/dashboard/focused/BookSessionSection"
+import PrivateClassSection from "@/components/dashboard/focused/PrivateClassSection"
 import { useLanguage } from "@/context/LanguageProvider"
 
 export default function LiveSessionsView() {
@@ -15,6 +16,10 @@ export default function LiveSessionsView() {
 
             <section className="rounded-2xl p-6 bg-[#111827] border border-white/10 shadow-sm">
                 <BookSessionSection />
+            </section>
+
+            <section className="rounded-2xl p-6 bg-[#111827] border border-white/10 shadow-sm">
+                <PrivateClassSection />
             </section>
         </div>
     )
