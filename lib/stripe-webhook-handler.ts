@@ -22,6 +22,7 @@ import {
 import {
     ensureFullProgramSubscriptionSchedule,
     getSubscriptionItemPeriodEndUnix,
+    getSubscriptionPrimaryPriceId,
     unixSecondsToIso,
 } from "@/lib/stripeFullProgramSchedule"
 import {
@@ -184,9 +185,18 @@ async function fulfillPaidAccess(args: {
     subscriptionId: string | null
     plan: SubscriptionPlanId
     resendApiKey: string | undefined
+    eventId?: string | null
 }): Promise<void> {
-    const { stripe, emailForDb, emailForDelivery, rawName, subscriptionId, plan, resendApiKey } =
-        args
+    const {
+        stripe,
+        emailForDb,
+        emailForDelivery,
+        rawName,
+        subscriptionId,
+        plan,
+        resendApiKey,
+        eventId,
+    } = args
 
     if (!resendApiKey) {
         throw new Error("Missing RESEND_API_KEY")
@@ -241,7 +251,15 @@ async function fulfillPaidAccess(args: {
         }
     }
 
-    if (plan === "full_program" && subscriptionId) {
+    if (plan === "full_program") {
+        if (!subscriptionId) {
+            console.error("[stripe-webhook] CRITICAL: full_program without subscription_id", {
+                email: emailForDb,
+                eventId: eventId ?? null,
+            })
+            throw new Error("full_program fulfillment requires subscription_id")
+        }
+
         try {
             const scheduleResult = await ensureFullProgramSubscriptionSchedule({
                 stripe,
@@ -255,14 +273,55 @@ async function fulfillPaidAccess(args: {
                 created: scheduleResult.created,
                 reusedExisting: scheduleResult.reusedExisting,
                 programTheoryUntil,
+                eventId: eventId ?? null,
             })
         } catch (scheduleErr) {
-            console.error("[stripe-webhook] CRITICAL: full_program schedule creation failed", {
+            const scheduleMessage =
+                scheduleErr instanceof Error ? scheduleErr.message : String(scheduleErr)
+            console.error("[stripe-webhook] CRITICAL: full_program schedule creation/validation failed", {
                 email: emailForDb,
                 subscriptionId,
                 plan,
-                error: scheduleErr instanceof Error ? scheduleErr.message : String(scheduleErr),
+                eventId: eventId ?? null,
+                error: scheduleMessage,
             })
+
+            // Reconciliation marker — do NOT grant a silent valid full_program ($450 forever).
+            // No auto-refund / auto-cancel. Webhook throws so Stripe can retry.
+            const reconcilePayload: Record<string, unknown> = {
+                email: emailForDb,
+                access_code: accessCode,
+                access_type: "paid",
+                is_active: false,
+                subscription_id: subscriptionId,
+                subscription_status: "schedule_error",
+                plan: "full_program",
+                stripe_price_id: stripePriceId,
+                program_theory_until: null,
+            }
+            if (accessExpiresAt) {
+                reconcilePayload.access_expires_at = accessExpiresAt
+            }
+
+            const { error: reconcileErr } = await supabase
+                .from("trading_students")
+                .upsert(reconcilePayload, { onConflict: "email" })
+
+            if (reconcileErr) {
+                console.error(
+                    "[stripe-webhook] CRITICAL: failed to persist schedule_error reconciliation row",
+                    {
+                        email: emailForDb,
+                        subscriptionId,
+                        eventId: eventId ?? null,
+                        error: reconcileErr,
+                    }
+                )
+            }
+
+            throw new Error(
+                `full_program schedule not configured (subscription_id=${subscriptionId}): ${scheduleMessage}`
+            )
         }
     }
 
@@ -327,6 +386,7 @@ async function fulfillPaidAccess(args: {
         accessExpiresAt,
         reusedAccessCode: !isNewAccessCode,
         codeMasked: maskAccessCode(accessCode),
+        eventId: eventId ?? null,
     })
 
     if (isNewAccessCode) {
@@ -435,6 +495,7 @@ export async function handleStripeWebhook(req: Request): Promise<Response> {
                 subscriptionId,
                 plan: planFromMetadata(session.metadata),
                 resendApiKey,
+                eventId: event.id,
             })
         } else if (event.type === "payment_intent.succeeded") {
             const paymentIntent = event.data.object as Stripe.PaymentIntent
@@ -498,6 +559,7 @@ export async function handleStripeWebhook(req: Request): Promise<Response> {
                         subscriptionId,
                         plan,
                         resendApiKey,
+                        eventId: event.id,
                     })
                 }
             }
@@ -511,7 +573,9 @@ export async function handleStripeWebhook(req: Request): Promise<Response> {
             } else {
                 const { data: row, error: selErr } = await supabase
                     .from("trading_students")
-                    .select("access_expires_at, plan")
+                    .select(
+                        "access_expires_at, plan, program_theory_until, stripe_price_id, subscription_status, subscription_id, subscription_schedule_id"
+                    )
                     .eq("email", email)
                     .maybeSingle()
 
@@ -520,33 +584,91 @@ export async function handleStripeWebhook(req: Request): Promise<Response> {
                     throw new Error("Failed to load student for invoice renewal")
                 }
 
-                const accessExpiresAt = await resolveAccessExpiresAtFromInvoice(
-                    stripe,
-                    invoice,
-                    (row as { access_expires_at?: string | null } | null)?.access_expires_at
-                )
+                const subscriptionStatus =
+                    typeof (row as { subscription_status?: string | null } | null)
+                        ?.subscription_status === "string"
+                        ? (row as { subscription_status: string }).subscription_status.trim()
+                        : ""
 
-                const { error: upErr } = await supabase
-                    .from("trading_students")
-                    .update({
+                if (subscriptionStatus === "schedule_error") {
+                    console.error(
+                        "[stripe-webhook] CRITICAL: invoice.payment_succeeded ignored — student in schedule_error (blocked until schedule reconciliation)",
+                        {
+                            email,
+                            invoiceId: invoice.id,
+                            subscriptionId:
+                                (row as { subscription_id?: string | null } | null)?.subscription_id ??
+                                resolveInvoiceSubscriptionId(invoice),
+                            subscriptionScheduleId:
+                                (row as { subscription_schedule_id?: string | null } | null)
+                                    ?.subscription_schedule_id ?? null,
+                            eventId: event.id,
+                        }
+                    )
+                    // Do not reactivate is_active, do not touch program_theory_until / schedule_id.
+                } else {
+                    const accessExpiresAt = await resolveAccessExpiresAtFromInvoice(
+                        stripe,
+                        invoice,
+                        (row as { access_expires_at?: string | null } | null)?.access_expires_at
+                    )
+
+                    const patch: Record<string, unknown> = {
                         is_active: true,
                         access_expires_at: accessExpiresAt,
+                    }
+
+                    // Sync stripe_price_id to live subscription price ($150 after schedule phase 2).
+                    // Do not touch program_theory_until — theory stays closed after first period.
+                    const subscriptionId = resolveInvoiceSubscriptionId(invoice)
+                    if (subscriptionId) {
+                        try {
+                            const sub = await stripe.subscriptions.retrieve(subscriptionId)
+                            const livePriceId = getSubscriptionPrimaryPriceId(sub)
+                            if (livePriceId) {
+                                patch.stripe_price_id = livePriceId
+                            }
+                            if (sub.status === "active" && !sub.cancel_at_period_end) {
+                                patch.subscription_status = "active"
+                            }
+                        } catch (subErr) {
+                            console.error(
+                                "[stripe-webhook] invoice.payment_succeeded: subscription price sync failed",
+                                {
+                                    email,
+                                    subscriptionId,
+                                    eventId: event.id,
+                                    error: subErr instanceof Error ? subErr.message : String(subErr),
+                                }
+                            )
+                        }
+                    }
+
+                    const { error: upErr } = await supabase
+                        .from("trading_students")
+                        .update(patch)
+                        .eq("email", email)
+
+                    if (upErr) {
+                        console.error("[stripe-webhook] invoice.payment_succeeded update:", upErr)
+                        throw new Error("Failed to extend access after invoice payment")
+                    }
+
+                    console.log("[stripe-webhook] access extended after invoice payment", {
+                        email,
+                        accessExpiresAt,
+                        stripePriceId:
+                            typeof patch.stripe_price_id === "string" ? patch.stripe_price_id : null,
+                        plan: (row as { plan?: string | null } | null)?.plan ?? null,
+                        programTheoryUntil:
+                            (row as { program_theory_until?: string | null } | null)
+                                ?.program_theory_until ?? null,
+                        resolvedPlan: resolveSubscriptionPlan(
+                            (row as { plan?: string | null } | null)?.plan
+                        ),
+                        eventId: event.id,
                     })
-                    .eq("email", email)
-
-                if (upErr) {
-                    console.error("[stripe-webhook] invoice.payment_succeeded update:", upErr)
-                    throw new Error("Failed to extend access after invoice payment")
                 }
-
-                console.log("[stripe-webhook] access extended after invoice payment", {
-                    email,
-                    accessExpiresAt,
-                    plan: (row as { plan?: string | null } | null)?.plan ?? null,
-                    resolvedPlan: resolveSubscriptionPlan(
-                        (row as { plan?: string | null } | null)?.plan
-                    ),
-                })
             }
         } else if (event.type === "invoice.payment_failed") {
             const invoice = event.data.object as Stripe.Invoice
@@ -589,8 +711,12 @@ export async function handleStripeWebhook(req: Request): Promise<Response> {
             const subscription = event.data.object as Stripe.Subscription
             await updateStudentBySubscriptionId(subscription.id, {
                 subscription_status: "cancelled",
+                is_active: false,
             })
-            console.log("[stripe-webhook] subscription ended", { subscriptionId: subscription.id })
+            console.log("[stripe-webhook] subscription ended — access deactivated", {
+                subscriptionId: subscription.id,
+                eventId: event.id,
+            })
         } else if (
             event.type === "subscription_schedule.updated" ||
             event.type === "subscription_schedule.completed" ||

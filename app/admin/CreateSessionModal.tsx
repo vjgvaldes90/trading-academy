@@ -36,6 +36,7 @@ export default function CreateSessionModal({ open, onClose, onSuccess }: CreateS
     const { t } = useLanguage()
     const [date, setDate] = useState("")
     const [time, setTime] = useState("")
+    const [sessionType, setSessionType] = useState<"trading" | "theory">("trading")
     const [submitError, setSubmitError] = useState<string | null>(null)
     const [submitting, setSubmitting] = useState(false)
 
@@ -43,6 +44,7 @@ export default function CreateSessionModal({ open, onClose, onSuccess }: CreateS
         if (!open) return
         setDate("")
         setTime("")
+        setSessionType("trading")
         setSubmitError(null)
         setSubmitting(false)
     }, [open])
@@ -71,6 +73,7 @@ export default function CreateSessionModal({ open, onClose, onSuccess }: CreateS
                 body: JSON.stringify({
                     date: date.trim(),
                     time: time.trim(),
+                    session_type: sessionType,
                 }),
                 cache: "no-store",
             })
@@ -164,6 +167,23 @@ export default function CreateSessionModal({ open, onClose, onSuccess }: CreateS
                 </p>
 
                 <form onSubmit={(e) => void handleSubmit(e)} style={{ padding: "18px 18px 20px" }}>
+                    <div style={{ marginBottom: 16 }}>
+                        <label htmlFor="create-session-type" style={labelStyle}>
+                            {t.sessionTypeLabel}
+                        </label>
+                        <select
+                            id="create-session-type"
+                            value={sessionType}
+                            onChange={(e) =>
+                                setSessionType(e.target.value === "theory" ? "theory" : "trading")
+                            }
+                            disabled={submitting}
+                            style={inputStyle}
+                        >
+                            <option value="trading">{t.sessionTypeTradingSession}</option>
+                            <option value="theory">{t.sessionTypeTheoryClass}</option>
+                        </select>
+                    </div>
                     <div style={{ marginBottom: 16 }}>
                         <label htmlFor="create-session-date" style={labelStyle}>
                             {t.dateLabel}

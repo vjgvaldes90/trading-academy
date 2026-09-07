@@ -37,6 +37,8 @@ export default function LiveSessionCard({
         (row.status ?? "active") === "active" && isWithinAdminHostWindow(adminRowToDbSession(row), now)
 
     const title = row.title?.trim() || t.liveSessionDefault
+    const isTheory = (row.session_type ?? "trading") === "theory"
+    const typeLabel = isTheory ? t.sessionTypeTheoryClass : t.sessionTypeTradingSession
 
     return (
         <article
@@ -51,6 +53,15 @@ export default function LiveSessionCard({
                     {row.date ?? "—"} · {row.time ?? "—"}
                 </p>
                 <h3 className="mt-1 line-clamp-2 text-sm font-semibold text-slate-100">{title}</h3>
+                <span
+                    className={`mt-2 inline-flex rounded-md border px-2 py-0.5 text-[0.65rem] font-bold uppercase tracking-wide ${
+                        isTheory
+                            ? "border-violet-400/35 bg-violet-500/15 text-violet-200"
+                            : "border-sky-400/35 bg-sky-500/15 text-sky-200"
+                    }`}
+                >
+                    {typeLabel}
+                </span>
             </div>
 
             <div className="flex flex-1 flex-col gap-3 px-4 py-3">

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { requireAuthorizedAdminFromCookies } from "@/lib/adminAuth"
 import { createSupabaseServiceRoleClient } from "@/lib/access"
 import { canJoinLiveSessionNow, startAt, type DbSession } from "@/lib/sessions"
+import { resolveLiveSessionType } from "@/lib/studentAcademyAccess"
 
 export const runtime = "nodejs"
 
@@ -58,6 +59,7 @@ export async function GET() {
                 date,
                 time,
                 status: typeof r.status === "string" ? r.status : "active",
+                session_type: resolveLiveSessionType(r.session_type),
                 is_live: started || r.is_live === true,
                 starts_at: startsAt ? startsAt.toISOString() : null,
                 starts_soon: nearStart,

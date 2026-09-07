@@ -347,6 +347,9 @@ export const es: TranslationKeys = {
 
     // Create session modal
     createSessionTitle: "Nueva sesión (Zoom)",
+    sessionTypeLabel: "Tipo de sesión",
+    sessionTypeTradingSession: "Sesión de Trading",
+    sessionTypeTheoryClass: "Clase de Teoría",
     createSessionZoomNote:
         "Se creará una reunión de Zoom mediante la API del servidor (OAuth cuenta a cuenta). No se pueden pegar enlaces manuales.",
     createSessionDateRequired: "La fecha es obligatoria.",

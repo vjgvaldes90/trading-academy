@@ -3,6 +3,8 @@ import { createSupabaseServiceRoleClient } from "@/lib/access"
 import { getVerifiedStudentEmailFromCookies } from "@/lib/requireVerifiedSessionCookie"
 import {
     evaluateAcademyAccess,
+    evaluateLiveSessionAccess,
+    resolveLiveSessionType,
     type TradingStudentAccessRow,
 } from "@/lib/studentAcademyAccess"
 import { mapSupabaseSessionRow } from "@/lib/mapSessionRow"
@@ -47,7 +49,7 @@ export async function POST(req: Request) {
 
         const { data: accessRow, error: accessErr } = await supabase
             .from("trading_students")
-            .select("access_code, access_type, is_active, access_expires_at")
+            .select("access_code, access_type, is_active, access_expires_at, plan, program_theory_until")
             .eq("email", verifiedEmail)
             .maybeSingle()
 
@@ -56,7 +58,8 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: "Access check failed" }, { status: 500 })
         }
 
-        const accessEv = evaluateAcademyAccess(accessRow as TradingStudentAccessRow | null)
+        const student = accessRow as TradingStudentAccessRow | null
+        const accessEv = evaluateAcademyAccess(student)
         if (!accessEv.ok) {
             denyReason = accessEv.reason === "unpaid" ? "not_paid" : "access_denied"
             console.log("[SECURE JOIN DENIED]", { reason: denyReason, session_id: sessionId })
@@ -93,6 +96,30 @@ export async function POST(req: Request) {
             )
         }
 
+        const sessionType = resolveLiveSessionType(rec.session_type)
+        const liveEv = evaluateLiveSessionAccess(sessionType, student)
+        if (!liveEv.ok) {
+            denyReason =
+                sessionType === "theory" ? "theory_access_denied" : "access_denied"
+            console.log("[SECURE JOIN DENIED]", {
+                reason: denyReason,
+                session_id: sessionId,
+                session_type: sessionType,
+                entitlementReason: liveEv.reason,
+            })
+            return NextResponse.json(
+                {
+                    error:
+                        sessionType === "theory"
+                            ? "Theory class access denied"
+                            : "Access denied",
+                    code: denyReason,
+                    reason: liveEv.reason,
+                },
+                { status: 403 }
+            )
+        }
+
         const session = mapSupabaseSessionRow(rec)
         if (!session) {
             denyReason = "session_parse"
@@ -121,7 +148,11 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: "Meeting link not configured", code: denyReason }, { status: 503 })
         }
 
-        console.log("[SECURE JOIN SUCCESS]", { session_id: sessionId, user: verifiedEmail })
+        console.log("[SECURE JOIN SUCCESS]", {
+            session_id: sessionId,
+            user: verifiedEmail,
+            session_type: sessionType,
+        })
         return NextResponse.json({ join_url: joinUrl })
     } catch (e: unknown) {
         console.error("[api/session/join] POST", e)

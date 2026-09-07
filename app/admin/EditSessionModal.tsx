@@ -41,6 +41,7 @@ export type EditSessionTarget = {
     id: string
     time: string | null
     date?: string | null
+    session_type?: "trading" | "theory" | string | null
 }
 
 type EditSessionModalProps = {
@@ -53,12 +54,16 @@ type EditSessionModalProps = {
 export default function EditSessionModal({ open, session, onClose, onSuccess }: EditSessionModalProps) {
     const { t } = useLanguage()
     const [time, setTime] = useState(() => toTimeInputValue(session?.time ?? null))
+    const [sessionType, setSessionType] = useState<"trading" | "theory">(() =>
+        session?.session_type === "theory" ? "theory" : "trading"
+    )
     const [submitError, setSubmitError] = useState<string | null>(null)
     const [submitting, setSubmitting] = useState(false)
 
     useEffect(() => {
         if (!open || !session) return
         setTime(toTimeInputValue(session.time))
+        setSessionType(session.session_type === "theory" ? "theory" : "trading")
         setSubmitError(null)
         setSubmitting(false)
     }, [open, session])
@@ -84,6 +89,7 @@ export default function EditSessionModal({ open, session, onClose, onSuccess }: 
                 credentials: "include",
                 body: JSON.stringify({
                     time: time.trim(),
+                    session_type: sessionType,
                 }),
                 cache: "no-store",
             })
@@ -179,6 +185,23 @@ export default function EditSessionModal({ open, session, onClose, onSuccess }: 
                 </p>
 
                 <form onSubmit={(e) => void handleSubmit(e)} style={{ padding: "14px 18px 20px" }}>
+                    <div style={{ marginBottom: 16 }}>
+                        <label htmlFor="edit-session-type" style={labelStyle}>
+                            {t.sessionTypeLabel}
+                        </label>
+                        <select
+                            id="edit-session-type"
+                            value={sessionType}
+                            onChange={(e) =>
+                                setSessionType(e.target.value === "theory" ? "theory" : "trading")
+                            }
+                            disabled={submitting}
+                            style={inputStyle}
+                        >
+                            <option value="trading">{t.sessionTypeTradingSession}</option>
+                            <option value="theory">{t.sessionTypeTheoryClass}</option>
+                        </select>
+                    </div>
                     <div style={{ marginBottom: 18 }}>
                         <label htmlFor="edit-session-time" style={labelStyle}>
                             {t.timeLabel}

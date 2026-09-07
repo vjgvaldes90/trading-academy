@@ -11,6 +11,8 @@ export type DbSession = {
     time: string | null
     link: string | null
     is_live?: boolean
+    /** trading (default) | theory — live Theory Class entitlement. */
+    session_type?: "trading" | "theory" | null
 }
 
 export type SessionStatus = "live" | "today" | "next"

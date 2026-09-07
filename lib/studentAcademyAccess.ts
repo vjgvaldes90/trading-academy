@@ -8,6 +8,9 @@ import { canAccessTheory } from "@/lib/subscriptionPlans"
 export const ACADEMY_ACCESS_TYPES = ["paid", "free", "discounted", "discount", "vip"] as const
 export type AcademyAccessType = (typeof ACADEMY_ACCESS_TYPES)[number]
 
+export const LIVE_SESSION_TYPES = ["trading", "theory"] as const
+export type LiveSessionType = (typeof LIVE_SESSION_TYPES)[number]
+
 export type TradingStudentAccessRow = {
     access_code?: string | null
     access_type?: string | null
@@ -28,8 +31,46 @@ export type TheoryAccessEvaluation = {
     reason?: "inactive" | "expired" | "unpaid" | "not_found" | "no_theory"
 }
 
+export type LiveSessionAccessEvaluation = {
+    ok: boolean
+    reason?: AcademyAccessEvaluation["reason"] | "no_theory" | "invalid_session_type"
+    sessionType: LiveSessionType
+}
+
 export function normalizeAccessType(raw: string | null | undefined): string {
     return (raw ?? "paid").trim().toLowerCase() || "paid"
+}
+
+/** Missing / unknown → trading (legacy rows). */
+export function resolveLiveSessionType(raw: unknown): LiveSessionType {
+    if (typeof raw === "string") {
+        const normalized = raw.trim().toLowerCase()
+        if (normalized === "theory") return "theory"
+        if (normalized === "trading") return "trading"
+    }
+    return "trading"
+}
+
+export function parseLiveSessionType(raw: unknown):
+    | { ok: true; sessionType: LiveSessionType }
+    | { ok: false; error: string } {
+    if (raw === undefined || raw === null || raw === "") {
+        return { ok: true, sessionType: "trading" }
+    }
+    if (typeof raw !== "string") {
+        return {
+            ok: false,
+            error: 'Invalid session_type. Allowed values: "trading", "theory".',
+        }
+    }
+    const normalized = raw.trim().toLowerCase()
+    if (normalized === "trading" || normalized === "theory") {
+        return { ok: true, sessionType: normalized }
+    }
+    return {
+        ok: false,
+        error: 'Invalid session_type. Allowed values: "trading", "theory".',
+    }
 }
 
 export function evaluateAcademyAccess(row: TradingStudentAccessRow | null | undefined): AcademyAccessEvaluation {
@@ -65,7 +106,7 @@ export function evaluateAcademyAccess(row: TradingStudentAccessRow | null | unde
 
 /**
  * Theory entitlement: academy OK + full_program + program_theory_until in the future.
- * Not wired to /api/lessons yet (Etapa 4).
+ * Enforced by GET /api/lessons and live Theory Classes (list + join).
  */
 export function evaluateTheoryAccess(
     row: TradingStudentAccessRow | null | undefined,
@@ -89,6 +130,33 @@ export function evaluateTheoryAccess(
     }
 
     return { ok: true }
+}
+
+/**
+ * Live session gate by session_type.
+ * trading → academy access; theory → evaluateTheoryAccess.
+ */
+export function evaluateLiveSessionAccess(
+    sessionTypeRaw: unknown,
+    row: TradingStudentAccessRow | null | undefined,
+    now: Date = new Date()
+): LiveSessionAccessEvaluation {
+    const sessionType = resolveLiveSessionType(sessionTypeRaw)
+    if (sessionType === "trading") {
+        const academy = evaluateAcademyAccess(row)
+        return {
+            ok: academy.ok,
+            reason: academy.reason,
+            sessionType,
+        }
+    }
+
+    const theory = evaluateTheoryAccess(row, now)
+    return {
+        ok: theory.ok,
+        reason: theory.reason,
+        sessionType,
+    }
 }
 
 export function academyAccessDeniedMessage(

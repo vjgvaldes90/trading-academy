@@ -22,5 +22,9 @@ export function mapSupabaseSessionRow(row: Record<string, unknown>): DbSession |
         time: typeof session_hour === "string" ? session_hour : null,
         link: typeof meetingUrl === "string" ? meetingUrl : null,
         is_live: row.is_live === true,
+        session_type:
+            typeof row.session_type === "string" && row.session_type.trim().toLowerCase() === "theory"
+                ? "theory"
+                : "trading",
     }
 }

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { requireAuthorizedAdminFromCookies } from "@/lib/adminAuth"
 import { createSupabaseServiceRoleClient } from "@/lib/access"
+import { parseLiveSessionType } from "@/lib/studentAcademyAccess"
 import {
     buildZoomStartTime,
     createZoomMeeting,
@@ -65,15 +66,27 @@ export async function PATCH(req: Request, context: RouteCtx) {
         const b = body as Record<string, unknown>
         const hasTime = Object.prototype.hasOwnProperty.call(b, "time")
         const hasStatus = Object.prototype.hasOwnProperty.call(b, "status")
+        const hasSessionType =
+            Object.prototype.hasOwnProperty.call(b, "session_type") ||
+            Object.prototype.hasOwnProperty.call(b, "sessionType")
 
-        if (!hasTime && !hasStatus) {
+        if (!hasTime && !hasStatus && !hasSessionType) {
             return NextResponse.json(
-                { error: "Provide at least one of: time, status" },
+                { error: "Provide at least one of: time, status, session_type" },
                 { status: 400 }
             )
         }
 
         const supabase = createSupabaseServiceRoleClient()
+
+        let nextSessionType: string | null = null
+        if (hasSessionType) {
+            const parsed = parseLiveSessionType(b.session_type ?? b.sessionType)
+            if (!parsed.ok) {
+                return NextResponse.json({ error: parsed.error }, { status: 400 })
+            }
+            nextSessionType = parsed.sessionType
+        }
 
         if (hasStatus) {
             const raw = b.status
@@ -139,6 +152,28 @@ export async function PATCH(req: Request, context: RouteCtx) {
                 )
             }
 
+            return NextResponse.json(data)
+        }
+
+        // Type-only update (no Zoom reschedule).
+        if (!hasTime && nextSessionType) {
+            const { data, error } = await supabase
+                .from("sessions")
+                .update({
+                    session_type: nextSessionType,
+                    last_edited_by_admin_email: adminEmail,
+                })
+                .eq("id", id)
+                .select("*")
+                .single()
+
+            if (error) {
+                console.error("[api/admin/sessions/[id]] PATCH session_type update error", error)
+                return NextResponse.json(
+                    { error: "Failed to update session type", details: error.message },
+                    { status: 500 }
+                )
+            }
             return NextResponse.json(data)
         }
 
@@ -217,13 +252,18 @@ export async function PATCH(req: Request, context: RouteCtx) {
         }
 
         // Source of truth: `link` holds the Zoom join URL. Do not write zoom_* columns.
+        const updatePayload: Record<string, unknown> = {
+            time: timeRaw,
+            link: zoomUrls.join_url,
+            last_edited_by_admin_email: adminEmail,
+        }
+        if (nextSessionType) {
+            updatePayload.session_type = nextSessionType
+        }
+
         const { data, error } = await supabase
             .from("sessions")
-            .update({
-                time: timeRaw,
-                link: zoomUrls.join_url,
-                last_edited_by_admin_email: adminEmail,
-            })
+            .update(updatePayload)
             .eq("id", id)
             .select("*")
             .single()

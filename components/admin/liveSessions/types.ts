@@ -5,6 +5,7 @@ export type AdminSessionRow = {
     date: string | null
     time: string | null
     status?: string
+    session_type?: "trading" | "theory" | string | null
     starts_soon?: boolean
     is_live?: boolean
 }

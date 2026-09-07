@@ -3,6 +3,8 @@ import { createSupabaseServiceRoleClient } from "@/lib/access"
 import { stripSensitiveSessionFields } from "@/lib/secureZoomJoin"
 import {
     evaluateAcademyAccess,
+    evaluateLiveSessionAccess,
+    resolveLiveSessionType,
     type TradingStudentAccessRow,
 } from "@/lib/studentAcademyAccess"
 
@@ -13,6 +15,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 /**
  * Student session list: metadata + availability only (no Zoom URLs).
  * Caller must pass `user_email` for access evaluation.
+ * Theory Classes are omitted unless evaluateTheoryAccess allows them.
  */
 export async function GET(req: Request) {
     try {
@@ -32,7 +35,7 @@ export async function GET(req: Request) {
 
         const { data: accessRow, error: accessErr } = await supabase
             .from("trading_students")
-            .select("access_code, access_type, is_active, access_expires_at")
+            .select("access_code, access_type, is_active, access_expires_at, plan, program_theory_until")
             .eq("email", userEmail)
             .maybeSingle()
 
@@ -41,7 +44,8 @@ export async function GET(req: Request) {
             return NextResponse.json({ error: "Access check failed" }, { status: 500 })
         }
 
-        const accessEv = evaluateAcademyAccess(accessRow as TradingStudentAccessRow | null)
+        const student = accessRow as TradingStudentAccessRow | null
+        const accessEv = evaluateAcademyAccess(student)
         if (!accessEv.ok) {
             return NextResponse.json(
                 { error: "Access denied", reason: accessEv.reason ?? "not_found" },
@@ -56,7 +60,22 @@ export async function GET(req: Request) {
             return NextResponse.json({ error: "Failed to load sessions" }, { status: 500 })
         }
 
-        const safe = (data ?? []).map((row) => stripSensitiveSessionFields(row as Record<string, unknown>))
+        const now = new Date()
+        const visible = (data ?? []).filter((row) => {
+            const rec = row as Record<string, unknown>
+            const sessionType = resolveLiveSessionType(rec.session_type)
+            if (sessionType === "trading") return true
+            return evaluateLiveSessionAccess(sessionType, student, now).ok
+        })
+
+        const safe = visible.map((row) => {
+            const stripped = stripSensitiveSessionFields(row as Record<string, unknown>)
+            const rec = row as Record<string, unknown>
+            return {
+                ...stripped,
+                session_type: resolveLiveSessionType(rec.session_type),
+            }
+        })
         return NextResponse.json(safe)
     } catch (err) {
         console.error("[api/sessions] GET", err)

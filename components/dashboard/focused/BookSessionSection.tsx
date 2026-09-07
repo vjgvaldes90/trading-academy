@@ -55,6 +55,20 @@ function SlotRow({ session }: { session: DbSession }) {
             >
                 {label}
             </div>
+            <p
+                style={{
+                    margin: 0,
+                    fontSize: "0.7rem",
+                    fontWeight: 700,
+                    letterSpacing: "0.04em",
+                    textTransform: "uppercase",
+                    color: session.session_type === "theory" ? "#c4b5fd" : "#7dd3fc",
+                }}
+            >
+                {session.session_type === "theory"
+                    ? t.sessionTypeTheoryClass
+                    : t.sessionTypeTradingSession}
+            </p>
             <p style={{ margin: 0, fontSize: "0.75rem", color: "#22c55e" }}>{t.available}</p>
             {!canAccess ? (
                 <>

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { requireAuthorizedAdminFromCookies } from "@/lib/adminAuth"
 import { createSupabaseServiceRoleClient } from "@/lib/access"
 import { spanishWeekdayFromIsoDate } from "@/lib/sessions"
+import { parseLiveSessionType } from "@/lib/studentAcademyAccess"
 import {
     buildZoomStartTime,
     createZoomMeeting,
@@ -51,6 +52,11 @@ export async function POST(req: Request) {
         const dateRaw = typeof b.date === "string" ? b.date.trim() : ""
         const timeRaw = typeof b.time === "string" ? b.time.trim() : ""
         const parsedDuration = parseDurationMinutes(b.duration ?? b.duration_minutes)
+        const sessionTypeParsed = parseLiveSessionType(b.session_type ?? b.sessionType)
+        if (!sessionTypeParsed.ok) {
+            return NextResponse.json({ error: sessionTypeParsed.error }, { status: 400 })
+        }
+        const sessionType = sessionTypeParsed.sessionType
 
         if (!dateRaw || !timeRaw) {
             return NextResponse.json(
@@ -76,10 +82,11 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: "Invalid session date or time", details: msg }, { status: 400 })
         }
 
+        const typeLabel = sessionType === "theory" ? "Theory Class" : "Trading Session"
         const topic =
             typeof b.topic === "string" && b.topic.trim() !== ""
                 ? b.topic.trim()
-                : `Smart Option Academy — ${dateRaw} ${timeRaw}`
+                : `Smart Option Academy — ${typeLabel} — ${dateRaw} ${timeRaw}`
 
         let zoom: Awaited<ReturnType<typeof createZoomMeeting>>
         try {
@@ -107,20 +114,19 @@ export async function POST(req: Request) {
         const supabase = createSupabaseServiceRoleClient()
 
         const day = spanishWeekdayFromIsoDate(dateRaw)
-        // Live `sessions` schema stores Zoom join URL in `link` only (no zoom_* columns).
         const baseRow = {
             day,
             date: dateRaw,
             time: timeRaw,
             link: zoom.join_url,
             status: "active" as const,
+            session_type: sessionType,
             created_by_admin_email: adminEmail,
             last_edited_by_admin_email: adminEmail,
         }
 
         let { data, error } = await supabase.from("sessions").insert(baseRow).select("*").single()
 
-        // Environments that renamed date/time/day → session_*.
         if (error) {
             const retry = await supabase
                 .from("sessions")
@@ -130,6 +136,7 @@ export async function POST(req: Request) {
                     session_hour: timeRaw,
                     link: zoom.join_url,
                     status: "active" as const,
+                    session_type: sessionType,
                     created_by_admin_email: adminEmail,
                     last_edited_by_admin_email: adminEmail,
                 })
