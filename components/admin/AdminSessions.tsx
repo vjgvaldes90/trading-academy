@@ -181,6 +181,7 @@ export default function AdminSessions() {
     const [isThisWeekOpen, setIsThisWeekOpen] = useState(true)
     const [isNextWeekOpen, setIsNextWeekOpen] = useState(false)
     const [createModalOpen, setCreateModalOpen] = useState(false)
+    const [createSessionType, setCreateSessionType] = useState<"trading" | "theory">("trading")
     const [editSession, setEditSession] = useState<AdminSessionRow | null>(null)
     const [cancelTarget, setCancelTarget] = useState<AdminSessionRow | null>(null)
     const [now, setNow] = useState(() => new Date())
@@ -287,10 +288,23 @@ export default function AdminSessions() {
                 <div className="flex flex-wrap items-center gap-3">
                     <button
                         type="button"
-                        onClick={() => setCreateModalOpen(true)}
+                        onClick={() => {
+                            setCreateSessionType("trading")
+                            setCreateModalOpen(true)
+                        }}
                         className="rounded-lg border border-amber-400/40 bg-[#0f172a]/90 px-4 py-2.5 text-sm font-bold text-amber-300 transition hover:border-amber-300/60 hover:bg-[#0f172a]"
                     >
                         + {t.adminNewSession}
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setCreateSessionType("theory")
+                            setCreateModalOpen(true)
+                        }}
+                        className="rounded-lg border border-violet-400/40 bg-[#0f172a]/90 px-4 py-2.5 text-sm font-bold text-violet-300 transition hover:border-violet-300/60 hover:bg-[#0f172a]"
+                    >
+                        + {t.adminNewClass}
                     </button>
                 </div>
 
@@ -381,7 +395,9 @@ export default function AdminSessions() {
             </section>
 
             <CreateSessionModal
+                key={createModalOpen ? `create-${createSessionType}` : "create-closed"}
                 open={createModalOpen}
+                initialSessionType={createSessionType}
                 onClose={() => setCreateModalOpen(false)}
                 onSuccess={async () => {
                     await loadSessions({ silent: true })

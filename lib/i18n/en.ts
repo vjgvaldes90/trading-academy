@@ -344,10 +344,12 @@ export const en = {
     adminFailedToLoadNotifications: "Could not load notifications",
 
     // Create session modal
-    createSessionTitle: "New session (Zoom)",
+    createSessionTitle: "New Trading Session (Zoom)",
+    createTheoryClassTitle: "New Theory Class (Zoom)",
     sessionTypeLabel: "Session type",
     sessionTypeTradingSession: "Trading Session",
     sessionTypeTheoryClass: "Theory Class",
+    createTheoryClass: "Create Theory Class",
     createSessionZoomNote:
         "A Zoom meeting will be created via the server API (account-to-account OAuth). Manual links cannot be pasted.",
     createSessionDateRequired: "Date is required.",
@@ -382,6 +384,7 @@ export const en = {
     // Admin sessions
     adminSessionsSubtitle: "Live sessions overview — this week and next.",
     adminNewSession: "New session",
+    adminNewClass: "New class",
     adminFilters: "Filters",
     adminFilterDate: "Date",
     adminFilterStatus: "Status",

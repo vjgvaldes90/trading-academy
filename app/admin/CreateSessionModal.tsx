@@ -30,13 +30,20 @@ type CreateSessionModalProps = {
     onClose: () => void
     /** Called after the session is created successfully (e.g. refetch list). */
     onSuccess: () => void | Promise<void>
+    /** Which toolbar button opened the modal; defaults to trading. */
+    initialSessionType?: "trading" | "theory"
 }
 
-export default function CreateSessionModal({ open, onClose, onSuccess }: CreateSessionModalProps) {
+export default function CreateSessionModal({
+    open,
+    onClose,
+    onSuccess,
+    initialSessionType = "trading",
+}: CreateSessionModalProps) {
     const { t } = useLanguage()
     const [date, setDate] = useState("")
     const [time, setTime] = useState("")
-    const [sessionType, setSessionType] = useState<"trading" | "theory">("trading")
+    const [sessionType, setSessionType] = useState<"trading" | "theory">(initialSessionType)
     const [submitError, setSubmitError] = useState<string | null>(null)
     const [submitting, setSubmitting] = useState(false)
 
@@ -44,10 +51,10 @@ export default function CreateSessionModal({ open, onClose, onSuccess }: CreateS
         if (!open) return
         setDate("")
         setTime("")
-        setSessionType("trading")
+        setSessionType(initialSessionType === "theory" ? "theory" : "trading")
         setSubmitError(null)
         setSubmitting(false)
-    }, [open])
+    }, [open, initialSessionType])
 
     if (!open) return null
 
@@ -140,7 +147,7 @@ export default function CreateSessionModal({ open, onClose, onSuccess }: CreateS
                         id="create-session-title"
                         style={{ margin: 0, fontSize: "1.05rem", fontWeight: 800, color: "#f8fafc" }}
                     >
-                        {t.createSessionTitle}
+                        {sessionType === "theory" ? t.createTheoryClassTitle : t.createSessionTitle}
                     </h2>
                     <button
                         type="button"
@@ -238,7 +245,11 @@ export default function CreateSessionModal({ open, onClose, onSuccess }: CreateS
                             transition: "all 0.2s ease",
                         }}
                     >
-                        {submitting ? t.creating : t.createSession}
+                        {submitting
+                            ? t.creating
+                            : sessionType === "theory"
+                              ? t.createTheoryClass
+                              : t.createSession}
                     </button>
                 </form>
             </div>

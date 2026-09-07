@@ -346,10 +346,12 @@ export const es: TranslationKeys = {
     adminFailedToLoadNotifications: "No se pudieron cargar las notificaciones",
 
     // Create session modal
-    createSessionTitle: "Nueva sesión (Zoom)",
+    createSessionTitle: "Nueva sesión de Trading (Zoom)",
+    createTheoryClassTitle: "Nueva clase teórica (Zoom)",
     sessionTypeLabel: "Tipo de sesión",
     sessionTypeTradingSession: "Sesión de Trading",
     sessionTypeTheoryClass: "Clase de Teoría",
+    createTheoryClass: "Crear clase teórica",
     createSessionZoomNote:
         "Se creará una reunión de Zoom mediante la API del servidor (OAuth cuenta a cuenta). No se pueden pegar enlaces manuales.",
     createSessionDateRequired: "La fecha es obligatoria.",
@@ -384,6 +386,7 @@ export const es: TranslationKeys = {
     // Admin sessions
     adminSessionsSubtitle: "Resumen de sesiones en vivo — esta semana y la próxima.",
     adminNewSession: "Nueva sesión",
+    adminNewClass: "Nueva clase",
     adminFilters: "Filtros",
     adminFilterDate: "Fecha",
     adminFilterStatus: "Estado",
