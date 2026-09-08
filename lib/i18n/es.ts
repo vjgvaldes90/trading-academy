@@ -556,8 +556,8 @@ export const es: TranslationKeys = {
     privateClassNyHint: "La fecha y la hora están en hora de Nueva York (ET).",
     privateClassStatusPending: "Pendiente",
     privateClassStatusRejected: "Rechazada",
-    privateClassStatusAwaitingPayment: "Aprobada — Pago próximamente",
-    privateClassStatusPaid: "Pago recibido",
+    privateClassStatusAwaitingPayment: "Aprobada — Pendiente de pago",
+    privateClassStatusPaid: "Pago realizado",
     privateClassStatusConfirmed: "Confirmada",
     privateClassStatusCompleted: "Completada",
     privateClassStatusCancelled: "Cancelada",
@@ -566,7 +566,7 @@ export const es: TranslationKeys = {
     privateClassPaymentProcessing: "Procesando pago…",
     privateClassCheckoutError: "No se pudo crear el checkout. Inténtalo de nuevo.",
     privateClassPaymentCouldNotStart: "No se pudo iniciar el pago.",
-    privateClassPaymentCompleted: "Pago completado",
+    privateClassPaymentCompleted: "Pago realizado",
 
     // Resources
     resourcesTitle: "Recursos",
@@ -878,7 +878,7 @@ export const es: TranslationKeys = {
     adminPrivateClassCancel: "Cancelar",
     adminPrivateClassApproveTitle: "¿Aprobar esta solicitud de clase privada?",
     adminPrivateClassApproveDescription:
-        "El estudiante verá “Aprobada — Pago próximamente”. El pago estará disponible en una etapa posterior.",
+        "El estudiante verá “Aprobada — Pendiente de pago” y podrá pagar $250 con Stripe Checkout.",
     adminPrivateClassApproveConfirm: "Aprobar solicitud",
     adminPrivateClassRejectTitle: "¿Rechazar esta solicitud de clase privada?",
     adminPrivateClassRejectDescription: "El estudiante verá que la solicitud fue rechazada.",

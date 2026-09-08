@@ -49,11 +49,11 @@ export type PrivateClassRequestRow = {
     paid_at?: string | null
 }
 
-/** Stage 1/2 columns only — production DB does not have Stripe columns yet. */
+/** Stage 1–3 columns (Stripe fields require migration 20260907150000). */
 export const PRIVATE_CLASS_REQUEST_SELECT =
-    "id, student_id, student_email, requested_date, requested_time, duration_minutes, price_cents, currency, status, student_message, admin_notes, approved_by_admin_email, rejected_by_admin_email, approved_at, rejected_at, cancelled_at, completed_at, created_at, updated_at"
+    "id, student_id, student_email, requested_date, requested_time, duration_minutes, price_cents, currency, status, student_message, admin_notes, approved_by_admin_email, rejected_by_admin_email, approved_at, rejected_at, cancelled_at, completed_at, created_at, updated_at, stripe_checkout_session_id, stripe_payment_intent_id, stripe_payment_status, paid_at"
 
-/** Reserved for Stage 3 Stripe Checkout metadata (dormant until migration applied). */
+/** Stripe Checkout metadata product_type for Private Class one-time payment. */
 export const PRIVATE_CLASS_PRODUCT_TYPE = "private_class" as const
 
 export const privateClassRequestIdSchema = z.string().uuid()

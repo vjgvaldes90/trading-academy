@@ -24,6 +24,7 @@ export default function PrivateClassSection() {
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
     const [modalOpen, setModalOpen] = useState(false)
+    const [payingId, setPayingId] = useState<string | null>(null)
     const [toast, setToast] = useState<{ message: string; tone: StudentToastTone } | null>(null)
 
     const load = useCallback(async () => {
@@ -65,6 +66,39 @@ export default function PrivateClassSection() {
     useEffect(() => {
         void load()
     }, [load])
+
+    const startCheckout = async (requestId: string) => {
+        if (payingId) return
+        setPayingId(requestId)
+        try {
+            const res = await fetch(`/api/private-class-requests/${requestId}/checkout`, {
+                method: "POST",
+                credentials: "include",
+            })
+            const payload = (await res.json().catch(() => ({}))) as {
+                url?: string
+                error?: string
+            }
+            if (!res.ok || typeof payload.url !== "string" || !payload.url.trim()) {
+                setToast({
+                    message:
+                        typeof payload.error === "string" && payload.error.trim()
+                            ? payload.error
+                            : t.privateClassCheckoutError,
+                    tone: "error",
+                })
+                return
+            }
+            window.location.assign(payload.url)
+        } catch {
+            setToast({
+                message: t.privateClassPaymentCouldNotStart,
+                tone: "error",
+            })
+        } finally {
+            setPayingId(null)
+        }
+    }
 
     return (
         <div className="space-y-5">
@@ -123,6 +157,7 @@ export default function PrivateClassSection() {
                     <ul className="space-y-3">
                         {requests.map((row) => {
                             const status = String(row.status)
+                            const isPaying = payingId === row.id
                             return (
                                 <li
                                     key={row.id}
@@ -162,6 +197,27 @@ export default function PrivateClassSection() {
                                                 {t.privateClassAdminNotesLabel}:{" "}
                                             </span>
                                             {row.admin_notes}
+                                        </p>
+                                    ) : null}
+
+                                    {status === "awaiting_payment" ? (
+                                        <div className="mt-4">
+                                            <button
+                                                type="button"
+                                                disabled={payingId !== null}
+                                                onClick={() => void startCheckout(row.id)}
+                                                className="inline-flex w-full items-center justify-center rounded-lg border border-amber-300/40 bg-gradient-to-r from-amber-500 to-amber-600 px-4 py-2.5 text-sm font-bold text-slate-950 shadow-[0_10px_28px_rgba(245,158,11,0.28)] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+                                            >
+                                                {isPaying
+                                                    ? t.privateClassPaymentProcessing
+                                                    : t.privateClassPayButton}
+                                            </button>
+                                        </div>
+                                    ) : null}
+
+                                    {status === "paid" ? (
+                                        <p className="mt-3 text-sm font-semibold text-emerald-300">
+                                            {t.privateClassPaymentCompleted}
                                         </p>
                                     ) : null}
                                 </li>
