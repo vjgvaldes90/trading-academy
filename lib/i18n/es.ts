@@ -244,7 +244,7 @@ export const es: TranslationKeys = {
     purchaseBuyFullProgram: "🚀 Empezar Programa Completo ($450 primer mes)",
     purchasePlanTradingOnlyLabel: "Plan seleccionado: Solo Trading — $150/mes",
     purchasePlanFullProgramLabel:
-        "Plan seleccionado: Programa Completo — $450 el primer mes, después $150/mes",
+        "Plan seleccionado: Programa Completo — $450",
     purchaseSecurePayment: "Pago seguro • Acceso inmediato",
 
     // Complete Profile
@@ -309,7 +309,7 @@ export const es: TranslationKeys = {
     adminOverview: "Resumen",
     adminRecordedClasses: "Clases grabadas",
     adminLiveSessions: "Sesiones en vivo",
-    adminPrivateClassRequests: "Solicitudes de clase privada",
+    adminPrivateClassRequests: "Clases privadas",
     adminStudents: "Estudiantes",
     adminSubscriptions: "Suscripciones",
     adminAnalytics: "Analítica",
