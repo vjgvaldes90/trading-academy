@@ -241,7 +241,7 @@ export const es: TranslationKeys = {
     purchaseProcessing: "Procesando…",
     purchaseBuyButton: "🚀 Comprar acceso ($150)",
     purchaseBuyTradingOnly: "🚀 Empezar Solo Trading ($150/mes)",
-    purchaseBuyFullProgram: "🚀 Empezar Programa Completo ($450 primer mes)",
+    purchaseBuyFullProgram: "Empezar Programa Completo $450",
     purchasePlanTradingOnlyLabel: "Plan seleccionado: Solo Trading — $150/mes",
     purchasePlanFullProgramLabel:
         "Plan seleccionado: Programa Completo — $450",
