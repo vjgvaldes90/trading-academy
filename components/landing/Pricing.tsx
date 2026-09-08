@@ -233,7 +233,7 @@ export default function Pricing() {
                     <h2 className="mb-5 text-balance text-3xl font-extrabold leading-[1.15] tracking-tight text-white sm:text-4xl lg:text-5xl">
                         {t.pricingTitle}
                     </h2>
-                    <p className="text-pretty text-base leading-relaxed text-slate-300 sm:text-lg">
+                    <p className="text-pretty text-3xl leading-relaxed text-slate-300 sm:text-4xl lg:text-5xl">
                         {t.pricingSubtitle}
                     </p>
                     <p

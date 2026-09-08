@@ -137,9 +137,8 @@ export const en = {
     importantDisclaimerLink: "Read full disclaimer",
 
     // Pricing
-    pricingTitle: "Take your trading to the next level.",
-    pricingSubtitle:
-        "Learn to analyze the market and develop trading strategies alongside live sessions.",
+    pricingTitle: "Smart Option Academy",
+    pricingSubtitle: "Live financial education",
     pricingFeature1: "Live mentorship: stocks, options and ETFs",
     pricingFeature2: "Technical analysis and real-time market reading",
     pricingFeature3: "High-performance structure and risk management",

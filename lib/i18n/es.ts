@@ -139,9 +139,8 @@ export const es: TranslationKeys = {
     importantDisclaimerLink: "Leer disclaimer completo",
 
     // Pricing
-    pricingTitle: "Eleva tu trading al siguiente nivel.",
-    pricingSubtitle:
-        "Aprende a analizar el mercado y desarrollar estrategias de trading con sesiones en vivo.",
+    pricingTitle: "Smart Option Academy",
+    pricingSubtitle: "Educación financiera en vivo",
     pricingFeature1: "Mentoría en vivo: acciones, opciones y ETFS",
     pricingFeature2: "Análisis técnico y lectura del mercado en tiempo real",
     pricingFeature3: "Estructura de alto rendimiento y gestión del riesgo",
