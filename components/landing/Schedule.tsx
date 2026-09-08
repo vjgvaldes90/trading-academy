@@ -1,7 +1,7 @@
 "use client"
 
 import { motion, useReducedMotion } from "framer-motion"
-import { BookOpen, CalendarDays, Clock, UserRound } from "lucide-react"
+import { BookOpen, CalendarDays, Clock, GraduationCap, LineChart, Target, UserRound } from "lucide-react"
 import { useLanguage } from "@/context/LanguageProvider"
 
 /** Decorative mini chart — no market data. */
@@ -203,6 +203,27 @@ export default function Schedule() {
                         <p className="relative mb-5 text-sm leading-relaxed text-slate-400">
                             {t.scheduleTheoryWeekly}
                         </p>
+                        <ul className="relative mb-5 space-y-2.5" aria-label={t.scheduleTheoryCardTitle}>
+                            {(
+                                [
+                                    { icon: GraduationCap, label: t.scheduleTheoryFocus1 },
+                                    { icon: LineChart, label: t.scheduleTheoryFocus2 },
+                                    { icon: Target, label: t.scheduleTheoryFocus3 },
+                                ] as const
+                            ).map(({ icon: Icon, label }) => (
+                                <li
+                                    key={label}
+                                    className="flex items-center gap-2.5 rounded-lg border border-violet-400/15 bg-white/[0.03] px-3 py-2"
+                                >
+                                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-violet-400/25 bg-violet-500/10 text-violet-300">
+                                        <Icon className="h-3.5 w-3.5" aria-hidden />
+                                    </span>
+                                    <span className="text-xs font-medium leading-snug text-slate-300 sm:text-[13px]">
+                                        {label}
+                                    </span>
+                                </li>
+                            ))}
+                        </ul>
                         <div className="relative mt-auto rounded-xl border border-violet-400/25 bg-violet-500/10 px-3.5 py-3">
                             <p className="text-sm font-semibold text-violet-100">
                                 {t.scheduleTheoryPlanNote}

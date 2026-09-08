@@ -7,7 +7,7 @@ export const es: TranslationKeys = {
     navGetStarted: "Empezar",
 
     // Hero
-    heroTitle: "Formación profesional para inversionistas de alto rendimiento",
+    heroTitle: "Domina el mercado. Aprende a operar con estrategia.",
     heroSubtitle1:
         "La bolsa de valores no es una apuesta, es una profesión que tú también puedes aprender.",
     heroSubtitle2:
@@ -74,8 +74,11 @@ export const es: TranslationKeys = {
     scheduleTradingCardTitle: "Trading en vivo",
     scheduleTradingCardBlurb: "Sesiones regulares de trading en vivo",
     scheduleTheoryCardTitle: "Clases teóricas",
-    scheduleTheoryWeekly: "2 clases teóricas por semana",
+    scheduleTheoryWeekly: "2 clases teóricas de 2 horas",
     scheduleTheoryPlanNote: "Incluidas en el Programa Completo",
+    scheduleTheoryFocus1: "Fundamentos",
+    scheduleTheoryFocus2: "Análisis de mercado",
+    scheduleTheoryFocus3: "Estrategias de trading",
     schedulePrivateCardTitle: "Clase privada 1:1",
     schedulePrivateByRequest: "Bajo solicitud",
     schedulePrivateCardBlurb: "Sesión privada con el instructor",
@@ -136,9 +139,9 @@ export const es: TranslationKeys = {
     importantDisclaimerLink: "Leer disclaimer completo",
 
     // Pricing
-    pricingTitle: "Smart Option Academy: educación financiera elite en vivo",
+    pricingTitle: "Eleva tu trading al siguiente nivel.",
     pricingSubtitle:
-        "Acciones,Opciones y ETFS con metodología profesional, análisis técnico y gestión de riesgo frente al mercado en tiempo real.",
+        "Aprende a analizar el mercado y desarrollar estrategias de trading con sesiones en vivo.",
     pricingFeature1: "Mentoría en vivo: acciones, opciones y ETFS",
     pricingFeature2: "Análisis técnico y lectura del mercado en tiempo real",
     pricingFeature3: "Estructura de alto rendimiento y gestión del riesgo",

@@ -5,7 +5,7 @@ export const en = {
     navGetStarted: "Get Started",
 
     // Hero
-    heroTitle: "Professional training for high-performance investors",
+    heroTitle: "Master the market. Learn to trade with strategy.",
     heroSubtitle1:
         "The stock market is not a gamble — it is a profession you can learn too.",
     heroSubtitle2:
@@ -74,6 +74,9 @@ export const en = {
     scheduleTheoryCardTitle: "Theory Classes",
     scheduleTheoryWeekly: "2 theoretical classes per week",
     scheduleTheoryPlanNote: "Included in Full Program",
+    scheduleTheoryFocus1: "Fundamentals",
+    scheduleTheoryFocus2: "Market analysis",
+    scheduleTheoryFocus3: "Trading strategies",
     schedulePrivateCardTitle: "Private Class 1:1",
     schedulePrivateByRequest: "By request",
     schedulePrivateCardBlurb: "Private session with the instructor",
@@ -134,9 +137,9 @@ export const en = {
     importantDisclaimerLink: "Read full disclaimer",
 
     // Pricing
-    pricingTitle: "Smart Option Academy: elite live financial education",
+    pricingTitle: "Take your trading to the next level.",
     pricingSubtitle:
-        "Stocks, Options and ETFs with professional methodology, technical analysis and risk management in front of the real-time market.",
+        "Learn to analyze the market and develop trading strategies alongside live sessions.",
     pricingFeature1: "Live mentorship: stocks, options and ETFs",
     pricingFeature2: "Technical analysis and real-time market reading",
     pricingFeature3: "High-performance structure and risk management",
