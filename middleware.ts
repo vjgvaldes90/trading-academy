@@ -29,7 +29,6 @@ function isSingleSessionExemptApiPath(pathname: string): boolean {
         "/api/send-code",
         "/api/auth/establish-from-supabase",
         "/api/magic-login",
-        "/api/debug/stripe",
         "/api/cron",
     ]
 
