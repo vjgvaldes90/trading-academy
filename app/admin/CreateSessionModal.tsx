@@ -3,6 +3,7 @@
 import type { CSSProperties, FormEvent } from "react"
 import { useEffect, useState } from "react"
 import { useLanguage } from "@/context/LanguageProvider"
+import DateTimeField from "@/components/shared/DateTimeField"
 
 const inputStyle: CSSProperties = {
     width: "100%",
@@ -192,31 +193,27 @@ export default function CreateSessionModal({
                         </select>
                     </div>
                     <div style={{ marginBottom: 16 }}>
-                        <label htmlFor="create-session-date" style={labelStyle}>
-                            {t.dateLabel}
-                        </label>
-                        <input
+                        <DateTimeField
                             id="create-session-date"
                             type="date"
+                            label={t.dateLabel}
                             required
                             value={date}
                             onChange={(e) => setDate(e.target.value)}
                             disabled={submitting}
-                            style={inputStyle}
+                            aria-required="true"
                         />
                     </div>
                     <div style={{ marginBottom: 18 }}>
-                        <label htmlFor="create-session-time" style={labelStyle}>
-                            {t.timeLabel}
-                        </label>
-                        <input
+                        <DateTimeField
                             id="create-session-time"
                             type="time"
+                            label={t.timeLabel}
                             required
                             value={time}
                             onChange={(e) => setTime(e.target.value)}
                             disabled={submitting}
-                            style={inputStyle}
+                            aria-required="true"
                         />
                     </div>
 

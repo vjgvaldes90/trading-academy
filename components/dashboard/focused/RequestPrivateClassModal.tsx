@@ -2,6 +2,7 @@
 
 import { useLanguage } from "@/context/LanguageProvider"
 import { useEffect, useState } from "react"
+import DateTimeField from "@/components/shared/DateTimeField"
 
 type RequestPrivateClassModalProps = {
     open: boolean
@@ -116,34 +117,25 @@ export default function RequestPrivateClassModal({
                 <p className="px-6 pt-4 text-xs leading-relaxed text-slate-500">{t.privateClassNyHint}</p>
 
                 <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4 px-6 py-5">
-                    <div>
-                        <label htmlFor="private-class-date" className="mb-1.5 block text-xs font-medium text-slate-400">
-                            {t.privateClassRequestedDate}
-                        </label>
-                        <input
-                            id="private-class-date"
-                            type="date"
-                            required
-                            value={date}
-                            onChange={(e) => setDate(e.target.value)}
-                            disabled={submitting}
-                            className="w-full rounded-xl border border-white/10 bg-[#0f172a] px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 disabled:opacity-60"
-                        />
-                    </div>
-                    <div>
-                        <label htmlFor="private-class-time" className="mb-1.5 block text-xs font-medium text-slate-400">
-                            {t.privateClassRequestedTime}
-                        </label>
-                        <input
-                            id="private-class-time"
-                            type="time"
-                            required
-                            value={time}
-                            onChange={(e) => setTime(e.target.value)}
-                            disabled={submitting}
-                            className="w-full rounded-xl border border-white/10 bg-[#0f172a] px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 disabled:opacity-60"
-                        />
-                    </div>
+                    <DateTimeField
+                        id="private-class-date"
+                        type="date"
+                        label={t.privateClassRequestedDate}
+                        helperText={t.privateClassNyHint}
+                        required
+                        value={date}
+                        onChange={(e) => setDate(e.target.value)}
+                        disabled={submitting}
+                    />
+                    <DateTimeField
+                        id="private-class-time"
+                        type="time"
+                        label={t.privateClassRequestedTime}
+                        required
+                        value={time}
+                        onChange={(e) => setTime(e.target.value)}
+                        disabled={submitting}
+                    />
                     <div>
                         <label
                             htmlFor="private-class-message"
