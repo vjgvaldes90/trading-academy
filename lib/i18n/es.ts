@@ -575,6 +575,7 @@ export const es: TranslationKeys = {
     privateClassPaymentCouldNotStart: "No se pudo iniciar el pago.",
     privateClassPaymentCompleted: "Pago realizado",
     privateClassClassConfirmed: "Clase confirmada",
+    privateClassClassCompleted: "Clase completada",
     privateClassJoinZoom: "Unirse a Zoom",
     privateClassZoomPreparing: "Estamos preparando el enlace de tu clase. Actualiza en un momento.",
 

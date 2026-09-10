@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/expire-announcements",
       "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/complete-private-classes",
+      "schedule": "0 * * * *"
     }
   ]
 }

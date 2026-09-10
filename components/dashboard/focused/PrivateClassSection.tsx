@@ -249,6 +249,12 @@ export default function PrivateClassSection() {
                                             )}
                                         </div>
                                     ) : null}
+
+                                    {status === "completed" ? (
+                                        <p className="mt-4 text-sm font-semibold text-slate-300">
+                                            {t.privateClassClassCompleted}
+                                        </p>
+                                    ) : null}
                                 </li>
                             )
                         })}

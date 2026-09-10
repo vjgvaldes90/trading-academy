@@ -572,6 +572,7 @@ export const en = {
     privateClassPaymentCouldNotStart: "Payment could not be started.",
     privateClassPaymentCompleted: "Payment completed",
     privateClassClassConfirmed: "Class confirmed",
+    privateClassClassCompleted: "Class completed",
     privateClassJoinZoom: "Join Zoom",
     privateClassZoomPreparing: "We’re preparing your class link. Please refresh in a moment.",
 

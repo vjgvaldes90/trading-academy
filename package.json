@@ -2,14 +2,15 @@
   "name": "trading-academy",
   "version": "0.1.0",
   "private": true,
-  "scripts": {
-    "dev": "next dev",
-    "dev:full": "concurrently -n APP,STRIPE -c cyan,magenta \"npm run dev\" \"stripe listen --forward-to localhost:3000/api/stripe/webhook\"",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint",
-    "generate:zoom-guide-pdf": "node scripts/generate-zoom-guide-pdf.cjs"
-  },
+    "scripts": {
+        "dev": "next dev",
+        "dev:full": "concurrently -n APP,STRIPE -c cyan,magenta \"npm run dev\" \"stripe listen --forward-to localhost:3000/api/stripe/webhook\"",
+        "build": "next build",
+        "start": "next start",
+        "lint": "eslint",
+        "generate:zoom-guide-pdf": "node scripts/generate-zoom-guide-pdf.cjs",
+        "verify:private-class-completion": "npx --yes tsx scripts/verify-private-class-completion.ts"
+    },
   "dependencies": {
     "@supabase/ssr": "^0.10.2",
     "@supabase/supabase-js": "^2.99.2",
