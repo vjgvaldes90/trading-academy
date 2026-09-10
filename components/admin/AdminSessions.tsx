@@ -2,8 +2,7 @@
 
 /**
  * Admin Live Sessions — scheduling operations.
- * Extension points: add attendance / waitlists / Zoom host tools under `liveSessions/`
- * or compose new panels beside SessionCardsGrid below.
+ * Lists only future sessions (America/New_York wall-clock), chronologically.
  */
 
 import type { AdminSessionRow } from "@/components/admin/liveSessions/types"
@@ -13,83 +12,80 @@ import CreateSessionModal from "@/app/admin/CreateSessionModal"
 import EditSessionModal from "@/app/admin/EditSessionModal"
 import { useLanguage } from "@/context/LanguageProvider"
 import { fetchSecureAdminStartUrl } from "@/lib/secureJoinClient"
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react"
+import { getMinutesUntilSessionStart, type DbSession } from "@/lib/sessions"
+import { useCallback, useEffect, useMemo, useState } from "react"
 
-function startOfLocalDay(d: Date): Date {
-    return new Date(d.getFullYear(), d.getMonth(), d.getDate())
-}
-
-function parseSessionDate(raw: string | null): Date | null {
-    if (!raw || typeof raw !== "string") return null
-    const trimmed = raw.trim()
-    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(trimmed)
-    if (m) {
-        const y = Number(m[1])
-        const mo = Number(m[2]) - 1
-        const da = Number(m[3])
-        const d = new Date(y, mo, da)
-        return Number.isNaN(d.getTime()) ? null : startOfLocalDay(d)
+function adminRowToDbSession(row: AdminSessionRow): DbSession {
+    return {
+        id: row.id,
+        day: null,
+        date: row.date,
+        time: row.time,
+        link: null,
     }
-    const d = new Date(trimmed)
-    if (Number.isNaN(d.getTime())) return null
-    return startOfLocalDay(d)
 }
 
-function daysUntilSunday(from: Date): number {
-    const dow = from.getDay()
-    return dow === 0 ? 0 : 7 - dow
+function byDateTimeAsc(a: AdminSessionRow, b: AdminSessionRow): number {
+    const da = (a.date ?? "").localeCompare(b.date ?? "")
+    if (da !== 0) return da
+    return (a.time ?? "").localeCompare(b.time ?? "")
 }
 
-function addDays(d: Date, n: number): Date {
-    const out = new Date(d.getTime())
-    out.setDate(out.getDate() + n)
-    return startOfLocalDay(out)
+/** Future only: session start (America/New_York) >= now. */
+function getUpcomingSessions(rows: AdminSessionRow[], now: Date): AdminSessionRow[] {
+    return rows
+        .filter((row) => {
+            const minutesUntil = getMinutesUntilSessionStart(adminRowToDbSession(row), now)
+            return minutesUntil != null && minutesUntil >= 0
+        })
+        .sort(byDateTimeAsc)
 }
 
-function parseSessionDateTime(dateRaw: string | null, timeRaw: string | null): Date | null {
-    if (!dateRaw || !timeRaw) return null
-    const d = dateRaw.trim()
-    const t = timeRaw.trim()
-    if (!d || !t) return null
-    const dt = new Date(`${d}T${t}`)
-    return Number.isNaN(dt.getTime()) ? null : dt
+function isTheorySession(row: AdminSessionRow): boolean {
+    return (row.session_type ?? "trading") === "theory"
 }
 
-function getWeekBoundaries(now = new Date()) {
-    const today = startOfLocalDay(now)
-    const endCurrentWeek = addDays(today, daysUntilSunday(today))
-    const startNextWeek = addDays(endCurrentWeek, 1)
-    const endNextWeek = addDays(startNextWeek, daysUntilSunday(startNextWeek))
-    return { today, endCurrentWeek, startNextWeek, endNextWeek }
+function SessionCategoryBlock({
+    title,
+    countLabel,
+    rows,
+    highlightedIds,
+    onEditSession,
+    onRequestCancelSession,
+    now,
+    onHostStart,
+    emptyMessage,
+}: {
+    title: string
+    countLabel: string
+    rows: AdminSessionRow[]
+    highlightedIds: Set<string>
+    onEditSession: (row: AdminSessionRow) => void
+    onRequestCancelSession: (row: AdminSessionRow) => void
+    now: Date
+    onHostStart: (sessionId: string) => void | Promise<void>
+    emptyMessage: string
+}) {
+    return (
+        <div className="min-w-0 overflow-hidden rounded-2xl border border-sky-500/20 bg-gradient-to-br from-[#111827] to-[#0a0f1a] shadow-[0_28px_56px_-32px_rgba(37,99,235,0.35)]">
+            <div className="border-b border-sky-500/15 px-4 py-4">
+                <h3 className="text-sm font-bold uppercase tracking-wider text-slate-200">{title}</h3>
+                <p className="mt-1 text-xs font-medium text-slate-500">{countLabel}</p>
+            </div>
+            <SessionList
+                rows={rows}
+                highlightedIds={highlightedIds}
+                onEditSession={onEditSession}
+                onRequestCancelSession={onRequestCancelSession}
+                now={now}
+                onHostStart={onHostStart}
+                emptyMessage={emptyMessage}
+            />
+        </div>
+    )
 }
 
-function splitSessionsByWeek(rows: AdminSessionRow[]) {
-    const { today, endCurrentWeek, startNextWeek, endNextWeek } = getWeekBoundaries()
-    const currentWeekSessions: AdminSessionRow[] = []
-    const nextWeekSessions: AdminSessionRow[] = []
-
-    for (const row of rows) {
-        const d = parseSessionDate(row.date)
-        if (!d) continue
-        if (d.getTime() >= today.getTime() && d.getTime() <= endCurrentWeek.getTime()) {
-            currentWeekSessions.push(row)
-        } else if (d.getTime() >= startNextWeek.getTime() && d.getTime() <= endNextWeek.getTime()) {
-            nextWeekSessions.push(row)
-        }
-    }
-
-    const byDateTime = (a: AdminSessionRow, b: AdminSessionRow) => {
-        const da = (a.date ?? "").localeCompare(b.date ?? "")
-        if (da !== 0) return da
-        return (a.time ?? "").localeCompare(b.time ?? "")
-    }
-    currentWeekSessions.sort(byDateTime)
-    nextWeekSessions.sort(byDateTime)
-
-    return { currentWeekSessions, nextWeekSessions }
-}
-
-function SessionCardsGrid({
+function SessionList({
     rows,
     highlightedIds,
     onEditSession,
@@ -107,69 +103,24 @@ function SessionCardsGrid({
     emptyMessage: string
 }) {
     if (rows.length === 0) {
-        return (
-            <p className="px-4 py-8 text-center text-sm text-slate-500">
-                {emptyMessage}
-            </p>
-        )
+        return <p className="px-4 py-8 text-center text-sm text-slate-500">{emptyMessage}</p>
     }
 
     return (
-        <div className="grid gap-4 p-4 sm:grid-cols-2 xl:grid-cols-3">
+        <ul className="divide-y divide-white/[0.06]">
             {rows.map((r) => (
-                <LiveSessionCard
-                    key={r.id}
-                    row={r}
-                    highlighted={highlightedIds.has(r.id)}
-                    now={now}
-                    onEditSession={onEditSession}
-                    onRequestCancelSession={onRequestCancelSession}
-                    onHostStart={onHostStart}
-                />
+                <li key={r.id} className="p-4">
+                    <LiveSessionCard
+                        row={r}
+                        highlighted={highlightedIds.has(r.id)}
+                        now={now}
+                        onEditSession={onEditSession}
+                        onRequestCancelSession={onRequestCancelSession}
+                        onHostStart={onHostStart}
+                    />
+                </li>
             ))}
-        </div>
-    )
-}
-
-function AccordionWeek({
-    id,
-    label,
-    open,
-    onToggle,
-    children,
-    countLabel,
-}: {
-    id: string
-    label: string
-    open: boolean
-    onToggle: () => void
-    children: ReactNode
-    countLabel: string
-}) {
-    return (
-        <div className="border-b border-sky-500/15 last:border-b-0">
-            <button
-                type="button"
-                id={`${id}-trigger`}
-                aria-expanded={open}
-                aria-controls={`${id}-panel`}
-                onClick={onToggle}
-                className="flex w-full items-center justify-between gap-3 px-4 py-4 text-left transition hover:bg-sky-500/[0.06]"
-            >
-                <span className="flex items-center gap-3">
-                    <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-sky-400">
-                        {open ? "▼" : "▶"}
-                    </span>
-                    <span>
-                        <span className="block text-base font-bold tracking-tight text-slate-100">{label}</span>
-                        <span className="text-xs font-medium text-slate-500">{countLabel}</span>
-                    </span>
-                </span>
-            </button>
-            <div id={`${id}-panel`} role="region" aria-labelledby={`${id}-trigger`} hidden={!open}>
-                {open ? children : null}
-            </div>
-        </div>
+        </ul>
     )
 }
 
@@ -178,8 +129,6 @@ export default function AdminSessions() {
     const [rows, setRows] = useState<AdminSessionRow[]>([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
-    const [isThisWeekOpen, setIsThisWeekOpen] = useState(true)
-    const [isNextWeekOpen, setIsNextWeekOpen] = useState(false)
     const [createModalOpen, setCreateModalOpen] = useState(false)
     const [createSessionType, setCreateSessionType] = useState<"trading" | "theory">("trading")
     const [editSession, setEditSession] = useState<AdminSessionRow | null>(null)
@@ -238,16 +187,23 @@ export default function AdminSessions() {
         return () => window.clearInterval(interval)
     }, [])
 
-    const { currentWeekSessions, nextWeekSessions } = useMemo(() => splitSessionsByWeek(rows), [rows])
+    const upcoming = useMemo(() => getUpcomingSessions(rows, now), [rows, now])
+
+    const theoryUpcoming = useMemo(
+        () => upcoming.filter((r) => isTheorySession(r)),
+        [upcoming]
+    )
+    const tradingUpcoming = useMemo(
+        () => upcoming.filter((r) => !isTheorySession(r)),
+        [upcoming]
+    )
 
     const soonSessions = useMemo(() => {
-        return rows.filter((r) => {
-            const at = parseSessionDateTime(r.date, r.time)
-            if (!at) return false
-            const diffInMinutes = (at.getTime() - now.getTime()) / (1000 * 60)
-            return diffInMinutes <= 10 && diffInMinutes > 0
+        return upcoming.filter((r) => {
+            const minutesUntil = getMinutesUntilSessionStart(adminRowToDbSession(r), now)
+            return minutesUntil != null && minutesUntil > 0 && minutesUntil <= 10
         })
-    }, [rows, now])
+    }, [upcoming, now])
 
     const highlightedSessionIds = useMemo(() => new Set(soonSessions.map((s) => s.id)), [soonSessions])
     const upcomingSoonSession = useMemo(() => soonSessions[0] ?? null, [soonSessions])
@@ -347,49 +303,49 @@ export default function AdminSessions() {
                 </div>
             ) : null}
 
-            <section className="overflow-hidden rounded-2xl border border-sky-500/20 bg-gradient-to-br from-[#111827] to-[#0a0f1a] shadow-[0_28px_56px_-32px_rgba(37,99,235,0.45)]">
+            <section className="space-y-4">
                 {loading ? (
-                    <p className="px-4 py-12 text-center text-sm text-slate-500">{t.loadingSessions}</p>
+                    <div className="overflow-hidden rounded-2xl border border-sky-500/20 bg-gradient-to-br from-[#111827] to-[#0a0f1a] px-4 py-12 text-center text-sm text-slate-500 shadow-[0_28px_56px_-32px_rgba(37,99,235,0.45)]">
+                        {t.loadingSessions}
+                    </div>
                 ) : error ? (
-                    <p className="px-4 py-12 text-center text-sm text-red-400">{error}</p>
-                ) : rows.length === 0 ? (
-                    <p className="px-4 py-12 text-center text-sm text-slate-500">{t.noSessionsScheduledCreate}</p>
+                    <div className="overflow-hidden rounded-2xl border border-sky-500/20 bg-gradient-to-br from-[#111827] to-[#0a0f1a] px-4 py-12 text-center text-sm text-red-400 shadow-[0_28px_56px_-32px_rgba(37,99,235,0.45)]">
+                        {error}
+                    </div>
                 ) : (
                     <>
-                        <AccordionWeek
-                            id="week-this"
-                            label={t.tabThisWeek}
-                            countLabel={sessionCountLabel(currentWeekSessions.length)}
-                            open={isThisWeekOpen}
-                            onToggle={() => setIsThisWeekOpen((v) => !v)}
-                        >
-                            <SessionCardsGrid
-                                rows={currentWeekSessions}
+                        <div className="rounded-2xl border border-sky-500/20 bg-gradient-to-br from-[#111827] to-[#0a0f1a] px-4 py-4 shadow-[0_28px_56px_-32px_rgba(37,99,235,0.45)]">
+                            <h2 className="text-base font-bold tracking-tight text-slate-100">
+                                {t.adminScheduledSessions}
+                            </h2>
+                            <p className="mt-1 text-xs font-medium text-slate-500">
+                                {sessionCountLabel(upcoming.length)}
+                            </p>
+                        </div>
+                        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                            <SessionCategoryBlock
+                                title={t.sessionTypeTheoryClass}
+                                countLabel={sessionCountLabel(theoryUpcoming.length)}
+                                rows={theoryUpcoming}
                                 highlightedIds={highlightedSessionIds}
                                 onEditSession={setEditSession}
                                 onRequestCancelSession={setCancelTarget}
                                 now={now}
                                 onHostStart={handleAdminHostStart}
-                                emptyMessage={t.noSessionsThisPeriod}
+                                emptyMessage={t.adminNoTheoryClassesScheduled}
                             />
-                        </AccordionWeek>
-                        <AccordionWeek
-                            id="week-next"
-                            label={t.tabNextWeek}
-                            countLabel={sessionCountLabel(nextWeekSessions.length)}
-                            open={isNextWeekOpen}
-                            onToggle={() => setIsNextWeekOpen((v) => !v)}
-                        >
-                            <SessionCardsGrid
-                                rows={nextWeekSessions}
+                            <SessionCategoryBlock
+                                title={t.sessionTypeTradingSession}
+                                countLabel={sessionCountLabel(tradingUpcoming.length)}
+                                rows={tradingUpcoming}
                                 highlightedIds={highlightedSessionIds}
                                 onEditSession={setEditSession}
                                 onRequestCancelSession={setCancelTarget}
                                 now={now}
                                 onHostStart={handleAdminHostStart}
-                                emptyMessage={t.noSessionsThisPeriod}
+                                emptyMessage={t.adminNoTradingSessionsScheduled}
                             />
-                        </AccordionWeek>
+                        </div>
                     </>
                 )}
             </section>
