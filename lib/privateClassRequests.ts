@@ -85,6 +85,18 @@ export const privateClassAdminActionSchema = z.object({
     admin_notes: z.string().trim().max(2000).optional().nullable(),
 })
 
+/** Admin Stage 5 — reschedule confirmed Private Class (date/time only). */
+export const reschedulePrivateClassRequestSchema = z.object({
+    requested_date: z
+        .string()
+        .trim()
+        .regex(/^\d{4}-\d{2}-\d{2}$/, "requested_date must be YYYY-MM-DD"),
+    requested_time: z
+        .string()
+        .trim()
+        .regex(/^([01]\d|2[0-3]):([0-5]\d)(?::([0-5]\d))?$/, "requested_time must be HH:mm or HH:mm:ss"),
+})
+
 function getTimeZoneOffsetMs(at: Date, timeZone: string): number {
     const dtf = new Intl.DateTimeFormat("en-US", {
         timeZone,

@@ -309,6 +309,8 @@ export type ZoomMeetingUpdateInput = {
     start_time?: string
     duration?: number
     topic?: string
+    /** Optional IANA timezone when updating start_time; defaults to {@link getZoomSessionTimezone}. */
+    timezone?: string
 }
 
 /**
@@ -325,7 +327,10 @@ export async function updateZoomMeeting(meetingId: string, patch: ZoomMeetingUpd
         throw new ZoomConfigError("updateZoomMeeting: empty meetingId")
     }
 
-    const timezone = getZoomSessionTimezone()
+    const timezone =
+        typeof patch.timezone === "string" && patch.timezone.trim()
+            ? patch.timezone.trim()
+            : getZoomSessionTimezone()
     const body: Record<string, unknown> = {}
     const alternativeHosts = zoomAlternativeHostsCsv()
 

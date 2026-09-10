@@ -1,5 +1,6 @@
 import { Resend } from "resend"
 import { getAppLoginUrl } from "@/lib/app-url"
+import { createPrivateClassRescheduleEmailHtml } from "@/lib/privateClassRescheduleEmail"
 import { createWelcomeEmail } from "@/lib/welcomeEmail"
 
 /** Must match a verified domain in Resend (server-only; never import this module from client code). */
@@ -94,6 +95,60 @@ export async function sendEmail(
                 : err
         console.error("[resend] FULL ERROR:", JSON.stringify(forLog, null, 2))
         const message = err instanceof Error ? err.message : "Unknown Resend error"
+        return { ok: false, error: message }
+    }
+}
+
+export async function sendPrivateClassRescheduleEmail(args: {
+    to: string
+    studentName?: string | null
+    newDateYmd: string
+    newTimeHms: string
+    zoomJoinUrl: string | null
+}): Promise<SendEmailResult> {
+    const apiKey = process.env.RESEND_API_KEY
+    if (!apiKey) {
+        const message = "Missing RESEND_API_KEY"
+        console.error("[resend] " + message)
+        return { ok: false, error: message }
+    }
+
+    const trimmedTo = typeof args.to === "string" ? args.to.trim() : ""
+    if (!trimmedTo) {
+        return { ok: false, error: "sendPrivateClassRescheduleEmail requires a non-empty `to`" }
+    }
+
+    const resend = new Resend(apiKey.trim())
+    const html = createPrivateClassRescheduleEmailHtml({
+        studentName: args.studentName,
+        newDateYmd: args.newDateYmd,
+        newTimeHms: args.newTimeHms,
+        zoomJoinUrl: args.zoomJoinUrl,
+        durationHours: 2,
+    })
+
+    try {
+        const { data, error } = await resend.emails.send({
+            from: RESEND_FROM,
+            to: trimmedTo,
+            subject: "Tu clase privada fue reprogramada | Your private class was rescheduled",
+            html,
+        })
+
+        if (error) {
+            console.error("[resend] private class reschedule FULL ERROR:", JSON.stringify(error, null, 2))
+            const message = typeof error.message === "string" ? error.message : "Resend send failed"
+            return { ok: false, error: message }
+        }
+
+        console.log("[resend] Private class reschedule email sent", {
+            to: trimmedTo,
+            id: data?.id ?? null,
+        })
+        return { ok: true, id: data?.id ?? null }
+    } catch (err) {
+        const message = err instanceof Error ? err.message : "Unknown Resend error"
+        console.error("[resend] private class reschedule exception", message)
         return { ok: false, error: message }
     }
 }

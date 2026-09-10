@@ -10,6 +10,7 @@ import {
 import StudentToast, {
     type StudentToastTone,
 } from "@/components/dashboard/support/StudentToast"
+import DateTimeField from "@/components/shared/DateTimeField"
 import { useLanguage } from "@/context/LanguageProvider"
 import {
     type PrivateClassRequestRow,
@@ -34,6 +35,11 @@ export default function AdminPrivateClassRequests() {
     const [rejectError, setRejectError] = useState<string | null>(null)
     const [toast, setToast] = useState<{ message: string; tone: StudentToastTone } | null>(null)
     const [ensuringZoomId, setEnsuringZoomId] = useState<string | null>(null)
+    const [rescheduleTarget, setRescheduleTarget] = useState<PrivateClassRequestRow | null>(null)
+    const [rescheduleDate, setRescheduleDate] = useState("")
+    const [rescheduleTime, setRescheduleTime] = useState("")
+    const [rescheduleSubmitting, setRescheduleSubmitting] = useState(false)
+    const [rescheduleError, setRescheduleError] = useState<string | null>(null)
 
     const load = useCallback(async () => {
         setLoading(true)
@@ -119,6 +125,23 @@ export default function AdminPrivateClassRequests() {
         setConfirmAction(null)
     }
 
+    const openReschedule = (row: PrivateClassRequestRow) => {
+        setRescheduleError(null)
+        setRescheduleTarget(row)
+        setRescheduleDate(String(row.requested_date ?? "").trim())
+        const timeRaw = String(row.requested_time ?? "").trim()
+        const tm = /^(\d{1,2}):(\d{2})/.exec(timeRaw)
+        setRescheduleTime(tm ? `${tm[1].padStart(2, "0")}:${tm[2]}` : "")
+    }
+
+    const closeReschedule = () => {
+        if (rescheduleSubmitting) return
+        setRescheduleTarget(null)
+        setRescheduleError(null)
+        setRescheduleDate("")
+        setRescheduleTime("")
+    }
+
     const ensureZoom = async (row: PrivateClassRequestRow) => {
         if (ensuringZoomId) return
         setEnsuringZoomId(row.id)
@@ -151,6 +174,60 @@ export default function AdminPrivateClassRequests() {
             })
         } finally {
             setEnsuringZoomId(null)
+        }
+    }
+
+    const submitReschedule = async () => {
+        if (!rescheduleTarget || rescheduleSubmitting) return
+        setRescheduleError(null)
+        setRescheduleSubmitting(true)
+        try {
+            const res = await fetch(
+                `/api/admin/private-class-requests/${rescheduleTarget.id}/reschedule`,
+                {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    credentials: "include",
+                    cache: "no-store",
+                    body: JSON.stringify({
+                        requested_date: rescheduleDate.trim(),
+                        requested_time: rescheduleTime.trim(),
+                    }),
+                }
+            )
+            const payload = (await res.json().catch(() => ({}))) as {
+                ok?: boolean
+                error?: string
+                email_sent?: boolean
+                warning?: string
+            }
+            if (!res.ok || payload.ok === false) {
+                throw new Error(
+                    typeof payload.error === "string" && payload.error.trim()
+                        ? payload.error
+                        : t.adminPrivateClassRescheduleError
+                )
+            }
+            setRescheduleTarget(null)
+            setRescheduleDate("")
+            setRescheduleTime("")
+            if (payload.email_sent === false || payload.warning === "rescheduled_but_email_failed") {
+                setToast({
+                    message: t.adminPrivateClassRescheduleEmailWarning,
+                    tone: "error",
+                })
+            } else {
+                setToast({ message: t.adminPrivateClassRescheduleSuccess, tone: "success" })
+            }
+            await load()
+        } catch (e) {
+            setRescheduleError(
+                e instanceof Error && e.message.trim()
+                    ? e.message
+                    : t.adminPrivateClassRescheduleError
+            )
+        } finally {
+            setRescheduleSubmitting(false)
         }
     }
 
@@ -314,6 +391,14 @@ export default function AdminPrivateClassRequests() {
                                                 {t.privateClassZoomPreparing}
                                             </p>
                                         )}
+                                        <button
+                                            type="button"
+                                            disabled={rescheduleSubmitting}
+                                            onClick={() => openReschedule(row)}
+                                            className="rounded-lg border border-sky-400/40 bg-sky-500/15 px-3 py-2 text-xs font-bold text-sky-100 transition hover:bg-sky-500/25 disabled:cursor-not-allowed disabled:opacity-60"
+                                        >
+                                            {t.adminPrivateClassReschedule}
+                                        </button>
                                     </div>
                                 ) : null}
 
@@ -481,6 +566,91 @@ export default function AdminPrivateClassRequests() {
                                 className="rounded-lg border border-red-400/45 bg-red-500/20 px-3 py-2 text-xs font-bold text-red-100 disabled:opacity-60"
                             >
                                 {rejectSubmitting ? t.saving : t.adminPrivateClassRejectConfirm}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            ) : null}
+
+            {rescheduleTarget ? (
+                <div
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="reschedule-private-class-title"
+                    className="fixed inset-0 z-[62] flex items-center justify-center bg-black/70 p-5"
+                    onClick={rescheduleSubmitting ? undefined : closeReschedule}
+                >
+                    <div
+                        className="w-full max-w-md rounded-2xl border border-sky-400/25 bg-gradient-to-br from-[#111827] to-[#0B0F1A] p-5 shadow-[0_24px_48px_rgba(0,0,0,0.5)]"
+                        onClick={(ev) => ev.stopPropagation()}
+                    >
+                        <h2
+                            id="reschedule-private-class-title"
+                            className="text-lg font-extrabold text-slate-50"
+                        >
+                            {t.adminPrivateClassRescheduleTitle}
+                        </h2>
+                        <p className="mt-2 text-sm text-slate-400">
+                            {t.adminPrivateClassRescheduleDescription}
+                        </p>
+                        <p className="mt-3 text-xs text-slate-500">
+                            {rescheduleTarget.student_email}
+                        </p>
+                        <p className="mt-1 text-sm text-slate-300">
+                            <span className="font-semibold text-slate-500">
+                                {t.adminPrivateClassRescheduleCurrent}:{" "}
+                            </span>
+                            {rescheduleTarget.requested_date} ·{" "}
+                            {formatPrivateClassTime(rescheduleTarget.requested_time)}
+                        </p>
+
+                        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                            <DateTimeField
+                                id="reschedule-private-class-date"
+                                type="date"
+                                label={t.adminPrivateClassRescheduleNewDate}
+                                value={rescheduleDate}
+                                disabled={rescheduleSubmitting}
+                                required
+                                onChange={(e) => setRescheduleDate(e.target.value)}
+                            />
+                            <DateTimeField
+                                id="reschedule-private-class-time"
+                                type="time"
+                                label={t.adminPrivateClassRescheduleNewTime}
+                                value={rescheduleTime}
+                                disabled={rescheduleSubmitting}
+                                required
+                                onChange={(e) => setRescheduleTime(e.target.value)}
+                            />
+                        </div>
+
+                        {rescheduleError ? (
+                            <p className="mt-3 text-sm text-red-400">{rescheduleError}</p>
+                        ) : null}
+
+                        <div className="mt-4 flex flex-wrap justify-end gap-2">
+                            <button
+                                type="button"
+                                disabled={rescheduleSubmitting}
+                                onClick={closeReschedule}
+                                className="rounded-lg border border-white/15 px-3 py-2 text-xs font-semibold text-slate-200 disabled:opacity-60"
+                            >
+                                {t.close}
+                            </button>
+                            <button
+                                type="button"
+                                disabled={
+                                    rescheduleSubmitting ||
+                                    !rescheduleDate.trim() ||
+                                    !rescheduleTime.trim()
+                                }
+                                onClick={() => void submitReschedule()}
+                                className="rounded-lg border border-sky-400/45 bg-sky-500/20 px-3 py-2 text-xs font-bold text-sky-100 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                                {rescheduleSubmitting
+                                    ? t.adminPrivateClassRescheduleProcessing
+                                    : t.adminPrivateClassRescheduleConfirm}
                             </button>
                         </div>
                     </div>
