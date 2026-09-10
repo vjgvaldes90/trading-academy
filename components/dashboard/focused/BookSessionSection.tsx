@@ -1,6 +1,5 @@
 "use client"
 
-import type { TabKey } from "@/context/SessionContext"
 import { useSession } from "@/context/SessionContext"
 import { useLanguage } from "@/context/LanguageProvider"
 import {
@@ -13,7 +12,7 @@ import {
 } from "@/lib/sessions"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { useState } from "react"
+import { useMemo, useState } from "react"
 
 function SlotRow({ session }: { session: DbSession }) {
     const { academyAccess, userEmail } = useSession()
@@ -104,83 +103,83 @@ function SlotRow({ session }: { session: DbSession }) {
     )
 }
 
+function SessionCategoryBlock({
+    title,
+    countLabel,
+    sessions,
+    emptyMessage,
+}: {
+    title: string
+    countLabel: string
+    sessions: DbSession[]
+    emptyMessage: string
+}) {
+    return (
+        <div className="min-w-0 overflow-hidden rounded-2xl border border-sky-500/20 bg-gradient-to-br from-[#111827] to-[#0a0f1a] shadow-[0_28px_56px_-32px_rgba(37,99,235,0.35)]">
+            <div className="border-b border-sky-500/15 px-4 py-4">
+                <h3 className="text-sm font-bold uppercase tracking-wider text-slate-200">{title}</h3>
+                <p className="mt-1 text-xs font-medium text-slate-500">{countLabel}</p>
+            </div>
+            <div className="space-y-3 p-4">
+                {sessions.length === 0 ? (
+                    <p className="py-6 text-center text-sm text-slate-500">{emptyMessage}</p>
+                ) : (
+                    sessions.map((s) => <SlotRow key={s.id} session={s} />)
+                )}
+            </div>
+        </div>
+    )
+}
+
 export default function BookSessionSection() {
-    const { activeTab, setActiveTab, filteredSessions, sessions } = useSession()
+    const { upcomingLiveSessions, subscriptionPlan, sessions } = useSession()
     const { t } = useLanguage()
 
-    const tabLabels: { key: TabKey; label: string }[] = [
-        { key: "today", label: t.tabToday },
-        { key: "thisWeek", label: t.tabThisWeek },
-        { key: "nextWeek", label: t.tabNextWeek },
-    ]
+    const showTheoryColumn = subscriptionPlan === "full_program"
+
+    const theoryUpcoming = useMemo(
+        () => upcomingLiveSessions.filter((s) => s.session_type === "theory"),
+        [upcomingLiveSessions]
+    )
+    const tradingUpcoming = useMemo(
+        () => upcomingLiveSessions.filter((s) => s.session_type !== "theory"),
+        [upcomingLiveSessions]
+    )
+
+    const sessionCountLabel = (n: number) =>
+        n === 1 ? t.studentLiveSessionCountOne : t.studentLiveSessionCountMany.replace("{count}", String(n))
 
     return (
-        <section id="sesiones-en-vivo" aria-labelledby="sesiones-en-vivo-title">
-            <h2
-                id="sesiones-en-vivo-title"
-                style={{
-                    margin: "0 0 var(--ds-3)",
-                    color: "#93c5fd",
-                    textShadow: "0 0 10px rgba(59,130,246,0.5)",
-                    fontSize: "1.125rem",
-                    fontWeight: 700,
-                }}
-            >
+        <section id="sesiones-en-vivo" aria-labelledby="sesiones-en-vivo-title" className="space-y-4">
+            <h2 id="sesiones-en-vivo-title" className="sr-only">
                 {t.liveSessionsTitle}
             </h2>
 
-            <div
-                style={{
-                    display: "flex",
-                    flexWrap: "wrap",
-                    gap: "var(--ds-2)",
-                    marginBottom: "var(--ds-4)",
-                }}
-            >
-                {tabLabels.map(({ key, label }) => (
-                    <button
-                        key={key}
-                        type="button"
-                        onClick={() => setActiveTab(key)}
-                        style={{
-                            padding: "0.5rem 1rem",
-                            borderRadius: 12,
-                            border: `1px solid ${activeTab === key ? "rgba(59,130,246,0.5)" : "rgba(59,130,246,0.2)"}`,
-                            background:
-                                activeTab === key
-                                    ? "linear-gradient(90deg, rgba(59,130,246,0.2), rgba(29,78,216,0.2))"
-                                    : "rgba(17,24,39,0.8)",
-                            color: "#f8fafc",
-                            fontWeight: 600,
-                            fontSize: "0.8125rem",
-                            cursor: "pointer",
-                            transition: "all 0.2s ease",
-                        }}
-                    >
-                        {label}
-                    </button>
-                ))}
-            </div>
-
             {!sessions?.length ? (
-                <p style={{ color: "var(--ds-text-muted)", margin: 0, fontSize: "0.875rem", textAlign: "center" }}>
-                    {t.noSessionsAvailableYet}
-                </p>
-            ) : filteredSessions.length === 0 ? (
-                <p style={{ color: "var(--ds-text-muted)", margin: 0, fontSize: "0.875rem" }}>
-                    {t.noSessionsInRange}
-                </p>
+                <p className="text-center text-sm text-slate-500">{t.noSessionsAvailableYet}</p>
+            ) : showTheoryColumn ? (
+                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                    <SessionCategoryBlock
+                        title={t.sessionTypeTheoryClass}
+                        countLabel={sessionCountLabel(theoryUpcoming.length)}
+                        sessions={theoryUpcoming}
+                        emptyMessage={t.studentNoTheoryClassesScheduled}
+                    />
+                    <SessionCategoryBlock
+                        title={t.sessionTypeTradingSession}
+                        countLabel={sessionCountLabel(tradingUpcoming.length)}
+                        sessions={tradingUpcoming}
+                        emptyMessage={t.studentNoTradingSessionsScheduled}
+                    />
+                </div>
             ) : (
-                <div
-                    style={{
-                        display: "grid",
-                        gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 280px), 1fr))",
-                        gap: "var(--ds-3)",
-                    }}
-                >
-                    {filteredSessions.map((s) => (
-                        <SlotRow key={s.id} session={s} />
-                    ))}
+                <div className="grid grid-cols-1 gap-4">
+                    <SessionCategoryBlock
+                        title={t.sessionTypeTradingSession}
+                        countLabel={sessionCountLabel(tradingUpcoming.length)}
+                        sessions={tradingUpcoming}
+                        emptyMessage={t.studentNoTradingSessionsScheduled}
+                    />
                 </div>
             )}
         </section>

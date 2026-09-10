@@ -5,6 +5,7 @@ import {
     evaluateAcademyAccess,
     type TradingStudentAccessRow,
 } from "@/lib/studentAcademyAccess"
+import { resolveSubscriptionPlan } from "@/lib/subscriptionPlans"
 
 export const runtime = "nodejs"
 
@@ -32,7 +33,9 @@ export async function GET(req: Request) {
 
         const { data: row, error } = await supabase
             .from("trading_students")
-            .select("access_code, access_type, is_active, access_expires_at, subscription_id, subscription_status")
+            .select(
+                "access_code, access_type, is_active, access_expires_at, plan, subscription_id, subscription_status"
+            )
             .eq("email", userEmail)
             .maybeSingle()
 
@@ -58,10 +61,12 @@ export async function GET(req: Request) {
             })
         }
 
-        const r = row as { access_type?: string | null }
+        const r = row as { access_type?: string | null; plan?: string | null }
         return NextResponse.json({
             ok: true,
             access_type: typeof r.access_type === "string" && r.access_type.trim() ? r.access_type : "paid",
+            /** Server-resolved from trading_students.plan (never trust client). */
+            plan: resolveSubscriptionPlan(r.plan),
         })
     } catch (e) {
         console.error("[api/student/access] GET", e)

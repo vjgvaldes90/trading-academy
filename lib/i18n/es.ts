@@ -553,6 +553,10 @@ export const es: TranslationKeys = {
     // Live sessions view
     liveSessionsTitle: "Sesiones en vivo",
     liveSessionsSubtitle: "Únete a cualquier sesión disponible con tu acceso activo.",
+    studentLiveSessionCountOne: "1 sesión próxima",
+    studentLiveSessionCountMany: "{count} sesiones próximas",
+    studentNoTheoryClassesScheduled: "No hay clases de teoría programadas.",
+    studentNoTradingSessionsScheduled: "No hay sesiones de trading programadas.",
 
     // Private Class 1:1 (student)
     privateClassTitle: "Clase privada 1:1",

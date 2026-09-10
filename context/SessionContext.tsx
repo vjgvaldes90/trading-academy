@@ -3,6 +3,7 @@
 import {
     DbSession,
     buildNextSessionTicker,
+    getMinutesUntilSessionStart,
     getNextSessionFromDB,
     isSessionLiveNow,
     shouldHideStudentDashboardSession,
@@ -20,6 +21,7 @@ import {
 } from "@/lib/loadDashboardFromClient"
 import { getTranslations, readStoredLanguage } from "@/lib/i18n"
 import { clearStoredStudent } from "@/lib/studentLocalStorage"
+import type { SubscriptionPlanId } from "@/lib/subscriptionPlans"
 import { supabase } from "@/lib/supabase"
 import { useRealtimeSessions, type RealtimeEvent } from "@/hooks/useRealtimeSessions"
 import {
@@ -36,14 +38,39 @@ import {
 
 export type TabKey = "today" | "thisWeek" | "nextWeek"
 
+function bySessionDateTimeAsc(a: DbSession, b: DbSession): number {
+    const da = (a.date ?? "").localeCompare(b.date ?? "")
+    if (da !== 0) return da
+    return (a.time ?? "").localeCompare(b.time ?? "")
+}
+
+/**
+ * Future (and starting-now) sessions for Live Sessions columns.
+ * Keeps briefly-started sessions until student hide window so Join still works.
+ */
+export function getStudentUpcomingLiveSessions(sessions: DbSession[], now: Date): DbSession[] {
+    return sessions
+        .filter((s) => {
+            const minutesUntil = getMinutesUntilSessionStart(s, now)
+            if (minutesUntil == null) return false
+            if (minutesUntil >= 0) return true
+            return !shouldHideStudentDashboardSession(s, now)
+        })
+        .sort(bySessionDateTimeAsc)
+}
+
 export type SessionContextValue = {
     sessions: DbSession[]
     setSessions: Dispatch<SetStateAction<DbSession[]>>
     activeTab: TabKey
     setActiveTab: (tab: TabKey) => void
     filteredSessions: DbSession[]
+    /** Chronological upcoming list for Live Sessions layout (America/New_York start). */
+    upcomingLiveSessions: DbSession[]
     updatedSessionIds: string[]
     academyAccess: AcademyAccessState
+    /** Server-resolved trading_students.plan (via /api/student/access). */
+    subscriptionPlan: SubscriptionPlanId
     tickerLine: string
     tickerJoinHref: string
     tickerIsLive: boolean
@@ -59,15 +86,19 @@ export function SessionProvider({
     initialSessions,
     initialAcademyAccess,
     initialUserEmail,
+    initialSubscriptionPlan = "trading_only",
     children,
 }: {
     initialSessions: DbSession[]
     initialAcademyAccess: AcademyAccessState
     initialUserEmail: string | null
+    initialSubscriptionPlan?: SubscriptionPlanId
     children: ReactNode
 }) {
     const [sessions, setSessions] = useState<DbSession[]>(initialSessions)
     const [academyAccess, setAcademyAccess] = useState<AcademyAccessState>(initialAcademyAccess)
+    const [subscriptionPlan, setSubscriptionPlan] =
+        useState<SubscriptionPlanId>(initialSubscriptionPlan)
     const [dashboardDataReady, setDashboardDataReady] = useState(initialSessions.length > 0)
     const [activeTab, setActiveTab] = useState<TabKey>("today")
     const [now, setNow] = useState(() => new Date())
@@ -94,8 +125,13 @@ export function SessionProvider({
             const lang = readStoredLanguage()
             const i18n = getTranslations(lang)
             try {
-                const { sessions: nextSessions, canAccess } = await loadDashboardFromClient(supabase, email)
+                const {
+                    sessions: nextSessions,
+                    canAccess,
+                    plan,
+                } = await loadDashboardFromClient(supabase, email)
                 if (cancelled) return
+                setSubscriptionPlan(plan)
                 setAcademyAccess({
                     canAccess,
                     message: canAccess ? null : i18n.noActiveAccess,
@@ -131,7 +167,12 @@ export function SessionProvider({
         if (!email) return
         const i18n = getTranslations(readStoredLanguage())
         try {
-            const { sessions: nextSessions, canAccess } = await loadDashboardFromClient(supabase, email)
+            const {
+                sessions: nextSessions,
+                canAccess,
+                plan,
+            } = await loadDashboardFromClient(supabase, email)
+            setSubscriptionPlan(plan)
             setAcademyAccess({
                 canAccess,
                 message: canAccess ? null : i18n.noActiveAccess,
@@ -185,6 +226,11 @@ export function SessionProvider({
         [sessions, now]
     )
 
+    const upcomingLiveSessions = useMemo(
+        () => getStudentUpcomingLiveSessions(sessions, now),
+        [sessions, now]
+    )
+
     const filteredSessions = useMemo(() => {
         if (activeTab === "today") return getTodaySessions(upcomingSessions, now)
         if (activeTab === "thisWeek") return getWeekSessions(upcomingSessions, now)
@@ -212,8 +258,10 @@ export function SessionProvider({
             activeTab,
             setActiveTab,
             filteredSessions,
+            upcomingLiveSessions,
             updatedSessionIds,
             academyAccess,
+            subscriptionPlan,
             tickerLine: ticker.line,
             tickerJoinHref: ticker.joinHref,
             tickerIsLive,
@@ -226,8 +274,10 @@ export function SessionProvider({
             sessions,
             activeTab,
             filteredSessions,
+            upcomingLiveSessions,
             updatedSessionIds,
             academyAccess,
+            subscriptionPlan,
             ticker.line,
             ticker.joinHref,
             tickerIsLive,

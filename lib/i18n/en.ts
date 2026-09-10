@@ -551,6 +551,10 @@ export const en = {
     // Live sessions view
     liveSessionsTitle: "Live Sessions",
     liveSessionsSubtitle: "Join any available session with your active access.",
+    studentLiveSessionCountOne: "1 upcoming session",
+    studentLiveSessionCountMany: "{count} upcoming sessions",
+    studentNoTheoryClassesScheduled: "No theory classes scheduled.",
+    studentNoTradingSessionsScheduled: "No trading sessions scheduled.",
 
     // Private Class 1:1 (student)
     privateClassTitle: "Private Class 1:1",

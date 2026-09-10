@@ -1,7 +1,7 @@
 import { isOfficialLaunchStarted } from "@/lib/academyLaunch"
 import { getTranslations, readStoredLanguage, type Language } from "@/lib/i18n"
 import { hasBlockingSubscription } from "@/lib/preEnrolledCheckoutGate"
-import { canAccessTheory } from "@/lib/subscriptionPlans"
+import { canAccessTheory, planIncludesTheory } from "@/lib/subscriptionPlans"
 
 /**
  * Academy-wide access (trading_students), independent of live-session join windows.
@@ -129,8 +129,12 @@ export function evaluateAcademyAccess(
 }
 
 /**
- * Theory entitlement: academy OK + full_program + program_theory_until in the future.
+ * Theory entitlement: academy OK + (pre-launch pre_enrolled full_program OR paid theory window).
  * Enforced by GET /api/lessons and live Theory Classes (list + join).
+ *
+ * Before official launch (America/New_York): pre_enrolled + full_program may attend theory
+ * without program_theory_until (classes may start before Sep 28 payment).
+ * After launch: existing canAccessTheory (plan + future program_theory_until) applies.
  */
 export function evaluateTheoryAccess(
     row: TradingStudentAccessRow | null | undefined,
@@ -139,6 +143,15 @@ export function evaluateTheoryAccess(
     const academy = evaluateAcademyAccess(row, now)
     if (!academy.ok) {
         return { ok: false, reason: academy.reason ?? "not_found" }
+    }
+
+    const type = normalizeAccessType(row?.access_type)
+    if (
+        type === PRE_ENROLLED_ACCESS_TYPE &&
+        !isOfficialLaunchStarted(now) &&
+        planIncludesTheory(row?.plan)
+    ) {
+        return { ok: true }
     }
 
     if (
