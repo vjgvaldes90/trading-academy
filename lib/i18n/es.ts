@@ -251,11 +251,10 @@ export const es: TranslationKeys = {
     purchasePreEnrollGoToAccess: "Continuar con el código de acceso",
     purchasePreEnrollFootnote: "El pago inicia el 28 de septiembre de 2026. Tu plan ya quedó guardado.",
     purchasePreEnrollFullProgram: "Pre-inscribir Programa Completo (gratis hasta el 28 sep)",
-    purchasePreEnrollTradingOnly: "Pre-inscribir Solo Trading (gratis hasta el 28 sep)",
+    purchasePreEnrollTradingOnly: "Pre-inscribir Solo Trading",
     purchasePreEnrollPlanFullProgramLabel:
         "Pre-inscripción: Programa Completo — acceso ahora, pago desde el 28 sep",
-    purchasePreEnrollPlanTradingOnlyLabel:
-        "Pre-inscripción: Solo Trading — acceso ahora, pago desde el 28 sep",
+    purchasePreEnrollPlanTradingOnlyLabel: "",
     purchasePreEnrollSecureNote: "Sin pago hoy • Código de acceso al instante",
 
     // Complete Profile

@@ -249,11 +249,10 @@ export const en = {
     purchasePreEnrollGoToAccess: "Continue with Access Code",
     purchasePreEnrollFootnote: "Payment opens September 28, 2026. Your plan is already saved.",
     purchasePreEnrollFullProgram: "Pre-enroll Full Program (free until Sep 28)",
-    purchasePreEnrollTradingOnly: "Pre-enroll Solo Trading (free until Sep 28)",
+    purchasePreEnrollTradingOnly: "Pre-enroll Solo Trading",
     purchasePreEnrollPlanFullProgramLabel:
         "Pre-enrollment: Full Program — access now, payment starts Sep 28",
-    purchasePreEnrollPlanTradingOnlyLabel:
-        "Pre-enrollment: Solo Trading — access now, payment starts Sep 28",
+    purchasePreEnrollPlanTradingOnlyLabel: "",
     purchasePreEnrollSecureNote: "No payment today • Access Code issued instantly",
 
     // Complete Profile

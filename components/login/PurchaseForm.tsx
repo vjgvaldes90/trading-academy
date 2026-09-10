@@ -168,15 +168,21 @@ export default function PurchaseForm({
 
     return (
         <>
-            <p className="mb-3 rounded-lg border border-blue-300/20 bg-[#0A1020]/80 px-3 py-2 text-xs text-slate-300">
-                {preEnrollmentOpen
+            {(() => {
+                const planLabel = preEnrollmentOpen
                     ? checkoutPlan === "full_program"
                         ? t.purchasePreEnrollPlanFullProgramLabel
                         : t.purchasePreEnrollPlanTradingOnlyLabel
                     : checkoutPlan === "full_program"
                       ? t.purchasePlanFullProgramLabel
-                      : t.purchasePlanTradingOnlyLabel}
-            </p>
+                      : t.purchasePlanTradingOnlyLabel
+                if (!planLabel.trim()) return null
+                return (
+                    <p className="mb-3 rounded-lg border border-blue-300/20 bg-[#0A1020]/80 px-3 py-2 text-xs text-slate-300">
+                        {planLabel}
+                    </p>
+                )
+            })()}
 
             <input
                 type="email"
