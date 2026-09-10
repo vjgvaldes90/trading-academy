@@ -248,10 +248,9 @@ export const en = {
         "You're pre-enrolled. Save your Access Code — use it to enter the Academy (no payment until Sep 28).",
     purchasePreEnrollGoToAccess: "Continue with Access Code",
     purchasePreEnrollFootnote: "Payment opens September 28, 2026. Your plan is already saved.",
-    purchasePreEnrollFullProgram: "Pre-enroll Full Program (free until Sep 28)",
+    purchasePreEnrollFullProgram: "Pre-enroll Full Program",
     purchasePreEnrollTradingOnly: "Pre-enroll Solo Trading",
-    purchasePreEnrollPlanFullProgramLabel:
-        "Pre-enrollment: Full Program — access now, payment starts Sep 28",
+    purchasePreEnrollPlanFullProgramLabel: "",
     purchasePreEnrollPlanTradingOnlyLabel: "",
     purchasePreEnrollSecureNote: "No payment today • Access Code issued instantly",
 
