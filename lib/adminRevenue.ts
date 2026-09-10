@@ -4,9 +4,11 @@
  */
 
 import type Stripe from "stripe"
+import { ET_TIME_ZONE, getEtYmd, zonedWallTimeToUtc } from "@/lib/etCalendar"
 import { createStripeClient, getStripeSecretKey } from "@/lib/stripe-server"
 
-export const ADMIN_REVENUE_TIME_ZONE = "America/New_York"
+export const ADMIN_REVENUE_TIME_ZONE = ET_TIME_ZONE
+export { getEtYmd, zonedWallTimeToUtc }
 
 /** Charge/payment inflow + refund outflow (signed amounts). Excludes fees/transfers. */
 const REVENUE_BALANCE_TYPES = ["charge", "payment", "refund", "payment_refund"] as const
@@ -22,62 +24,6 @@ export type AdminRevenueMetrics = {
     vsPreviousMonthPercent: number | null
     currency: "usd"
     timeZone: typeof ADMIN_REVENUE_TIME_ZONE
-}
-
-type EtYmd = { year: number; month: number; day: number }
-
-function getTimeZoneOffsetMs(at: Date, timeZone: string): number {
-    const dtf = new Intl.DateTimeFormat("en-US", {
-        timeZone,
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-        hour12: false,
-    })
-    const parts = dtf.formatToParts(at)
-    const pick = (type: string): number => {
-        const value = parts.find((p) => p.type === type)?.value
-        return Number(value ?? "0")
-    }
-    // hourCycle h23 can yield "24" in some engines for midnight — normalize.
-    let h = pick("hour")
-    if (h === 24) h = 0
-    const asUtc = Date.UTC(pick("year"), pick("month") - 1, pick("day"), h, pick("minute"), pick("second"), 0)
-    return asUtc - at.getTime()
-}
-
-/** Wall-clock Y-M-D H:M:S in `timeZone` → UTC Date. */
-export function zonedWallTimeToUtc(
-    year: number,
-    month: number,
-    day: number,
-    hour: number,
-    minute: number,
-    second: number,
-    timeZone: string = ADMIN_REVENUE_TIME_ZONE
-): Date {
-    const wallClockUtcMs = Date.UTC(year, month - 1, day, hour, minute, second, 0)
-    let utcMs = wallClockUtcMs
-    for (let i = 0; i < 2; i++) {
-        const offsetMs = getTimeZoneOffsetMs(new Date(utcMs), timeZone)
-        utcMs = wallClockUtcMs - offsetMs
-    }
-    return new Date(utcMs)
-}
-
-export function getEtYmd(now: Date, timeZone: string = ADMIN_REVENUE_TIME_ZONE): EtYmd {
-    const dtf = new Intl.DateTimeFormat("en-US", {
-        timeZone,
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-    })
-    const parts = dtf.formatToParts(now)
-    const pick = (type: string): number => Number(parts.find((p) => p.type === type)?.value ?? "0")
-    return { year: pick("year"), month: pick("month"), day: pick("day") }
 }
 
 /** Monday 00:00:00 ET of the week containing `now`. */

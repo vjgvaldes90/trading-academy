@@ -47,7 +47,7 @@ export async function POST(req: Request) {
 
         const { data: accessRow, error: accessReadErr } = await supabase
             .from("trading_students")
-            .select("access_code, access_type, is_active, access_expires_at")
+            .select("access_code, access_type, is_active, access_expires_at, subscription_id, subscription_status")
             .eq("email", user.email)
             .maybeSingle()
 

@@ -45,7 +45,7 @@ export async function GET() {
         const supabase = createSupabaseServiceRoleClient()
         const { data: row, error: accessErr } = await supabase
             .from("trading_students")
-            .select("access_code, access_type, is_active, access_expires_at")
+            .select("access_code, access_type, is_active, access_expires_at, subscription_id, subscription_status")
             .eq("email", email)
             .maybeSingle()
 

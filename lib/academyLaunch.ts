@@ -1,15 +1,12 @@
 /**
  * Academy launch / pre-enrollment calendar gates (America/New_York).
  * Official payment activation starts at 2026-09-28 00:00:00 ET.
+ * Client-safe (no Stripe imports).
  */
 
-import {
-    ADMIN_REVENUE_TIME_ZONE,
-    getEtYmd,
-    zonedWallTimeToUtc,
-} from "@/lib/adminRevenue"
+import { ET_TIME_ZONE, getEtYmd, zonedWallTimeToUtc } from "@/lib/etCalendar"
 
-export const ACADEMY_LAUNCH_TIME_ZONE = ADMIN_REVENUE_TIME_ZONE
+export const ACADEMY_LAUNCH_TIME_ZONE = ET_TIME_ZONE
 
 /** First calendar day of official paid activation (America/New_York). */
 export const ACADEMY_OFFICIAL_LAUNCH = {

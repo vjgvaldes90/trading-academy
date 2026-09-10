@@ -45,6 +45,11 @@ export default function LoginCard({
         setMode("access")
     }, [startOnAccessTab, setMode])
 
+    const handlePreEnrolled = (accessCode: string) => {
+        setCode(accessCode)
+        setMode("access")
+    }
+
     return (
         <div className="w-full max-w-md space-y-4 rounded-3xl border border-blue-400/20 bg-[#0B1220]/85 p-7 shadow-[0_28px_68px_rgba(2,6,23,0.7)] backdrop-blur-2xl">
 
@@ -75,7 +80,12 @@ export default function LoginCard({
                         exit={{ opacity: 0, y: -25 }}
                         transition={{ duration: 0.3 }}
                     >
-                        <PurchaseForm email={email} setEmail={setEmail} plan={checkoutPlan} />
+                        <PurchaseForm
+                            email={email}
+                            setEmail={setEmail}
+                            plan={checkoutPlan}
+                            onPreEnrolled={handlePreEnrolled}
+                        />
                     </motion.div>
                 )}
 

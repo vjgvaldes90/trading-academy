@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { supabase } from "@/lib/supabase"
+import { isPreEnrollmentOpen } from "@/lib/academyLaunch"
 import { useLanguage } from "@/context/LanguageProvider"
 
 // IMPORTANT:
@@ -15,20 +16,61 @@ type PurchaseFormProps = {
     setEmail: (value: string) => void
     /** From `/login?plan=…` — defaults to trading_only (legacy) */
     plan?: CheckoutPlanId
+    /** After pre-enroll: fill Access tab with the issued code. */
+    onPreEnrolled?: (accessCode: string) => void
 }
 
 export default function PurchaseForm({
     email,
     setEmail,
     plan = "trading_only",
+    onPreEnrolled,
 }: PurchaseFormProps) {
     const { t } = useLanguage()
     const [payError, setPayError] = useState<string | null>(null)
     const [loading, setLoading] = useState(false)
     const [acceptedDisclaimer, setAcceptedDisclaimer] = useState(false)
+    const [issuedAccessCode, setIssuedAccessCode] = useState<string | null>(null)
+    const preEnrollmentOpen = isPreEnrollmentOpen()
 
     const checkoutPlan: CheckoutPlanId =
         plan === "full_program" ? "full_program" : "trading_only"
+
+    const runStripeCheckout = async (em: string) => {
+        const {
+            data: { user },
+        } = await supabase.auth.getUser()
+        const resCheckout = await fetch("/api/create-checkout", {
+            method: "POST",
+            cache: "no-store",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                email: em,
+                userId: user?.id ?? null,
+                plan: checkoutPlan,
+            }),
+        })
+
+        if (!resCheckout.ok) {
+            const checkoutJson = (await resCheckout.json().catch(() => ({}))) as {
+                error?: string
+            }
+            const msg =
+                typeof checkoutJson.error === "string" && checkoutJson.error.trim()
+                    ? checkoutJson.error
+                    : t.purchaseCheckoutError
+            setPayError(msg)
+            return
+        }
+
+        const data = (await resCheckout.json()) as { url?: string }
+        if (data?.url) {
+            window.location.href = data.url
+        } else {
+            setPayError(t.purchaseNoPaymentUrl)
+        }
+    }
 
     const handlePay = async () => {
         setPayError(null)
@@ -43,39 +85,52 @@ export default function PurchaseForm({
         }
         setLoading(true)
         try {
-            const {
-                data: { user },
-            } = await supabase.auth.getUser()
-            const resCheckout = await fetch("/api/create-checkout", {
-                method: "POST",
-                cache: "no-store",
-                credentials: "include",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    email: em,
-                    userId: user?.id ?? null,
-                    plan: checkoutPlan,
-                }),
-            })
-
-            if (!resCheckout.ok) {
-                const checkoutJson = (await resCheckout.json().catch(() => ({}))) as {
+            // UX gate via academyLaunch; server /api/pre-enroll remains authoritative.
+            if (preEnrollmentOpen) {
+                const resPre = await fetch("/api/pre-enroll", {
+                    method: "POST",
+                    cache: "no-store",
+                    credentials: "include",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        email: em,
+                        plan: checkoutPlan,
+                    }),
+                })
+                const preJson = (await resPre.json().catch(() => ({}))) as {
+                    ok?: unknown
+                    code?: string
                     error?: string
+                    accessCode?: string
+                    alreadyRegistered?: boolean
                 }
-                const msg =
-                    typeof checkoutJson.error === "string" && checkoutJson.error.trim()
-                        ? checkoutJson.error
-                        : t.purchaseCheckoutError
-                setPayError(msg)
+
+                if (preJson.code === "pre_enrollment_closed") {
+                    await runStripeCheckout(em)
+                    return
+                }
+
+                if (!resPre.ok || preJson.ok !== true) {
+                    const msg =
+                        typeof preJson.error === "string" && preJson.error.trim()
+                            ? preJson.error
+                            : t.purchasePreEnrollError
+                    setPayError(msg)
+                    return
+                }
+
+                const code =
+                    typeof preJson.accessCode === "string" ? preJson.accessCode.trim() : ""
+                if (!code) {
+                    setPayError(t.purchasePreEnrollError)
+                    return
+                }
+
+                setIssuedAccessCode(code)
                 return
             }
 
-            const data = (await resCheckout.json()) as { url?: string }
-            if (data?.url) {
-                window.location.href = data.url
-            } else {
-                setPayError(t.purchaseNoPaymentUrl)
-            }
+            await runStripeCheckout(em)
         } catch {
             setPayError(t.purchaseConnectionError)
         } finally {
@@ -83,12 +138,44 @@ export default function PurchaseForm({
         }
     }
 
+    if (issuedAccessCode) {
+        return (
+            <>
+                <p className="mb-3 rounded-lg border border-emerald-400/25 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-100">
+                    {t.purchasePreEnrollSuccess}
+                </p>
+                <p className="mb-2 text-center text-xs uppercase tracking-wide text-slate-400">
+                    {t.accessCodeLabel}
+                </p>
+                <p className="mb-4 select-all rounded-lg border border-blue-400/30 bg-[#040B18] px-4 py-3 text-center font-mono text-2xl font-bold tracking-widest text-white">
+                    {issuedAccessCode}
+                </p>
+                <button
+                    type="button"
+                    onClick={() => {
+                        onPreEnrolled?.(issuedAccessCode)
+                    }}
+                    className="w-full rounded-lg border border-blue-300/30 bg-gradient-to-r from-blue-500 to-blue-700 py-3 font-bold text-white shadow-[0_12px_26px_rgba(37,99,235,0.32)] transition hover:brightness-110"
+                >
+                    {t.purchasePreEnrollGoToAccess}
+                </button>
+                <p className="mt-3 text-center text-xs text-slate-400">
+                    {t.purchasePreEnrollFootnote}
+                </p>
+            </>
+        )
+    }
+
     return (
         <>
             <p className="mb-3 rounded-lg border border-blue-300/20 bg-[#0A1020]/80 px-3 py-2 text-xs text-slate-300">
-                {checkoutPlan === "full_program"
-                    ? t.purchasePlanFullProgramLabel
-                    : t.purchasePlanTradingOnlyLabel}
+                {preEnrollmentOpen
+                    ? checkoutPlan === "full_program"
+                        ? t.purchasePreEnrollPlanFullProgramLabel
+                        : t.purchasePreEnrollPlanTradingOnlyLabel
+                    : checkoutPlan === "full_program"
+                      ? t.purchasePlanFullProgramLabel
+                      : t.purchasePlanTradingOnlyLabel}
             </p>
 
             <input
@@ -120,12 +207,18 @@ export default function PurchaseForm({
             >
                 {loading
                     ? t.purchaseProcessing
-                    : checkoutPlan === "full_program"
-                      ? t.purchaseBuyFullProgram
-                      : t.purchaseBuyTradingOnly}
+                    : preEnrollmentOpen
+                      ? checkoutPlan === "full_program"
+                          ? t.purchasePreEnrollFullProgram
+                          : t.purchasePreEnrollTradingOnly
+                      : checkoutPlan === "full_program"
+                        ? t.purchaseBuyFullProgram
+                        : t.purchaseBuyTradingOnly}
             </button>
 
-            <p className="mt-3 text-center text-xs text-slate-400">{t.purchaseSecurePayment}</p>
+            <p className="mt-3 text-center text-xs text-slate-400">
+                {preEnrollmentOpen ? t.purchasePreEnrollSecureNote : t.purchaseSecurePayment}
+            </p>
         </>
     )
 }

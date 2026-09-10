@@ -245,6 +245,18 @@ export const es: TranslationKeys = {
     purchasePlanFullProgramLabel:
         "Plan seleccionado: Programa Completo — $450",
     purchaseSecurePayment: "Pago seguro • Acceso inmediato",
+    purchasePreEnrollError: "No se pudo completar el pre-registro. Inténtalo de nuevo.",
+    purchasePreEnrollSuccess:
+        "Quedaste pre-inscrito. Guarda tu código de acceso — úsalo para entrar a la Academy (sin pago hasta el 28 de sep).",
+    purchasePreEnrollGoToAccess: "Continuar con el código de acceso",
+    purchasePreEnrollFootnote: "El pago inicia el 28 de septiembre de 2026. Tu plan ya quedó guardado.",
+    purchasePreEnrollFullProgram: "Pre-inscribir Programa Completo (gratis hasta el 28 sep)",
+    purchasePreEnrollTradingOnly: "Pre-inscribir Solo Trading (gratis hasta el 28 sep)",
+    purchasePreEnrollPlanFullProgramLabel:
+        "Pre-inscripción: Programa Completo — acceso ahora, pago desde el 28 sep",
+    purchasePreEnrollPlanTradingOnlyLabel:
+        "Pre-inscripción: Solo Trading — acceso ahora, pago desde el 28 sep",
+    purchasePreEnrollSecureNote: "Sin pago hoy • Código de acceso al instante",
 
     // Complete Profile
     completeProfileTitle: "Completa tu perfil para comenzar",

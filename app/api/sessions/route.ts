@@ -35,7 +35,7 @@ export async function GET(req: Request) {
 
         const { data: accessRow, error: accessErr } = await supabase
             .from("trading_students")
-            .select("access_code, access_type, is_active, access_expires_at, plan, program_theory_until")
+            .select("access_code, access_type, is_active, access_expires_at, plan, program_theory_until, subscription_id, subscription_status")
             .eq("email", userEmail)
             .maybeSingle()
 

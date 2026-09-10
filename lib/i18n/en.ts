@@ -243,6 +243,18 @@ export const en = {
     purchasePlanFullProgramLabel:
         "Selected plan: Full Program — $450 first month, then $150/month",
     purchaseSecurePayment: "Secure payment • Immediate access",
+    purchasePreEnrollError: "Could not complete pre-enrollment. Please try again.",
+    purchasePreEnrollSuccess:
+        "You're pre-enrolled. Save your Access Code — use it to enter the Academy (no payment until Sep 28).",
+    purchasePreEnrollGoToAccess: "Continue with Access Code",
+    purchasePreEnrollFootnote: "Payment opens September 28, 2026. Your plan is already saved.",
+    purchasePreEnrollFullProgram: "Pre-enroll Full Program (free until Sep 28)",
+    purchasePreEnrollTradingOnly: "Pre-enroll Solo Trading (free until Sep 28)",
+    purchasePreEnrollPlanFullProgramLabel:
+        "Pre-enrollment: Full Program — access now, payment starts Sep 28",
+    purchasePreEnrollPlanTradingOnlyLabel:
+        "Pre-enrollment: Solo Trading — access now, payment starts Sep 28",
+    purchasePreEnrollSecureNote: "No payment today • Access Code issued instantly",
 
     // Complete Profile
     completeProfileTitle: "Complete your profile to get started",
