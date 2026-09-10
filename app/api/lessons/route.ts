@@ -3,17 +3,18 @@ import { createSupabaseServiceRoleClient } from "@/lib/access"
 import { isAuthorizedAdminEmail } from "@/lib/adminEmails"
 import { getVerifiedStudentEmailFromCookies } from "@/lib/requireVerifiedSessionCookie"
 import {
-    evaluateTheoryAccess,
+    evaluateAcademyAccess,
     type TradingStudentAccessRow,
 } from "@/lib/studentAcademyAccess"
 
 export const runtime = "nodejs"
 
 /**
- * Recorded theory lessons (video_url).
- * Admins: full list for management.
- * Students: only with theory entitlement (full_program + future program_theory_until + academy active).
- * trading_only / legacy NULL / expired theory window → 403, no lesson payload.
+ * Recorded classes / lessons (video_url).
+ * Admins: published list for management.
+ * Students: any with valid academy access (dashboard-eligible).
+ * Does NOT require full_program / program_theory_until / theory entitlement.
+ * Unauthenticated → 401; inactive / expired / unpaid → 403.
  */
 export async function GET() {
     try {
@@ -44,7 +45,7 @@ export async function GET() {
         const supabase = createSupabaseServiceRoleClient()
         const { data: row, error: accessErr } = await supabase
             .from("trading_students")
-            .select("access_code, access_type, is_active, access_expires_at, plan, program_theory_until")
+            .select("access_code, access_type, is_active, access_expires_at")
             .eq("email", email)
             .maybeSingle()
 
@@ -53,12 +54,12 @@ export async function GET() {
             return NextResponse.json({ error: "Access check failed" }, { status: 500 })
         }
 
-        const theoryEv = evaluateTheoryAccess(row as TradingStudentAccessRow | null)
-        if (!theoryEv.ok) {
+        const academyEv = evaluateAcademyAccess(row as TradingStudentAccessRow | null)
+        if (!academyEv.ok) {
             return NextResponse.json(
                 {
-                    error: "Theory access denied",
-                    reason: theoryEv.reason ?? "no_theory",
+                    error: "Academy access denied",
+                    reason: academyEv.reason ?? "not_found",
                 },
                 { status: 403 }
             )
