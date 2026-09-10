@@ -1,20 +1,11 @@
 import { NextResponse } from "next/server"
-import { resolveAppUrl } from "@/lib/app-url"
 import { createSupabaseServiceRoleClient } from "@/lib/access"
-import { createStripeClient, getStripeSecretKey } from "@/lib/stripe-server"
-import {
-    getStripePriceIdForPlan,
-    parseCheckoutPlan,
-    type SubscriptionPlanId,
-} from "@/lib/subscriptionPlans"
-import { SUBSCRIPTION_STATUS_CANCEL_AT_PERIOD_END } from "@/lib/subscriptionCancellation"
+import { createSubscriptionCheckoutSession } from "@/lib/createSubscriptionCheckout"
+import { hasBlockingSubscription } from "@/lib/preEnrolledCheckoutGate"
+import { getStripeSecretKey } from "@/lib/stripe-server"
+import { parseCheckoutPlan, type SubscriptionPlanId } from "@/lib/subscriptionPlans"
 
 export const runtime = "nodejs"
-
-const BLOCKING_SUBSCRIPTION_STATUSES = new Set([
-    "active",
-    SUBSCRIPTION_STATUS_CANCEL_AT_PERIOD_END,
-])
 
 async function studentHasBlockingSubscription(email: string): Promise<{
     blocked: boolean
@@ -42,10 +33,10 @@ async function studentHasBlockingSubscription(email: string): Promise<{
             ? data.subscription_status.trim()
             : null
 
-    const blocked =
-        Boolean(subscriptionId) &&
-        Boolean(subscriptionStatus) &&
-        BLOCKING_SUBSCRIPTION_STATUSES.has(subscriptionStatus!)
+    const blocked = hasBlockingSubscription({
+        subscription_id: subscriptionId,
+        subscription_status: subscriptionStatus,
+    })
 
     return { blocked, subscriptionId, subscriptionStatus }
 }
@@ -86,20 +77,6 @@ export async function POST(req: Request) {
         }
         const plan: SubscriptionPlanId = planParsed.plan
 
-        const priceResolved = getStripePriceIdForPlan(plan)
-        if (!priceResolved.ok) {
-            const status = priceResolved.code === "missing_full_program_price" ? 503 : 500
-            return NextResponse.json(
-                {
-                    error: priceResolved.error,
-                    code: priceResolved.code,
-                    plan: priceResolved.plan,
-                },
-                { status }
-            )
-        }
-        const priceId = priceResolved.priceId
-
         const emailForDb = email.toLowerCase()
         try {
             const existing = await studentHasBlockingSubscription(emailForDb)
@@ -122,96 +99,37 @@ export async function POST(req: Request) {
             )
         }
 
-        const resolved = resolveAppUrl()
-        const DOMAIN = resolved.url
-        const success_url = `${DOMAIN}/success?session_id={CHECKOUT_SESSION_ID}`
-        const cancel_url = `${DOMAIN}/`
-
         console.log("[checkout] plan=", plan)
-        console.log("[checkout] priceId (server-selected)=", priceId)
 
-        const metadata: Record<string, string> = {
-            email: emailForDb,
+        const created = await createSubscriptionCheckoutSession({
+            email,
             plan,
-        }
-        if (userId) metadata.user_id = userId
-        if (sessionId) metadata.trading_session_id = sessionId
+            userId,
+            sessionId,
+        })
 
-        const stripe = createStripeClient()
-        const lineItems = [{ price: priceId, quantity: 1 }]
-
-        try {
-            const retrievedPrice = await stripe.prices.retrieve(priceId)
-            console.log("[checkout debug] prices.retrieve OK:", {
-                id: retrievedPrice.id,
-                active: retrievedPrice.active,
-                type: retrievedPrice.type,
-                currency: retrievedPrice.currency,
-            })
-        } catch (priceErr: unknown) {
-            console.error("[checkout debug] prices.retrieve FAILED:", priceErr)
-            const stripeErr = priceErr as {
-                message?: string
-                type?: string
-                code?: string
-                statusCode?: number
-                raw?: unknown
-                rawType?: string
-            }
+        if (!created.ok) {
             return NextResponse.json(
                 {
-                    error: "Stripe prices.retrieve failed",
-                    message:
-                        stripeErr.message ??
-                        (priceErr instanceof Error ? priceErr.message : String(priceErr)),
-                    type: stripeErr.type ?? null,
-                    code: stripeErr.code ?? null,
-                    statusCode: stripeErr.statusCode ?? null,
-                    rawType: stripeErr.rawType ?? null,
-                    raw: stripeErr.raw ?? null,
-                    debug: {
-                        plan,
-                        serverSelectedPriceId: priceId,
-                        line_items: lineItems,
-                        apiVersion: "2026-02-25.clover",
-                    },
+                    error: created.error,
+                    ...(created.code ? { code: created.code } : {}),
+                    ...(created.plan ? { plan: created.plan } : {}),
+                    ...(created.details ?? {}),
                 },
-                { status: 500 }
+                { status: created.status }
             )
         }
 
-        const session = await stripe.checkout.sessions.create({
-            payment_method_types: ["card"],
-            mode: "subscription",
-            customer_email: email,
-            metadata,
-            subscription_data: {
-                metadata: {
-                    plan,
-                    email: emailForDb,
-                },
-            },
-            line_items: lineItems,
-            success_url,
-            cancel_url,
-        })
-
-        console.log("[checkout] Stripe session created", {
-            id: session.id,
-            plan,
-            stripe_checkout_url: session.url,
-        })
-
         return NextResponse.json(
             {
-                url: session.url,
-                plan,
+                url: created.url,
+                plan: created.plan,
                 debug: {
-                    getAppUrl: DOMAIN,
-                    getAppUrlSource: resolved.source,
-                    success_url,
-                    cancel_url,
-                    plan,
+                    getAppUrl: created.appUrl,
+                    getAppUrlSource: created.appUrlSource,
+                    success_url: created.success_url,
+                    cancel_url: created.cancel_url,
+                    plan: created.plan,
                 },
             },
             {

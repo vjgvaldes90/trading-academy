@@ -9,7 +9,8 @@
         "start": "next start",
         "lint": "eslint",
         "generate:zoom-guide-pdf": "node scripts/generate-zoom-guide-pdf.cjs",
-        "verify:private-class-completion": "npx --yes tsx scripts/verify-private-class-completion.ts"
+        "verify:private-class-completion": "npx --yes tsx scripts/verify-private-class-completion.ts",
+        "verify:pre-enrolled-checkout": "npx --yes tsx scripts/verify-pre-enrolled-checkout.ts"
     },
   "dependencies": {
     "@supabase/ssr": "^0.10.2",

@@ -20,7 +20,7 @@ export async function emailHasAcademyAccess(admin: SupabaseClient, email: string
 
     const { data: student, error: stErr } = await admin
         .from("trading_students")
-        .select("access_code, access_type, is_active, access_expires_at")
+        .select("access_code, access_type, is_active, access_expires_at, subscription_id, subscription_status")
         .eq("email", norm)
         .limit(1)
         .maybeSingle()
@@ -48,7 +48,7 @@ export async function emailAcademyAccessEvaluation(
 
     const { data: student, error: stErr } = await admin
         .from("trading_students")
-        .select("access_code, access_type, is_active, access_expires_at")
+        .select("access_code, access_type, is_active, access_expires_at, subscription_id, subscription_status")
         .eq("email", norm)
         .limit(1)
         .maybeSingle()

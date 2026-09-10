@@ -73,6 +73,28 @@ function LoginPageInner() {
                 redirect?: string
                 profileCompleted?: boolean
                 student?: unknown
+                checkoutUrl?: unknown
+                plan?: unknown
+            }
+
+            if (data.success === false && data.error === "CHECKOUT_REQUIRED") {
+                const checkoutUrl =
+                    typeof data.checkoutUrl === "string" ? data.checkoutUrl.trim() : ""
+                if (checkoutUrl.startsWith("https://") || checkoutUrl.startsWith("http://")) {
+                    window.location.assign(checkoutUrl)
+                    return
+                }
+                setAccessError(t.accessDeniedUnpaid)
+                return
+            }
+
+            if (data.success === false && data.error === "CHECKOUT_FAILED") {
+                setAccessError(
+                    typeof data.message === "string" && data.message.trim()
+                        ? data.message
+                        : t.accessDeniedUnpaid
+                )
+                return
             }
 
             if (data.success === false && data.error === "ACCESS_DENIED") {

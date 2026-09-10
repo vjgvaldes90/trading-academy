@@ -1,12 +1,19 @@
+import { isOfficialLaunchStarted } from "@/lib/academyLaunch"
 import { getTranslations, readStoredLanguage, type Language } from "@/lib/i18n"
+import { hasBlockingSubscription } from "@/lib/preEnrolledCheckoutGate"
 import { canAccessTheory } from "@/lib/subscriptionPlans"
 
 /**
  * Academy-wide access (trading_students), independent of live-session join windows.
  * Supported access_type values for admin / product: paid, free, discounted, discount, vip.
+ * Launch pre-enrollment uses access_type = "pre_enrolled" (not an admin-assignable type).
  */
 export const ACADEMY_ACCESS_TYPES = ["paid", "free", "discounted", "discount", "vip"] as const
 export type AcademyAccessType = (typeof ACADEMY_ACCESS_TYPES)[number]
+
+/** Server-assigned only during pre-enrollment window — not in admin allowlists. */
+export const PRE_ENROLLED_ACCESS_TYPE = "pre_enrolled" as const
+export type PreEnrolledAccessType = typeof PRE_ENROLLED_ACCESS_TYPE
 
 export const LIVE_SESSION_TYPES = ["trading", "theory"] as const
 export type LiveSessionType = (typeof LIVE_SESSION_TYPES)[number]
@@ -19,6 +26,8 @@ export type TradingStudentAccessRow = {
     /** NULL = legacy Solo Trading */
     plan?: string | null
     program_theory_until?: string | null
+    subscription_id?: string | null
+    subscription_status?: string | null
 }
 
 export type AcademyAccessEvaluation = {
@@ -73,7 +82,10 @@ export function parseLiveSessionType(raw: unknown):
     }
 }
 
-export function evaluateAcademyAccess(row: TradingStudentAccessRow | null | undefined): AcademyAccessEvaluation {
+export function evaluateAcademyAccess(
+    row: TradingStudentAccessRow | null | undefined,
+    now: Date = new Date()
+): AcademyAccessEvaluation {
     if (!row) {
         return { ok: false, reason: "not_found" }
     }
@@ -85,12 +97,24 @@ export function evaluateAcademyAccess(row: TradingStudentAccessRow | null | unde
     const exp = row.access_expires_at
     if (typeof exp === "string" && exp.trim()) {
         const t = Date.parse(exp)
-        if (Number.isFinite(t) && t <= Date.now()) {
+        if (Number.isFinite(t) && t <= now.getTime()) {
             return { ok: false, reason: "expired" }
         }
     }
 
     const type = normalizeAccessType(row.access_type)
+
+    if (type === PRE_ENROLLED_ACCESS_TYPE) {
+        // Before official launch: academy access without payment.
+        // After launch: only if a blocking subscription already exists (webhook race / CASE 5).
+        if (hasBlockingSubscription(row)) {
+            return { ok: true }
+        }
+        if (!isOfficialLaunchStarted(now)) {
+            return { ok: true }
+        }
+        return { ok: false, reason: "unpaid" }
+    }
 
     if (type === "free" || type === "discounted" || type === "discount" || type === "vip") {
         return { ok: true }
@@ -112,7 +136,7 @@ export function evaluateTheoryAccess(
     row: TradingStudentAccessRow | null | undefined,
     now: Date = new Date()
 ): TheoryAccessEvaluation {
-    const academy = evaluateAcademyAccess(row)
+    const academy = evaluateAcademyAccess(row, now)
     if (!academy.ok) {
         return { ok: false, reason: academy.reason ?? "not_found" }
     }
@@ -143,7 +167,7 @@ export function evaluateLiveSessionAccess(
 ): LiveSessionAccessEvaluation {
     const sessionType = resolveLiveSessionType(sessionTypeRaw)
     if (sessionType === "trading") {
-        const academy = evaluateAcademyAccess(row)
+        const academy = evaluateAcademyAccess(row, now)
         return {
             ok: academy.ok,
             reason: academy.reason,

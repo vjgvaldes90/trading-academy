@@ -18,6 +18,7 @@ function isSingleSessionExemptApiPath(pathname: string): boolean {
     const exactOrPrefix: string[] = [
         "/api/validate-code",
         "/api/create-checkout",
+        "/api/pre-enroll",
         "/api/get-session",
         "/api/logout",
         "/api/test-email",
