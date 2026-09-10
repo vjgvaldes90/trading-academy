@@ -1,3 +1,5 @@
+import type { AdminRevenueMetrics } from "@/lib/adminRevenue"
+
 export type ExecutiveMetrics = {
     totalStudents: number
     activeStudents: number
@@ -15,4 +17,6 @@ export type StudentGrowthPoint = {
 export type ExecutiveDashboardResponse = {
     metrics: ExecutiveMetrics
     studentGrowth: StudentGrowthPoint[]
+    /** null if Stripe is unavailable or revenue fetch failed. */
+    revenue: AdminRevenueMetrics | null
 }

@@ -2,6 +2,8 @@
 
 import StudentGrowthChart from "@/components/admin/executive/StudentGrowthChart"
 import type { AdminDashboardView } from "@/components/admin/AdminSidebar"
+import type { AdminRevenueMetrics } from "@/lib/adminRevenue"
+import { formatUsdFromCents } from "@/lib/adminRevenue"
 import type { ExecutiveMetrics, StudentGrowthPoint } from "@/lib/executiveDashboard"
 import { useLanguage } from "@/context/LanguageProvider"
 import { BookOpen, CalendarPlus, CreditCard, Users } from "lucide-react"
@@ -10,7 +12,20 @@ import { useEffect, useMemo, useState } from "react"
 type DashboardPayload = {
     metrics?: ExecutiveMetrics
     studentGrowth?: StudentGrowthPoint[]
+    revenue?: AdminRevenueMetrics | null
     error?: string
+}
+
+function formatMomLabel(percent: number | null): { text: string; tone: "up" | "down" | "flat" | "na" } {
+    if (percent === null || !Number.isFinite(percent)) {
+        return { text: "—", tone: "na" }
+    }
+    const rounded = Math.round(percent * 10) / 10
+    const abs = Math.abs(rounded)
+    const formatted = Number.isInteger(abs) ? String(abs) : abs.toFixed(1)
+    if (rounded > 0) return { text: `↑ ${formatted}%`, tone: "up" }
+    if (rounded < 0) return { text: `↓ ${formatted}%`, tone: "down" }
+    return { text: `→ ${formatted}%`, tone: "flat" }
 }
 
 export default function AdminOverview({
@@ -21,6 +36,7 @@ export default function AdminOverview({
     const { t } = useLanguage()
     const [metrics, setMetrics] = useState<ExecutiveMetrics | null>(null)
     const [growth, setGrowth] = useState<StudentGrowthPoint[]>([])
+    const [revenue, setRevenue] = useState<AdminRevenueMetrics | null>(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
 
@@ -43,11 +59,13 @@ export default function AdminOverview({
                 if (cancelled) return
                 setMetrics(payload.metrics ?? null)
                 setGrowth(Array.isArray(payload.studentGrowth) ? payload.studentGrowth : [])
+                setRevenue(payload.revenue ?? null)
             } catch (e) {
                 if (!cancelled) {
                     setError(e instanceof Error ? e.message : t.failedToLoadOverview)
                     setMetrics(null)
                     setGrowth([])
+                    setRevenue(null)
                 }
             } finally {
                 if (!cancelled) setLoading(false)
@@ -69,6 +87,11 @@ export default function AdminOverview({
             { label: t.adminOpenSupportTickets, value: m?.openSupportTickets },
         ]
     }, [metrics, t])
+
+    const mom = useMemo(
+        () => formatMomLabel(revenue?.vsPreviousMonthPercent ?? null),
+        [revenue?.vsPreviousMonthPercent]
+    )
 
     const quickActions = useMemo(
         () => [
@@ -109,7 +132,7 @@ export default function AdminOverview({
 
             {error ? <p className="text-sm text-red-400">{error}</p> : null}
 
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
                 {statCards.map((c) => (
                     <div
                         key={c.label}
@@ -121,6 +144,68 @@ export default function AdminOverview({
                         </p>
                     </div>
                 ))}
+            </div>
+
+            <div className="rounded-xl border border-white/10 bg-white/5 p-5 transition hover:border-blue-500/25 hover:bg-white/[0.07] sm:max-w-xl">
+                <p className="text-sm text-slate-400">{t.adminRevenue}</p>
+                {loading ? (
+                    <p className="mt-2 text-2xl font-semibold tabular-nums text-slate-50">…</p>
+                ) : revenue ? (
+                    <>
+                        <p className="mt-2 text-2xl font-semibold tabular-nums text-slate-50">
+                            {formatUsdFromCents(revenue.thisMonthCents)}
+                        </p>
+                        <dl className="mt-4 space-y-1.5 text-sm text-slate-400">
+                            <div className="flex items-baseline justify-between gap-3">
+                                <dt>{t.adminRevenueToday}</dt>
+                                <dd className="tabular-nums font-medium text-slate-200">
+                                    {formatUsdFromCents(revenue.todayCents)}
+                                </dd>
+                            </div>
+                            <div className="flex items-baseline justify-between gap-3">
+                                <dt>{t.adminRevenueThisWeek}</dt>
+                                <dd className="tabular-nums font-medium text-slate-200">
+                                    {formatUsdFromCents(revenue.thisWeekCents)}
+                                </dd>
+                            </div>
+                            <div className="flex items-baseline justify-between gap-3">
+                                <dt>{t.adminRevenueThisMonth}</dt>
+                                <dd className="tabular-nums font-medium text-slate-200">
+                                    {formatUsdFromCents(revenue.thisMonthCents)}
+                                </dd>
+                            </div>
+                            <div className="flex items-baseline justify-between gap-3">
+                                <dt>{t.adminRevenueAllTime}</dt>
+                                <dd className="tabular-nums font-medium text-slate-200">
+                                    {formatUsdFromCents(revenue.allTimeCents)}
+                                </dd>
+                            </div>
+                        </dl>
+                        <p
+                            className={[
+                                "mt-4 text-sm font-semibold tabular-nums",
+                                mom.tone === "up"
+                                    ? "text-emerald-400"
+                                    : mom.tone === "down"
+                                      ? "text-rose-400"
+                                      : "text-slate-400",
+                            ].join(" ")}
+                        >
+                            {mom.text}
+                            {mom.tone !== "na" ? (
+                                <span className="ml-1.5 font-medium text-slate-500">
+                                    {t.adminRevenueVsPreviousMonth}
+                                </span>
+                            ) : (
+                                <span className="ml-1.5 font-medium text-slate-500">
+                                    {t.adminRevenueVsPreviousMonth}
+                                </span>
+                            )}
+                        </p>
+                    </>
+                ) : (
+                    <p className="mt-2 text-sm text-slate-500">{t.adminRevenueUnavailable}</p>
+                )}
             </div>
 
             <StudentGrowthChart points={growth} loading={loading} />

@@ -6,6 +6,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import type Stripe from "stripe"
 import { PRIVATE_CLASS_PRODUCT_TYPE } from "@/lib/privateClassRequests"
+import { ensurePrivateClassZoomMeeting } from "@/lib/privateClassZoom"
 
 export function isPrivateClassCheckoutSession(session: Stripe.Checkout.Session): boolean {
     return session.metadata?.product_type === PRIVATE_CLASS_PRODUCT_TYPE
@@ -42,7 +43,7 @@ export async function fulfillPrivateClassPayment(args: {
 
     const { data: existing, error: loadErr } = await supabase
         .from("private_class_requests")
-        .select("id, status, stripe_checkout_session_id")
+        .select("id, status, stripe_checkout_session_id, zoom_meeting_id")
         .eq("id", requestId)
         .maybeSingle()
 
@@ -56,7 +57,7 @@ export async function fulfillPrivateClassPayment(args: {
 
     const status = String(existing.status ?? "")
     if (status === "paid" || status === "confirmed" || status === "completed") {
-        console.log("[private-class-stripe] already paid/terminal — noop", {
+        console.log("[private-class-stripe] already paid/terminal — proceed to Zoom ensure", {
             requestId,
             status,
             sessionId: checkoutSession.id,
@@ -164,4 +165,7 @@ export async function handlePrivateClassCheckoutPaidEvent(args: {
         }
         throw new Error(`Private class payment fulfill failed: ${result.reason}`)
     }
+
+    // Stage 4: paid → Zoom → confirmed (idempotent; throws → webhook releases claim → Stripe retries).
+    await ensurePrivateClassZoomMeeting({ supabase, requestId })
 }

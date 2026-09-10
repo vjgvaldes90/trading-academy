@@ -33,6 +33,7 @@ export default function AdminPrivateClassRequests() {
     const [rejectSubmitting, setRejectSubmitting] = useState(false)
     const [rejectError, setRejectError] = useState<string | null>(null)
     const [toast, setToast] = useState<{ message: string; tone: StudentToastTone } | null>(null)
+    const [ensuringZoomId, setEnsuringZoomId] = useState<string | null>(null)
 
     const load = useCallback(async () => {
         setLoading(true)
@@ -116,6 +117,41 @@ export default function AdminPrivateClassRequests() {
     const closeConfirm = () => {
         setConfirmTarget(null)
         setConfirmAction(null)
+    }
+
+    const ensureZoom = async (row: PrivateClassRequestRow) => {
+        if (ensuringZoomId) return
+        setEnsuringZoomId(row.id)
+        try {
+            const res = await fetch(`/api/admin/private-class-requests/${row.id}/ensure-zoom`, {
+                method: "POST",
+                credentials: "include",
+                cache: "no-store",
+            })
+            const payload = (await res.json().catch(() => ({}))) as {
+                ok?: boolean
+                error?: string
+            }
+            if (!res.ok || payload.ok === false) {
+                throw new Error(
+                    typeof payload.error === "string" && payload.error.trim()
+                        ? payload.error
+                        : t.adminPrivateClassEnsureZoomError
+                )
+            }
+            setToast({ message: t.adminPrivateClassEnsureZoomSuccess, tone: "success" })
+            await load()
+        } catch (e) {
+            setToast({
+                message:
+                    e instanceof Error && e.message.trim()
+                        ? e.message
+                        : t.adminPrivateClassEnsureZoomError,
+                tone: "error",
+            })
+        } finally {
+            setEnsuringZoomId(null)
+        }
     }
 
     return (
@@ -231,6 +267,55 @@ export default function AdminPrivateClassRequests() {
                                         ? row.admin_notes
                                         : t.adminPrivateClassNoNotes}
                                 </p>
+
+                                {status === "paid" ? (
+                                    <div className="mt-4 flex flex-wrap gap-2 border-t border-white/5 pt-4">
+                                        <button
+                                            type="button"
+                                            disabled={ensuringZoomId !== null}
+                                            onClick={() => void ensureZoom(row)}
+                                            className="rounded-lg border border-violet-400/40 bg-violet-500/15 px-3 py-2 text-xs font-bold text-violet-100 transition hover:bg-violet-500/25 disabled:cursor-not-allowed disabled:opacity-60"
+                                        >
+                                            {ensuringZoomId === row.id
+                                                ? t.adminPrivateClassEnsureZoomProcessing
+                                                : t.adminPrivateClassEnsureZoom}
+                                        </button>
+                                    </div>
+                                ) : null}
+
+                                {status === "confirmed" ? (
+                                    <div className="mt-4 space-y-3 border-t border-white/5 pt-4">
+                                        <p className="text-sm font-semibold text-emerald-300">
+                                            🟢 {t.privateClassClassConfirmed}
+                                        </p>
+                                        <p className="text-sm text-slate-400">
+                                            {t.adminPrivateClassRequested}: {row.requested_date} ·{" "}
+                                            {formatPrivateClassTime(row.requested_time)}
+                                            <span className="mx-2 text-slate-600">·</span>
+                                            {formatPrivateClassPriceCents(row.price_cents)}
+                                        </p>
+                                        {typeof row.zoom_start_url === "string" &&
+                                        row.zoom_start_url.trim() ? (
+                                            <div className="flex flex-wrap items-center gap-3">
+                                                <span className="text-xs font-semibold uppercase tracking-wide text-emerald-400/90">
+                                                    {t.adminPrivateClassZoomAvailable}
+                                                </span>
+                                                <a
+                                                    href={row.zoom_start_url.trim()}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="inline-flex items-center justify-center rounded-lg border border-amber-400/40 bg-amber-500/15 px-3 py-2 text-xs font-bold text-amber-100 transition hover:bg-amber-500/25"
+                                                >
+                                                    {t.adminPrivateClassStartZoom}
+                                                </a>
+                                            </div>
+                                        ) : (
+                                            <p className="text-sm text-slate-500">
+                                                {t.privateClassZoomPreparing}
+                                            </p>
+                                        )}
+                                    </div>
+                                ) : null}
 
                                 {isPending || canCancel ? (
                                     <div className="mt-4 flex flex-wrap gap-2 border-t border-white/5 pt-4">

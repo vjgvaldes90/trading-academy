@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { requireAuthorizedAdminFromCookies } from "@/lib/adminAuth"
 import { createSupabaseServiceRoleClient } from "@/lib/access"
+import { tryFetchAdminRevenueMetrics } from "@/lib/adminRevenue"
 import type { ExecutiveMetrics, StudentGrowthPoint } from "@/lib/executiveDashboard"
 
 export const runtime = "nodejs"
@@ -134,7 +135,15 @@ export async function GET() {
             openSupportTickets: typeof openTicketsRes.count === "number" ? openTicketsRes.count : 0,
         }
 
-        return NextResponse.json({ metrics, studentGrowth })
+        let revenue = null
+        try {
+            revenue = await tryFetchAdminRevenueMetrics(now)
+        } catch (revErr) {
+            console.error("[executive-dashboard] revenue from Stripe failed", revErr)
+            revenue = null
+        }
+
+        return NextResponse.json({ metrics, studentGrowth, revenue })
     } catch (e) {
         console.error("[api/admin/executive-dashboard] GET", e)
         return NextResponse.json({ error: "Internal error" }, { status: 500 })

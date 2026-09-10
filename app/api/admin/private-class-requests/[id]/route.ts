@@ -5,7 +5,7 @@ import {
     PRIVATE_CLASS_REQUEST_SELECT,
     privateClassAdminActionSchema,
     privateClassRequestIdSchema,
-    publicPrivateClassRequest,
+    adminPrivateClassRequest,
     type PrivateClassRequestRow,
 } from "@/lib/privateClassRequests"
 
@@ -128,7 +128,7 @@ export async function PATCH(req: Request, context: RouteContext) {
                 return NextResponse.json({ error: "Failed to approve request" }, { status: 500 })
             }
 
-            return NextResponse.json({ request: publicPrivateClassRequest(result.row) })
+            return NextResponse.json({ request: adminPrivateClassRequest(result.row) })
         }
 
         if (action === "reject") {
@@ -160,7 +160,7 @@ export async function PATCH(req: Request, context: RouteContext) {
                 return NextResponse.json({ error: "Failed to reject request" }, { status: 500 })
             }
 
-            return NextResponse.json({ request: publicPrivateClassRequest(result.row) })
+            return NextResponse.json({ request: adminPrivateClassRequest(result.row) })
         }
 
         // cancel — load current status first for post-payment messaging
@@ -226,7 +226,7 @@ export async function PATCH(req: Request, context: RouteContext) {
             return NextResponse.json({ error: "Failed to cancel request" }, { status: 500 })
         }
 
-        return NextResponse.json({ request: publicPrivateClassRequest(result.row) })
+        return NextResponse.json({ request: adminPrivateClassRequest(result.row) })
     } catch (e) {
         console.error("[api/admin/private-class-requests/[id]] PATCH", e)
         return NextResponse.json({ error: "Internal error" }, { status: 500 })

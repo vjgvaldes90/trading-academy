@@ -5,7 +5,7 @@ import {
     PRIVATE_CLASS_REQUEST_SELECT,
     PRIVATE_CLASS_STATUSES,
     isPrivateClassStatus,
-    publicPrivateClassRequest,
+    adminPrivateClassRequest,
     type PrivateClassRequestRow,
 } from "@/lib/privateClassRequests"
 
@@ -46,7 +46,7 @@ export async function GET(req: Request) {
 
         const rows = (data ?? []) as PrivateClassRequestRow[]
         return NextResponse.json({
-            requests: rows.map(publicPrivateClassRequest),
+            requests: rows.map(adminPrivateClassRequest),
         })
     } catch (e) {
         console.error("[api/admin/private-class-requests] GET", e)

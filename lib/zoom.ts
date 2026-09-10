@@ -258,12 +258,17 @@ export async function createZoomMeeting(input: {
     topic: string
     start_time: string
     duration: number
+    /** Optional IANA timezone; defaults to {@link getZoomSessionTimezone} (Trading/Theory unchanged). */
+    timezone?: string
 }): Promise<ZoomMeetingDetails> {
     const { accountId, clientId, clientSecret, webhookSecret } = getZoomEnv()
     logZoomEnvCheck(accountId, clientId, clientSecret, webhookSecret)
     throwIfZoomOAuthIncomplete(accountId, clientId, clientSecret)
 
-    const timezone = getZoomSessionTimezone()
+    const timezone =
+        typeof input.timezone === "string" && input.timezone.trim()
+            ? input.timezone.trim()
+            : getZoomSessionTimezone()
     const duration =
         typeof input.duration === "number" && Number.isFinite(input.duration) && input.duration > 0
             ? Math.min(Math.floor(input.duration), 1440)

@@ -47,11 +47,16 @@ export type PrivateClassRequestRow = {
     stripe_payment_intent_id?: string | null
     stripe_payment_status?: string | null
     paid_at?: string | null
+    zoom_meeting_id?: string | null
+    zoom_join_url?: string | null
+    zoom_start_url?: string | null
+    zoom_password?: string | null
+    zoom_created_at?: string | null
 }
 
-/** Stage 1–3 columns (Stripe fields require migration 20260907150000). */
+/** Stage 1–4 columns (Stripe + Zoom; Zoom requires migration 20260910010000). */
 export const PRIVATE_CLASS_REQUEST_SELECT =
-    "id, student_id, student_email, requested_date, requested_time, duration_minutes, price_cents, currency, status, student_message, admin_notes, approved_by_admin_email, rejected_by_admin_email, approved_at, rejected_at, cancelled_at, completed_at, created_at, updated_at, stripe_checkout_session_id, stripe_payment_intent_id, stripe_payment_status, paid_at"
+    "id, student_id, student_email, requested_date, requested_time, duration_minutes, price_cents, currency, status, student_message, admin_notes, approved_by_admin_email, rejected_by_admin_email, approved_at, rejected_at, cancelled_at, completed_at, created_at, updated_at, stripe_checkout_session_id, stripe_payment_intent_id, stripe_payment_status, paid_at, zoom_meeting_id, zoom_join_url, zoom_start_url, zoom_password, zoom_created_at"
 
 /** Stripe Checkout metadata product_type for Private Class one-time payment. */
 export const PRIVATE_CLASS_PRODUCT_TYPE = "private_class" as const
@@ -156,6 +161,10 @@ export function isPrivateClassStatus(value: string): value is PrivateClassStatus
 }
 
 export function publicPrivateClassRequest(row: PrivateClassRequestRow) {
+    const joinUrl =
+        typeof row.zoom_join_url === "string" && row.zoom_join_url.trim()
+            ? row.zoom_join_url.trim()
+            : null
     return {
         id: row.id,
         student_id: row.student_id,
@@ -176,5 +185,30 @@ export function publicPrivateClassRequest(row: PrivateClassRequestRow) {
         completed_at: row.completed_at,
         created_at: row.created_at,
         updated_at: row.updated_at,
+        /** Student-safe Zoom join URL only (never start_url / password). */
+        zoom_join_url: joinUrl,
+    }
+}
+
+/** Admin list/detail mapper — includes host start_url; never Zoom OAuth secrets. */
+export function adminPrivateClassRequest(row: PrivateClassRequestRow) {
+    const joinUrl =
+        typeof row.zoom_join_url === "string" && row.zoom_join_url.trim()
+            ? row.zoom_join_url.trim()
+            : null
+    const startUrl =
+        typeof row.zoom_start_url === "string" && row.zoom_start_url.trim()
+            ? row.zoom_start_url.trim()
+            : null
+    return {
+        ...publicPrivateClassRequest(row),
+        zoom_start_url: startUrl,
+        zoom_meeting_id:
+            typeof row.zoom_meeting_id === "string" && row.zoom_meeting_id.trim()
+                ? row.zoom_meeting_id.trim()
+                : null,
+        paid_at: typeof row.paid_at === "string" ? row.paid_at : null,
+        // Intentionally omit zoom_password from list payloads.
+        zoom_join_url: joinUrl,
     }
 }

@@ -220,6 +220,35 @@ export default function PrivateClassSection() {
                                             {t.privateClassPaymentCompleted}
                                         </p>
                                     ) : null}
+
+                                    {status === "paid" && !row.zoom_join_url ? (
+                                        <p className="mt-2 text-sm text-slate-400">
+                                            {t.privateClassZoomPreparing}
+                                        </p>
+                                    ) : null}
+
+                                    {status === "confirmed" ? (
+                                        <div className="mt-4 space-y-3">
+                                            <p className="text-sm font-semibold text-emerald-300">
+                                                🟢 {t.privateClassClassConfirmed}
+                                            </p>
+                                            {typeof row.zoom_join_url === "string" &&
+                                            row.zoom_join_url.trim() ? (
+                                                <a
+                                                    href={row.zoom_join_url.trim()}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="inline-flex w-full items-center justify-center rounded-lg border border-violet-400/40 bg-violet-500/20 px-4 py-2.5 text-sm font-bold text-violet-100 transition hover:bg-violet-500/30 sm:w-auto"
+                                                >
+                                                    {t.privateClassJoinZoom}
+                                                </a>
+                                            ) : (
+                                                <p className="text-sm text-slate-400">
+                                                    {t.privateClassZoomPreparing}
+                                                </p>
+                                            )}
+                                        </div>
+                                    ) : null}
                                 </li>
                             )
                         })}
