@@ -415,7 +415,11 @@ export const es: TranslationKeys = {
     adminAddClass: "Añadir clase",
 
     // Admin sessions
-    adminSessionsSubtitle: "Resumen de sesiones en vivo — esta semana y la próxima.",
+    adminSessionsSubtitle: "Todas las sesiones en vivo y clases programadas.",
+    adminScheduledSessions: "Sesiones y clases programadas",
+    adminPastSessions: "Pasadas",
+    adminNoTheoryClassesScheduled: "No hay clases de teoría programadas.",
+    adminNoTradingSessionsScheduled: "No hay sesiones de trading programadas.",
     adminNewSession: "Nueva sesión",
     adminNewClass: "Nueva clase",
     adminFilters: "Filtros",

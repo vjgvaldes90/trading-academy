@@ -413,7 +413,11 @@ export const en = {
     adminAddClass: "Add Class",
 
     // Admin sessions
-    adminSessionsSubtitle: "Live sessions overview — this week and next.",
+    adminSessionsSubtitle: "All scheduled live sessions and theory classes.",
+    adminScheduledSessions: "Scheduled sessions & classes",
+    adminPastSessions: "Past",
+    adminNoTheoryClassesScheduled: "No theory classes scheduled.",
+    adminNoTradingSessionsScheduled: "No trading sessions scheduled.",
     adminNewSession: "New session",
     adminNewClass: "New class",
     adminFilters: "Filters",
