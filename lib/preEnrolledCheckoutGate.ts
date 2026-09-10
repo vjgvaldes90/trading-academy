@@ -114,15 +114,15 @@ function assert(name: string, pass: boolean, detail: string): SelfCheck {
     return { name, pass, detail }
 }
 
-/** Instant just before official launch (2026-09-27 23:59:59 ET). */
+/** Instant just before official launch (2026-09-23 afternoon ET). */
 export function sampleBeforeOfficialLaunch(): Date {
-    // 2026-09-28 00:00 ET ≈ 2026-09-28 04:00 UTC (EDT). Use clearly-before UTC.
-    return new Date(Date.UTC(2026, 8, 27, 15, 0, 0))
+    // 2026-09-24 00:00 ET ≈ 2026-09-24 04:00 UTC (EDT). Use clearly-before UTC.
+    return new Date(Date.UTC(2026, 8, 23, 15, 0, 0))
 }
 
 /** Official launch morning America/New_York. */
 export function sampleOnOfficialLaunch(): Date {
-    return new Date(Date.UTC(2026, 8, 28, 4, 0, 0))
+    return new Date(Date.UTC(2026, 8, 24, 4, 0, 0))
 }
 
 /** After official launch. */
@@ -187,22 +187,22 @@ export function runPreEnrolledCheckoutSelfChecks(): {
 
     const results: SelfCheck[] = [
         assert(
-            "1. pre_enrolled before Sep 28 → allow",
+            "1. pre_enrolled before Sep 24 → allow",
             d1.action === "allow_access" && d1.reason === "before_launch",
             JSON.stringify(d1)
         ),
         assert(
-            "2. pre_enrolled on Sep 28 → checkout",
+            "2. pre_enrolled on Sep 24 → checkout",
             d2.action === "require_checkout" && d2.plan === "full_program",
             JSON.stringify(d2)
         ),
         assert(
-            "3. pre_enrolled after Sep 28 → checkout",
+            "3. pre_enrolled after Sep 24 → checkout",
             d3.action === "require_checkout" && d3.plan === "full_program",
             JSON.stringify(d3)
         ),
         assert(
-            "4. paid after Sep 28 → allow (not pre_enrolled path)",
+            "4. paid after Sep 24 → allow (not pre_enrolled path)",
             d4.action === "allow_access" && d4.reason === "not_pre_enrolled",
             JSON.stringify(d4)
         ),

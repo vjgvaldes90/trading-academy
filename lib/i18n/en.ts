@@ -245,9 +245,9 @@ export const en = {
     purchaseSecurePayment: "Secure payment • Immediate access",
     purchasePreEnrollError: "Could not complete pre-enrollment. Please try again.",
     purchasePreEnrollSuccess:
-        "You're pre-enrolled. Save your Access Code — use it to enter the Academy (no payment until Sep 28).",
+        "You're pre-enrolled. Save your Access Code — use it to enter the Academy (no payment until Sep 24).",
     purchasePreEnrollGoToAccess: "Continue with Access Code",
-    purchasePreEnrollFootnote: "Payment opens September 28, 2026. Your plan is already saved.",
+    purchasePreEnrollFootnote: "Payment opens September 24, 2026. Your plan is already saved.",
     purchasePreEnrollFullProgram: "Pre-enroll Full Program",
     purchasePreEnrollTradingOnly: "Pre-enroll Solo Trading",
     purchasePreEnrollPlanFullProgramLabel: "",

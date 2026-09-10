@@ -133,7 +133,7 @@ export function evaluateAcademyAccess(
  * Enforced by GET /api/lessons and live Theory Classes (list + join).
  *
  * Before official launch (America/New_York): pre_enrolled + full_program may attend theory
- * without program_theory_until (classes may start before Sep 28 payment).
+ * without program_theory_until (classes may start before Sep 24 payment).
  * After launch: existing canAccessTheory (plan + future program_theory_until) applies.
  */
 export function evaluateTheoryAccess(

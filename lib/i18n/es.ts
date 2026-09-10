@@ -247,9 +247,9 @@ export const es: TranslationKeys = {
     purchaseSecurePayment: "Pago seguro • Acceso inmediato",
     purchasePreEnrollError: "No se pudo completar el pre-registro. Inténtalo de nuevo.",
     purchasePreEnrollSuccess:
-        "Quedaste pre-inscrito. Guarda tu código de acceso — úsalo para entrar a la Academy (sin pago hasta el 28 de sep).",
+        "Quedaste pre-inscrito. Guarda tu código de acceso — úsalo para entrar a la Academy (sin pago hasta el 24 de sep).",
     purchasePreEnrollGoToAccess: "Continuar con el código de acceso",
-    purchasePreEnrollFootnote: "El pago inicia el 28 de septiembre de 2026. Tu plan ya quedó guardado.",
+    purchasePreEnrollFootnote: "El pago inicia el 24 de septiembre de 2026. Tu plan ya quedó guardado.",
     purchasePreEnrollFullProgram: "Pre-inscribir Programa Completo",
     purchasePreEnrollTradingOnly: "Pre-inscribir Solo Trading",
     purchasePreEnrollPlanFullProgramLabel: "",

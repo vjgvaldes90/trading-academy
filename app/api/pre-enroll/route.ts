@@ -8,7 +8,7 @@ export const runtime = "nodejs"
  * Body: { email: string, plan: "full_program" | "trading_only" }
  *
  * Phase 1 only — creates access_type = pre_enrolled when pre-enrollment is open
- * (America/New_York, before 2026-09-28 00:00). Does not start Stripe Checkout.
+ * (America/New_York, before 2026-09-24 00:00). Does not start Stripe Checkout.
  */
 export async function POST(req: Request) {
     try {
