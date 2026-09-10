@@ -175,9 +175,9 @@ export async function ensureFullProgramSubscriptionSchedule(args: {
 
     console.log("[stripe-schedule] creating from_subscription", { subscriptionId })
 
+    // Stripe rejects metadata together with from_subscription; set plan metadata on the update below.
     const created = await stripe.subscriptionSchedules.create({
         from_subscription: subscriptionId,
-        metadata: { plan: "full_program" },
     })
 
     const currentPhase = created.phases?.[0]
