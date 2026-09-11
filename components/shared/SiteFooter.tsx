@@ -7,7 +7,7 @@ export default function SiteFooter() {
     const { t } = useLanguage()
 
     return (
-        <footer className="relative overflow-hidden border-t border-white/10 bg-[#020617] pb-[7.25rem] sm:pb-[5.25rem]">
+        <footer className="relative overflow-hidden border-t border-white/10 bg-[#020617] pb-[calc(7.25rem+env(safe-area-inset-bottom,0px))] sm:pb-[calc(5.25rem+env(safe-area-inset-bottom,0px))]">
             <div className="pointer-events-none absolute inset-0" aria-hidden>
                 <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_0%,rgba(37,99,235,0.1),transparent_55%)]" />
                 <div

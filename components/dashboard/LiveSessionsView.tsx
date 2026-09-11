@@ -14,11 +14,11 @@ export default function LiveSessionsView() {
                 <p className="text-white/60 mt-1">{t.liveSessionsSubtitle}</p>
             </header>
 
-            <section className="rounded-2xl p-6 bg-[#111827] border border-white/10 shadow-sm">
+            <section className="rounded-2xl border border-white/10 bg-[#111827] p-4 shadow-sm sm:p-6">
                 <BookSessionSection />
             </section>
 
-            <section className="rounded-2xl p-6 bg-[#111827] border border-white/10 shadow-sm">
+            <section className="rounded-2xl border border-white/10 bg-[#111827] p-4 shadow-sm sm:p-6">
                 <PrivateClassSection />
             </section>
         </div>

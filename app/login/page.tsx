@@ -152,12 +152,17 @@ function LoginPageInner() {
     }
 
     return (
-        <div className="relative min-h-screen overflow-hidden bg-[#020617] text-white md:grid md:grid-cols-2">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_15%_20%,rgba(37,99,235,0.35),transparent_40%),radial-gradient(circle_at_85%_80%,rgba(239,68,68,0.2),transparent_45%)]" />
-            <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,rgba(148,163,184,0.07)_1px,transparent_1px),linear-gradient(to_bottom,rgba(148,163,184,0.05)_1px,transparent_1px)] bg-[size:32px_32px] opacity-30" />
+        <div className="relative min-h-dvh bg-[#020617] text-white md:grid md:min-h-screen md:grid-cols-2">
+            <div
+                className="pointer-events-none absolute inset-0 overflow-hidden"
+                aria-hidden
+            >
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_20%,rgba(37,99,235,0.35),transparent_40%),radial-gradient(circle_at_85%_80%,rgba(239,68,68,0.2),transparent_45%)]" />
+                <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(148,163,184,0.07)_1px,transparent_1px),linear-gradient(to_bottom,rgba(148,163,184,0.05)_1px,transparent_1px)] bg-[size:32px_32px] opacity-30" />
+            </div>
             <LoginInfo />
 
-            <div className="relative flex items-center justify-center p-8">
+            <div className="relative flex min-h-dvh items-start justify-center overflow-x-hidden overflow-y-auto p-4 pb-28 sm:p-6 md:min-h-screen md:items-center md:p-8 md:pb-10">
                 <LoginCard
                     mode={mode}
                     setMode={setMode}
@@ -172,7 +177,7 @@ function LoginPageInner() {
                     checkoutPlan={checkoutPlan}
                 />
             </div>
-            <div className="absolute bottom-5 left-0 right-0 z-20 flex justify-center px-6">
+            <div className="relative z-20 flex justify-center px-6 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-2 md:absolute md:bottom-5 md:left-0 md:right-0 md:pb-0 md:pt-0">
                 <Link href="/disclaimer" className="text-xs font-semibold text-slate-400 transition hover:text-blue-300">
                     {t.loginDisclaimerLink}
                 </Link>

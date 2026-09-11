@@ -82,11 +82,11 @@ export default function NewTicketModal({
             role="dialog"
             aria-modal="true"
             aria-labelledby="new-support-ticket-title"
-            className="fixed inset-0 z-[65] flex items-center justify-center bg-black/70 p-5"
+            className="fixed inset-0 z-[65] flex items-center justify-center bg-black/70 p-4 sm:p-5"
             onClick={submitting ? undefined : handleClose}
         >
             <div
-                className="w-full max-w-lg rounded-2xl border border-blue-400/20 bg-gradient-to-br from-[#111827] to-[#0B0F1A] shadow-[0_24px_48px_rgba(0,0,0,0.5)]"
+                className="max-h-[90dvh] w-full max-w-lg overflow-y-auto rounded-2xl border border-blue-400/20 bg-gradient-to-br from-[#111827] to-[#0B0F1A] shadow-[0_24px_48px_rgba(0,0,0,0.5)]"
                 onClick={(ev) => ev.stopPropagation()}
             >
                 <div className="border-b border-white/10 px-6 py-4">

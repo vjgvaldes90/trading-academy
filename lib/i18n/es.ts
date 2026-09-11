@@ -31,6 +31,25 @@ export const es: TranslationKeys = {
     heroTerminalRange1M: "1M",
     heroTerminalDemoHint: "Datos demo · No son cotizaciones reales",
 
+    // Class start announcement (landing marketing)
+    classStartEyebrow: "Clases en vivo",
+    classStartTitle: "Las clases comienzan este septiembre",
+    classStartSubtitle: "Tu camino en los mercados comienza muy pronto.",
+    classStartHighlight:
+        "2 programas. 2 fechas de inicio. Un mismo objetivo: convertirte en un mejor trader.",
+    classStartFullProgramName: "Programa Completo",
+    classStartFullProgramBadge: "24 SEP",
+    classStartFullProgramDate: "24 de septiembre",
+    classStartFullProgramFocus: "Teoría + Trading en vivo",
+    classStartFullProgramStarts: "Comienza el 24 de septiembre",
+    classStartTradingProgramName: "Programa de Trading",
+    classStartTradingProgramBadge: "28 SEP",
+    classStartTradingProgramDate: "28 de septiembre",
+    classStartTradingProgramFocus: "Trading en vivo",
+    classStartTradingProgramStarts: "Comienza el 28 de septiembre",
+    classStartFooter: "Elige el programa que mejor se adapte a tus objetivos.",
+    classStartViewPrograms: "Ver programas",
+
     // How It Works
     howItWorksTitle: "De principiante a trader profesional",
     howItWorksSubtitle:
@@ -188,6 +207,8 @@ export const es: TranslationKeys = {
     langEnglish: "English",
     langSpanish: "Español",
     changeLanguage: "Cambiar idioma",
+    openNavigationMenu: "Abrir menú",
+    closeNavigationMenu: "Cerrar menú",
 
     // Login
     loginLoading: "Cargando...",

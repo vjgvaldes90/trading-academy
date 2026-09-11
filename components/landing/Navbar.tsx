@@ -24,8 +24,8 @@ export default function Navbar() {
                     : "bg-transparent"
             }`}
         >
-            <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-                <div className="text-lg font-bold tracking-wide text-blue-400">
+            <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:gap-4 sm:px-6 sm:py-4">
+                <div className="min-w-0 truncate text-sm font-bold tracking-wide text-blue-400 sm:text-lg">
                     {t.smartOptionAcademy}
                 </div>
 
@@ -47,7 +47,7 @@ export default function Navbar() {
 
                 <a
                     href="#pricing"
-                    className="rounded-xl border border-blue-300/30 bg-gradient-to-r from-blue-500 to-blue-700 px-5 py-2 text-sm font-semibold text-white shadow-[0_10px_24px_rgba(37,99,235,0.35)] transition duration-200 hover:scale-[1.02] hover:border-blue-200/40 hover:brightness-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400"
+                    className="shrink-0 rounded-xl border border-blue-300/30 bg-gradient-to-r from-blue-500 to-blue-700 px-3 py-2 text-xs font-semibold text-white shadow-[0_10px_24px_rgba(37,99,235,0.35)] transition duration-200 hover:scale-[1.02] hover:border-blue-200/40 hover:brightness-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400 sm:px-5 sm:text-sm"
                 >
                     {t.navGetStarted}
                 </a>

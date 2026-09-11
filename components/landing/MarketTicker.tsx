@@ -120,15 +120,15 @@ export default function MarketTicker() {
 
     return (
         <>
-            {/* Reserves document flow height equal to the fixed bar (ticker + disclaimer). */}
+            {/* Reserves document flow height equal to the fixed bar (ticker + disclaimer + safe area). */}
             <div
-                className="pointer-events-none h-[7.25rem] sm:h-[5.25rem]"
+                className="pointer-events-none h-[calc(7.25rem+env(safe-area-inset-bottom,0px))] sm:h-[calc(5.25rem+env(safe-area-inset-bottom,0px))]"
                 aria-hidden
             />
 
             <section
                 aria-label="Market ticker"
-                className="fixed bottom-0 left-0 right-0 z-40 bg-[#020617]"
+                className="fixed bottom-0 left-0 right-0 z-40 bg-[#020617] pb-[env(safe-area-inset-bottom,0px)]"
             >
                 <div className="relative overflow-hidden border-y border-white/10 bg-[#070B14]">
                     <div
@@ -147,9 +147,9 @@ export default function MarketTicker() {
                 </div>
 
                 {/* Reuses existing legal copy + disclaimer link — no new legal wording. */}
-                <div className="border-b border-white/5 bg-[#050914] px-4 py-2.5 sm:px-6">
+                <div className="border-b border-white/5 bg-[#050914] px-3 py-2.5 sm:px-6">
                     <div className="mx-auto flex max-w-6xl flex-col items-start justify-between gap-2 sm:flex-row sm:items-center">
-                        <p className="text-[10px] leading-relaxed text-slate-500 sm:text-[11px]">
+                        <p className="min-w-0 break-words text-[10px] leading-relaxed text-slate-500 sm:text-[11px]">
                             {t.importantDisclaimerText}
                         </p>
                         <Link

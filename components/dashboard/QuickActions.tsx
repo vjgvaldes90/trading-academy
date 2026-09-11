@@ -44,7 +44,7 @@ export default function QuickActions({
     return (
         <div className="lg:col-span-2 rounded-2xl p-6 bg-[#111827] border border-white/10 shadow-sm">
             <div className="text-slate-50 font-extrabold">{t.quickActions}</div>
-            <div className="mt-4 grid grid-cols-2 md:grid-cols-3 gap-4">
+            <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
                 {actions.map(({ Icon, title, description, view }) => {
                     const isActive = activeView === view
                     return (

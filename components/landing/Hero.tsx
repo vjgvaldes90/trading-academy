@@ -3,6 +3,7 @@
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
 import { useId, useState } from "react"
 import { useLanguage } from "@/context/LanguageProvider"
+import ClassStartAnnouncement from "@/components/landing/ClassStartAnnouncement"
 
 type TerminalTab = "stocks" | "options" | "etfs"
 type TerminalRange = "1D" | "1W" | "1M"
@@ -422,35 +423,38 @@ export default function Hero() {
                 aria-hidden
             />
 
-            <div className="relative z-10 mx-auto w-full max-w-6xl px-6 pb-16 pt-28 md:px-8 md:pb-20 md:pt-32">
-                <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-14 xl:gap-16">
-                    <div className="text-center lg:text-left">
+            <div className="relative z-10 mx-auto w-full max-w-6xl px-4 pb-20 pt-24 sm:px-6 sm:pb-16 sm:pt-24 md:px-8 md:pb-16 md:pt-28 lg:pt-28">
+                <div className="grid items-start gap-8 lg:grid-cols-2 lg:items-center lg:gap-10 xl:gap-12">
+                    {/* Left — message + primary CTA (dates live under the simulator on desktop) */}
+                    <div className="min-w-0 text-center lg:text-left">
                         <motion.p
-                            className="mb-4 inline-flex items-center gap-2 rounded-full border border-blue-300/25 bg-blue-500/10 px-3.5 py-1.5 text-[11px] font-extrabold uppercase tracking-[0.18em] text-blue-200"
+                            className="mb-3 inline-flex max-w-full items-center gap-2 rounded-full border border-blue-300/25 bg-blue-500/10 px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.16em] text-blue-200 sm:px-3.5 sm:text-[11px] sm:tracking-[0.18em]"
                             {...fadeUp(0)}
                         >
-                            <span className="h-1.5 w-1.5 rounded-full bg-blue-400" aria-hidden />
-                            {t.smartOptionAcademy}
+                            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-blue-400" aria-hidden />
+                            <span className="truncate">{t.smartOptionAcademy}</span>
                         </motion.p>
 
                         <motion.h1
-                            className="mb-5 text-4xl font-bold leading-[1.12] tracking-tight text-slate-50 sm:text-5xl md:text-6xl lg:text-[3.35rem] xl:text-6xl"
+                            className="mb-4 text-balance text-[1.75rem] font-bold leading-[1.15] tracking-tight text-slate-50 min-[375px]:text-4xl sm:text-5xl md:text-6xl lg:text-[3.05rem] xl:text-6xl"
                             {...fadeUp(0.08)}
                         >
                             {t.heroTitle}
                         </motion.h1>
 
                         <motion.div
-                            className="mx-auto mb-8 max-w-xl space-y-3 text-base leading-relaxed text-slate-300 sm:text-lg lg:mx-0"
-                            {...fadeUp(0.16)}
+                            className="mx-auto mb-5 max-w-xl space-y-2 text-sm leading-relaxed text-slate-300 min-[375px]:text-base sm:text-lg lg:mx-0"
+                            {...fadeUp(0.14)}
                         >
                             <p>{t.heroSubtitle1}</p>
-                            <p className="text-sm text-slate-400 sm:text-base">{t.heroSubtitle2}</p>
+                            <p className="hidden text-sm text-slate-400 sm:block sm:text-base">
+                                {t.heroSubtitle2}
+                            </p>
                         </motion.div>
 
                         <motion.div
                             className="mb-5 flex flex-wrap items-center justify-center gap-2 lg:justify-start"
-                            {...fadeUp(0.22)}
+                            {...fadeUp(0.18)}
                         >
                             {[
                                 t.heroChipStocks,
@@ -467,31 +471,46 @@ export default function Hero() {
                             ))}
                         </motion.div>
 
+                        {/* Mobile / tablet: dates before CTA so launch dates appear early */}
+                        <motion.div className="mb-5 lg:hidden" {...fadeUp(0.2)}>
+                            <ClassStartAnnouncement />
+                        </motion.div>
+
                         <motion.div
                             className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center lg:justify-start"
-                            {...fadeUp(0.28)}
+                            {...fadeUp(0.26)}
                         >
                             <a
                                 href="#pricing"
-                                className="inline-flex w-full items-center justify-center rounded-xl border border-blue-300/30 bg-gradient-to-r from-blue-500 to-blue-700 px-8 py-4 text-base font-bold text-white shadow-[0_14px_36px_rgba(37,99,235,0.4)] transition duration-200 hover:scale-[1.02] hover:border-blue-200/40 hover:brightness-110 hover:shadow-[0_18px_44px_rgba(37,99,235,0.5)] active:scale-[0.99] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400 sm:w-auto sm:text-lg"
+                                className="inline-flex w-full max-w-sm items-center justify-center rounded-xl border border-blue-300/30 bg-gradient-to-r from-blue-500 to-blue-700 px-6 py-3.5 text-base font-bold text-white shadow-[0_14px_36px_rgba(37,99,235,0.4)] transition duration-200 hover:scale-[1.02] hover:border-blue-200/40 hover:brightness-110 hover:shadow-[0_18px_44px_rgba(37,99,235,0.5)] active:scale-[0.99] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400 sm:w-auto sm:px-8 sm:text-lg"
                             >
                                 {t.buyAccess}
                             </a>
+                            <a
+                                href="#pricing"
+                                className="inline-flex w-full max-w-sm items-center justify-center rounded-xl border border-white/15 bg-white/[0.04] px-5 py-3 text-sm font-semibold text-slate-100 transition duration-200 hover:border-blue-300/35 hover:bg-blue-500/10 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400 sm:w-auto lg:hidden"
+                            >
+                                {t.classStartViewPrograms}
+                            </a>
                         </motion.div>
 
-                        <motion.p
-                            className="mt-5 text-sm text-slate-400"
-                            {...fadeUp(0.34)}
-                        >
+                        <motion.p className="mt-4 text-sm text-slate-400" {...fadeUp(0.32)}>
                             {t.heroSocialProof}
                         </motion.p>
                     </div>
 
+                    {/* Right — market visual raised + start-date cards underneath (desktop) */}
                     <motion.div
-                        className="mx-auto w-full max-w-lg lg:mx-0 lg:max-w-none"
-                        {...fadeUp(0.2)}
+                        className="mx-auto flex w-full min-w-0 max-w-lg flex-col gap-4 lg:mx-0 lg:-mt-4 lg:max-w-none lg:gap-3.5 lg:self-start xl:-mt-6"
+                        {...fadeUp(0.16)}
                     >
-                        <HeroMarketVisual reduceMotion={Boolean(reduceMotion)} />
+                        <div className="hidden w-full sm:block">
+                            <HeroMarketVisual reduceMotion={Boolean(reduceMotion)} />
+                        </div>
+
+                        <div className="hidden lg:block">
+                            <ClassStartAnnouncement showViewProgramsCta />
+                        </div>
                     </motion.div>
                 </div>
             </div>

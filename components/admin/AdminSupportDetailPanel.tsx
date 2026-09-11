@@ -178,8 +178,8 @@ export default function AdminSupportDetailPanel({
                 {loading || !ticket ? (
                     <div className="p-6 text-sm text-white/60">{t.adminSupportLoading}</div>
                 ) : (
-                    <div className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden lg:grid-cols-[1.4fr_0.9fr]">
-                        <div className="min-h-0 overflow-y-auto border-b border-white/10 p-5 lg:border-b-0 lg:border-r">
+                    <div className="grid min-h-0 flex-1 grid-cols-1 overflow-y-auto lg:grid-cols-[1.4fr_0.9fr] lg:overflow-hidden">
+                        <div className="min-h-0 border-b border-white/10 p-5 lg:overflow-y-auto lg:border-b-0 lg:border-r">
                             <div className="space-y-4">
                                 <div>
                                     <div className="text-xs font-semibold uppercase tracking-[0.12em] text-white/40">
@@ -374,7 +374,7 @@ export default function AdminSupportDetailPanel({
                             </div>
                         </div>
 
-                        <div className="min-h-0 overflow-y-auto p-5">
+                        <div className="min-h-0 p-5 lg:overflow-y-auto">
                             <h4 className="text-sm font-extrabold text-slate-50">{t.adminSupportStudentInfo}</h4>
                             {studentLoading ? (
                                 <p className="mt-3 text-sm text-white/50">{t.adminSupportStudentLoading}</p>

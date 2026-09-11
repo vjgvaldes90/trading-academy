@@ -29,7 +29,10 @@ export default function LanguageSwitcher() {
     const currentLabel = language === "en" ? "EN" : "ES"
 
     return (
-        <div ref={containerRef} className="fixed bottom-6 right-6 z-[60]">
+        <div
+            ref={containerRef}
+            className="fixed z-[60] right-4 sm:right-6 bottom-[calc(7.5rem+env(safe-area-inset-bottom,0px))] sm:bottom-[calc(5.5rem+env(safe-area-inset-bottom,0px))]"
+        >
             <button
                 type="button"
                 onClick={() => setOpen((prev) => !prev)}

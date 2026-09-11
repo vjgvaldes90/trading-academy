@@ -82,17 +82,18 @@ function SuccessPageContent() {
                 background: "#0f172a",
                 color: "white",
                 textAlign: "center",
-                padding: "24px",
+                padding: "clamp(16px, 4vw, 24px)",
             }}
         >
             <div
                 style={{
                     background: "#1e293b",
-                    padding: "44px 36px",
+                    padding: "clamp(28px, 7vw, 44px) clamp(16px, 5vw, 36px)",
                     borderRadius: "16px",
                     maxWidth: "28rem",
                     width: "100%",
                     boxShadow: "0 25px 50px -12px rgba(0,0,0,0.35)",
+                    boxSizing: "border-box",
                 }}
             >
                 {syncState === "loading" || syncState === "success" ? (

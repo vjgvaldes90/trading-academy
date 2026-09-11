@@ -285,10 +285,10 @@ export default function AdminPrivateClassRequests() {
                                 className="rounded-2xl border border-white/[0.08] bg-[#0c1222]/90 p-4 sm:p-5"
                             >
                                 <div className="flex flex-wrap items-start justify-between gap-3">
-                                    <div className="space-y-1">
+                                    <div className="min-w-0 flex-1 space-y-1">
                                         <p className="text-sm font-bold text-slate-100">
                                             {t.adminPrivateClassStudent}:{" "}
-                                            <span className="font-semibold text-sky-200">
+                                            <span className="break-all font-semibold text-sky-200">
                                                 {row.student_email}
                                             </span>
                                         </p>
@@ -486,11 +486,11 @@ export default function AdminPrivateClassRequests() {
                     role="dialog"
                     aria-modal="true"
                     aria-labelledby="reject-private-class-title"
-                    className="fixed inset-0 z-[62] flex items-center justify-center bg-black/70 p-5"
+                    className="fixed inset-0 z-[62] flex items-center justify-center bg-black/70 p-4 sm:p-5"
                     onClick={rejectSubmitting ? undefined : () => setRejectTarget(null)}
                 >
                     <div
-                        className="w-full max-w-md rounded-2xl border border-red-400/30 bg-gradient-to-br from-[#111827] to-[#0B0F1A] p-5 shadow-[0_24px_48px_rgba(0,0,0,0.5)]"
+                        className="max-h-[90dvh] w-full max-w-md overflow-y-auto rounded-2xl border border-red-400/30 bg-gradient-to-br from-[#111827] to-[#0B0F1A] p-5 shadow-[0_24px_48px_rgba(0,0,0,0.5)]"
                         onClick={(ev) => ev.stopPropagation()}
                     >
                         <h2
@@ -502,7 +502,7 @@ export default function AdminPrivateClassRequests() {
                         <p className="mt-2 text-sm text-slate-400">
                             {t.adminPrivateClassRejectDescription}
                         </p>
-                        <p className="mt-2 text-xs text-slate-500">
+                        <p className="mt-2 break-all text-xs text-slate-500">
                             {rejectTarget.student_email} · {rejectTarget.requested_date} ·{" "}
                             {formatPrivateClassTime(rejectTarget.requested_time)}
                         </p>
@@ -577,11 +577,11 @@ export default function AdminPrivateClassRequests() {
                     role="dialog"
                     aria-modal="true"
                     aria-labelledby="reschedule-private-class-title"
-                    className="fixed inset-0 z-[62] flex items-center justify-center bg-black/70 p-5"
+                    className="fixed inset-0 z-[62] flex items-center justify-center bg-black/70 p-4 sm:p-5"
                     onClick={rescheduleSubmitting ? undefined : closeReschedule}
                 >
                     <div
-                        className="w-full max-w-md rounded-2xl border border-sky-400/25 bg-gradient-to-br from-[#111827] to-[#0B0F1A] p-5 shadow-[0_24px_48px_rgba(0,0,0,0.5)]"
+                        className="max-h-[90dvh] w-full max-w-md overflow-y-auto rounded-2xl border border-sky-400/25 bg-gradient-to-br from-[#111827] to-[#0B0F1A] p-5 shadow-[0_24px_48px_rgba(0,0,0,0.5)]"
                         onClick={(ev) => ev.stopPropagation()}
                     >
                         <h2
@@ -593,7 +593,7 @@ export default function AdminPrivateClassRequests() {
                         <p className="mt-2 text-sm text-slate-400">
                             {t.adminPrivateClassRescheduleDescription}
                         </p>
-                        <p className="mt-3 text-xs text-slate-500">
+                        <p className="mt-3 min-w-0 break-all text-xs text-slate-500">
                             {rescheduleTarget.student_email}
                         </p>
                         <p className="mt-1 text-sm text-slate-300">

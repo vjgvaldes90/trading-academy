@@ -29,7 +29,7 @@ export default function StudentToast({
         <div
             role="status"
             aria-live="polite"
-            className={`fixed bottom-6 left-1/2 z-[70] max-w-sm -translate-x-1/2 rounded-xl border px-4 py-3 text-sm font-semibold shadow-[0_16px_40px_rgba(2,6,23,0.55)] backdrop-blur ${toneClass}`}
+            className={`fixed bottom-6 left-4 right-4 z-[70] w-auto max-w-none -translate-x-0 rounded-xl border px-4 py-3 text-sm font-semibold shadow-[0_16px_40px_rgba(2,6,23,0.55)] backdrop-blur sm:left-1/2 sm:right-auto sm:max-w-sm sm:-translate-x-1/2 ${toneClass}`}
         >
             {message}
         </div>

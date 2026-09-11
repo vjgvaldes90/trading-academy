@@ -71,7 +71,7 @@ export default function AdminDashboardClient({
                 openSupportCount={openSupportCount}
             />
 
-            <main className="flex-1 ml-0 lg:ml-64 p-6 lg:p-8">
+            <main className="ml-0 flex-1 p-6 pt-[4.25rem] lg:ml-64 lg:p-8 lg:pt-8">
                 <header className="mb-6 flex items-center justify-between gap-4 border-b border-white/10 pb-4">
                     {activeView !== "sessions" ? (
                         <h1 className="text-lg font-bold tracking-tight text-slate-100 lg:text-xl">

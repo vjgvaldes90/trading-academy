@@ -102,7 +102,7 @@ export default function PrivateClassSection() {
 
     return (
         <div className="space-y-5">
-            <div className="rounded-2xl border border-violet-400/20 bg-gradient-to-br from-[#151b2e] to-[#0f1424] p-5 sm:p-6">
+            <div className="rounded-2xl border border-violet-400/20 bg-gradient-to-br from-[#151b2e] to-[#0f1424] p-4 sm:p-6">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                     <div className="min-w-0 space-y-2">
                         <h3 className="text-lg font-bold tracking-tight text-slate-50">

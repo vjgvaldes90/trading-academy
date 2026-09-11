@@ -210,7 +210,7 @@ function DashboardShell({
                 unreadAnnouncementsCount={unreadAnnouncementsCount}
             />
 
-            <main className="flex-1 ml-0 lg:ml-64 p-8 space-y-6">
+            <main className="ml-0 flex-1 space-y-6 p-4 pt-[4.25rem] sm:p-6 lg:ml-64 lg:p-8 lg:pt-8">
                 <AnimatePresence initial={false}>
                     {criticalBanner ? (
                         <motion.div

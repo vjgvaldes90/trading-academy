@@ -29,6 +29,25 @@ export const en = {
     heroTerminalRange1M: "1M",
     heroTerminalDemoHint: "Demo data · Not live quotes",
 
+    // Class start announcement (landing marketing)
+    classStartEyebrow: "Live Classes",
+    classStartTitle: "Classes Start This September",
+    classStartSubtitle: "Your journey into the markets begins soon.",
+    classStartHighlight:
+        "2 programs. 2 start dates. One goal: Become a better trader.",
+    classStartFullProgramName: "Full Program",
+    classStartFullProgramBadge: "24 SEP",
+    classStartFullProgramDate: "September 24",
+    classStartFullProgramFocus: "Theory + Live Trading",
+    classStartFullProgramStarts: "Starts September 24",
+    classStartTradingProgramName: "Trading Program",
+    classStartTradingProgramBadge: "28 SEP",
+    classStartTradingProgramDate: "September 28",
+    classStartTradingProgramFocus: "Live Trading",
+    classStartTradingProgramStarts: "Starts September 28",
+    classStartFooter: "Choose the program that fits your goals.",
+    classStartViewPrograms: "View Programs",
+
     // How It Works
     howItWorksTitle: "From beginner to professional trader",
     howItWorksSubtitle:
@@ -186,6 +205,8 @@ export const en = {
     langEnglish: "English",
     langSpanish: "Español",
     changeLanguage: "Change language",
+    openNavigationMenu: "Open menu",
+    closeNavigationMenu: "Close menu",
 
     // Login
     loginLoading: "Loading...",

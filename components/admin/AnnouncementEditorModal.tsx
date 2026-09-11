@@ -120,6 +120,8 @@ export default function AnnouncementEditorModal({
                 style={{
                     width: "100%",
                     maxWidth: 520,
+                    maxHeight: "90dvh",
+                    overflowY: "auto",
                     borderRadius: 16,
                     border: "1px solid rgba(59,130,246,0.3)",
                     background: "linear-gradient(145deg, #111827 0%, #0B0F1A 100%)",

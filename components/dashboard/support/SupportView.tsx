@@ -126,52 +126,88 @@ export default function SupportView() {
                         </button>
                     </div>
                 ) : (
-                    <div className="overflow-x-auto">
-                        <table className="w-full min-w-[640px] text-left text-sm">
-                            <thead>
-                                <tr className="border-b border-white/10 text-xs uppercase tracking-[0.12em] text-white/45">
-                                    <th className="pb-3 pr-4 font-semibold">{t.supportSubject}</th>
-                                    <th className="pb-3 pr-4 font-semibold">{t.supportCategory}</th>
-                                    <th className="pb-3 pr-4 font-semibold">{t.supportStatus}</th>
-                                    <th className="pb-3 pr-4 font-semibold">{t.supportPriority}</th>
-                                    <th className="pb-3 font-semibold">{t.supportDate}</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {tickets.map((ticket) => (
-                                    <tr
-                                        key={ticket.id}
-                                        className="cursor-pointer border-b border-white/5 transition hover:bg-white/5"
+                    <>
+                        {/* Mobile: card list */}
+                        <ul className="space-y-3 md:hidden">
+                            {tickets.map((ticket) => (
+                                <li key={ticket.id}>
+                                    <button
+                                        type="button"
                                         onClick={() => setSelectedTicketId(ticket.id)}
+                                        className="w-full rounded-xl border border-white/10 bg-white/[0.03] p-4 text-left transition hover:bg-white/[0.06] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400"
                                     >
-                                        <td className="py-3.5 pr-4 font-semibold text-slate-100">
+                                        <div className="text-sm font-extrabold leading-snug text-slate-100">
                                             {ticket.subject}
-                                        </td>
-                                        <td className="py-3.5 pr-4 text-slate-300">
-                                            {supportCategoryLabel(t, ticket.category)}
-                                        </td>
-                                        <td className="py-3.5 pr-4">
+                                        </div>
+                                        <div className="mt-2 flex flex-wrap gap-2">
                                             <span
                                                 className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${supportStatusBadgeClass(ticket.status)}`}
                                             >
                                                 {supportStatusLabel(t, ticket.status)}
                                             </span>
-                                        </td>
-                                        <td className="py-3.5 pr-4">
                                             <span
                                                 className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${supportPriorityBadgeClass(ticket.priority)}`}
                                             >
                                                 {supportPriorityLabel(t, ticket.priority)}
                                             </span>
-                                        </td>
-                                        <td className="py-3.5 text-slate-400">
-                                            {formatSupportDate(ticket.created_at, language)}
-                                        </td>
+                                        </div>
+                                        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-400">
+                                            <span>{supportCategoryLabel(t, ticket.category)}</span>
+                                            <span>{formatSupportDate(ticket.created_at, language)}</span>
+                                        </div>
+                                    </button>
+                                </li>
+                            ))}
+                        </ul>
+
+                        {/* md+: existing table */}
+                        <div className="hidden overflow-x-auto md:block">
+                            <table className="w-full min-w-[640px] text-left text-sm">
+                                <thead>
+                                    <tr className="border-b border-white/10 text-xs uppercase tracking-[0.12em] text-white/45">
+                                        <th className="pb-3 pr-4 font-semibold">{t.supportSubject}</th>
+                                        <th className="pb-3 pr-4 font-semibold">{t.supportCategory}</th>
+                                        <th className="pb-3 pr-4 font-semibold">{t.supportStatus}</th>
+                                        <th className="pb-3 pr-4 font-semibold">{t.supportPriority}</th>
+                                        <th className="pb-3 font-semibold">{t.supportDate}</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                                </thead>
+                                <tbody>
+                                    {tickets.map((ticket) => (
+                                        <tr
+                                            key={ticket.id}
+                                            className="cursor-pointer border-b border-white/5 transition hover:bg-white/5"
+                                            onClick={() => setSelectedTicketId(ticket.id)}
+                                        >
+                                            <td className="py-3.5 pr-4 font-semibold text-slate-100">
+                                                {ticket.subject}
+                                            </td>
+                                            <td className="py-3.5 pr-4 text-slate-300">
+                                                {supportCategoryLabel(t, ticket.category)}
+                                            </td>
+                                            <td className="py-3.5 pr-4">
+                                                <span
+                                                    className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${supportStatusBadgeClass(ticket.status)}`}
+                                                >
+                                                    {supportStatusLabel(t, ticket.status)}
+                                                </span>
+                                            </td>
+                                            <td className="py-3.5 pr-4">
+                                                <span
+                                                    className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${supportPriorityBadgeClass(ticket.priority)}`}
+                                                >
+                                                    {supportPriorityLabel(t, ticket.priority)}
+                                                </span>
+                                            </td>
+                                            <td className="py-3.5 text-slate-400">
+                                                {formatSupportDate(ticket.created_at, language)}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </>
                 )}
             </section>
 

@@ -78,7 +78,7 @@ export default function ClassesView() {
                         <>
                             <iframe
                                 src={activeLesson.video_url}
-                                className="w-full h-[420px] rounded-xl shadow-lg border border-white/10 bg-black"
+                                className="aspect-video w-full rounded-xl border border-white/10 bg-black shadow-lg lg:aspect-auto lg:h-[420px]"
                                 allowFullScreen
                                 title={activeLesson.title}
                                 referrerPolicy="strict-origin-when-cross-origin"

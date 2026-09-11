@@ -51,7 +51,7 @@ export default function ZoomSetupSection({
                         <div className="h-3 w-full rounded bg-slate-700/50" />
                         <div className="h-3 w-[92%] rounded bg-slate-700/40" />
                     </div>
-                    <div className="grid gap-3 pt-2 sm:grid-cols-3">
+                    <div className="grid grid-cols-1 gap-3 pt-2 md:grid-cols-3">
                         <div className="h-12 rounded-xl bg-slate-700/50" />
                         <div className="h-12 rounded-xl bg-slate-700/40" />
                         <div className="h-12 rounded-xl bg-slate-700/40" />
@@ -92,7 +92,7 @@ export default function ZoomSetupSection({
                 ))}
             </ul>
 
-            <div className="mt-6 grid gap-3 sm:grid-cols-3">
+            <div className="mt-6 grid grid-cols-1 gap-3 md:grid-cols-3">
                 <a
                     href={zoomDownloadHref}
                     target="_blank"

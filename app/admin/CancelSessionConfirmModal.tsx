@@ -70,6 +70,8 @@ export default function CancelSessionConfirmModal({
                 style={{
                     width: "100%",
                     maxWidth: 440,
+                    maxHeight: "90dvh",
+                    overflowY: "auto",
                     borderRadius: 16,
                     border: "1px solid rgba(248,113,113,0.35)",
                     background: "linear-gradient(145deg, #111827 0%, #0B0F1A 100%)",

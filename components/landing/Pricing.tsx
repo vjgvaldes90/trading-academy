@@ -193,7 +193,7 @@ export default function Pricing() {
     return (
         <section
             id="pricing"
-            className="relative overflow-hidden bg-[#020617] pb-28 pt-28 text-white sm:pb-32 sm:pt-32 lg:pt-36"
+            className="relative overflow-hidden bg-[#020617] pb-24 pt-20 text-white sm:pb-32 sm:pt-28 lg:pt-32"
         >
             {/* Soft top fade — separation from Hero without a hard color break */}
             <div
@@ -233,15 +233,15 @@ export default function Pricing() {
                     <h2 className="mb-5 text-balance text-3xl font-extrabold leading-[1.15] tracking-tight text-white sm:text-4xl lg:text-5xl">
                         {t.pricingTitle}
                     </h2>
-                    <p className="text-pretty text-3xl leading-relaxed text-slate-300 sm:text-4xl lg:text-5xl">
+                    <p className="text-pretty text-base leading-relaxed text-slate-300 sm:text-lg md:text-xl lg:text-2xl">
                         {t.pricingSubtitle}
                     </p>
                     <p
                         className={[
-                            "mt-8 inline-flex items-center justify-center rounded-full border border-blue-300/30 bg-blue-500/10 px-5 py-2",
-                            "text-sm font-extrabold uppercase tracking-[0.22em] text-blue-100",
+                            "mt-6 inline-flex max-w-full items-center justify-center rounded-full border border-blue-300/30 bg-blue-500/10 px-4 py-2",
+                            "text-[11px] font-extrabold uppercase tracking-[0.18em] text-blue-100",
                             "shadow-[0_0_28px_rgba(37,99,235,0.22)]",
-                            "sm:mt-9 sm:text-[15px] sm:tracking-[0.26em]",
+                            "sm:mt-9 sm:px-5 sm:text-[15px] sm:tracking-[0.26em]",
                         ].join(" ")}
                     >
                         {t.pricingChoosePlan}
