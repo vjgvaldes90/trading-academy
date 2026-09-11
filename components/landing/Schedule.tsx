@@ -4,7 +4,7 @@ import { motion, useReducedMotion } from "framer-motion"
 import { BookOpen, CalendarDays, Clock, GraduationCap, LineChart, Target, UserRound } from "lucide-react"
 import { useLanguage } from "@/context/LanguageProvider"
 
-/** Decorative mini chart — no market data. */
+/** Decorative mini chart â€” no market data. */
 function ScheduleDecorChart({ reduceMotion }: { reduceMotion: boolean }) {
     return (
         <div
@@ -138,7 +138,7 @@ export default function Schedule() {
                 </p>
 
                 <div className="mx-auto grid max-w-6xl gap-5 text-left sm:gap-6 lg:grid-cols-3">
-                    {/* Trading — primary recurring schedule */}
+                    {/* Trading â€” primary recurring schedule */}
                     <motion.article
                         className={[
                             cardShell,
@@ -180,7 +180,7 @@ export default function Schedule() {
                         </p>
                     </motion.article>
 
-                    {/* Theory — Full Program only; no invented day/time */}
+                    {/* Theory â€” Full Program only; no invented day/time */}
                     <motion.article
                         className={[
                             cardShell,
@@ -232,7 +232,7 @@ export default function Schedule() {
                         </div>
                     </motion.article>
 
-                    {/* Private 1:1 — marketing only */}
+                    {/* Private 1:1 â€” marketing only */}
                     <motion.article
                         className={[
                             cardShell,
@@ -274,7 +274,7 @@ export default function Schedule() {
                 </div>
 
                 <a
-                    href="/login"
+                    href="#pricing"
                     className={[
                         "mt-12 inline-block rounded-xl border border-blue-300/30 bg-gradient-to-r from-blue-500 to-blue-700 px-8 py-4 text-base font-bold text-white sm:mt-14 sm:text-lg",
                         "shadow-[0_14px_36px_rgba(37,99,235,0.4)]",

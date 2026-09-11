@@ -141,7 +141,7 @@ export default function Testimonials() {
                 </ul>
 
                 <a
-                    href="/login"
+                    href="#pricing"
                     className={[
                         "mt-12 inline-block rounded-xl border border-blue-300/30 bg-gradient-to-r from-blue-500 to-blue-700 px-8 py-4 text-base font-bold text-white sm:mt-14 sm:text-lg",
                         "shadow-[0_14px_36px_rgba(37,99,235,0.4)]",

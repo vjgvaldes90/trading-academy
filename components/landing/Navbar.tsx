@@ -46,7 +46,7 @@ export default function Navbar() {
                 </div>
 
                 <a
-                    href="/login"
+                    href="#pricing"
                     className="rounded-xl border border-blue-300/30 bg-gradient-to-r from-blue-500 to-blue-700 px-5 py-2 text-sm font-semibold text-white shadow-[0_10px_24px_rgba(37,99,235,0.35)] transition duration-200 hover:scale-[1.02] hover:border-blue-200/40 hover:brightness-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400"
                 >
                     {t.navGetStarted}

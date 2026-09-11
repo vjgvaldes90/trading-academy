@@ -472,7 +472,7 @@ export default function Hero() {
                             {...fadeUp(0.28)}
                         >
                             <a
-                                href="/login"
+                                href="#pricing"
                                 className="inline-flex w-full items-center justify-center rounded-xl border border-blue-300/30 bg-gradient-to-r from-blue-500 to-blue-700 px-8 py-4 text-base font-bold text-white shadow-[0_14px_36px_rgba(37,99,235,0.4)] transition duration-200 hover:scale-[1.02] hover:border-blue-200/40 hover:brightness-110 hover:shadow-[0_18px_44px_rgba(37,99,235,0.5)] active:scale-[0.99] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400 sm:w-auto sm:text-lg"
                             >
                                 {t.buyAccess}

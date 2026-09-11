@@ -134,7 +134,7 @@ export default function WhatYouLearn() {
                                         {item.text}
                                     </p>
 
-                                    {/* Step indicator — decorative only */}
+                                    {/* Step indicator â€” decorative only */}
                                     <div
                                         className="relative mt-6 flex items-center gap-1.5 border-t border-white/10 pt-4"
                                         aria-hidden
@@ -164,7 +164,7 @@ export default function WhatYouLearn() {
                 </ol>
 
                 <a
-                    href="/login"
+                    href="#pricing"
                     className={[
                         "mt-12 inline-block rounded-xl border border-blue-300/30 bg-gradient-to-r from-blue-500 to-blue-700 px-8 py-4 text-base font-bold text-white sm:mt-14 sm:text-lg",
                         "shadow-[0_14px_36px_rgba(37,99,235,0.4)]",

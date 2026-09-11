@@ -4,7 +4,7 @@ import { motion, useReducedMotion } from "framer-motion"
 import Image from "next/image"
 import { useLanguage } from "@/context/LanguageProvider"
 
-/** Purely decorative abstract market lines — no live data. */
+/** Purely decorative abstract market lines â€” no live data. */
 function InstructorMarketDecor({ reduceMotion }: { reduceMotion: boolean }) {
     return (
         <div
@@ -119,7 +119,7 @@ export default function Instructor() {
                 className="relative mx-auto grid max-w-6xl items-center gap-12 px-6 sm:px-8 md:grid-cols-2 md:gap-14 lg:gap-16"
                 {...reveal}
             >
-                {/* Photo — existing /toni.png asset */}
+                {/* Photo â€” existing /toni.png asset */}
                 <div className="relative mx-auto w-full max-w-[360px] md:mx-0 md:max-w-none">
                     <InstructorMarketDecor reduceMotion={!motionSafe} />
 
@@ -201,7 +201,7 @@ export default function Instructor() {
                     </ol>
 
                     <a
-                        href="/login"
+                        href="#pricing"
                         className={[
                             "inline-block rounded-xl border border-blue-300/30 bg-gradient-to-r from-blue-500 to-blue-700 px-8 py-4 text-base font-bold text-white sm:text-lg",
                             "shadow-[0_14px_36px_rgba(37,99,235,0.4)]",
