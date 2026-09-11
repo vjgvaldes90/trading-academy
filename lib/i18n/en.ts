@@ -757,6 +757,8 @@ export const en = {
     secureJoinOutsideWindow:
         "Join is only available from 10 minutes before start until 2 hours after start",
     secureJoinMissingLink: "Meeting link not configured",
+    secureJoinTheoryQuotaExceeded:
+        "You have reached the 2-theory-class limit for your Full Program.",
     secureJoinInternalError: "Internal error",
 
     // Weekdays

@@ -5,6 +5,7 @@ import type { TranslationKeys } from "@/lib/i18n/en"
 
 export type SecureJoinResult =
     | { ok: true; join_url: string }
+    | { ok: true; preview: true; can_join: boolean }
     | { ok: false; message: string; code?: string }
 
 export type AdminStartResult =
@@ -31,6 +32,8 @@ function messageForJoinCode(code: string | undefined, fallbackError?: string): s
             return tr.secureJoinOutsideWindow
         case "missing_meeting_link":
             return tr.secureJoinMissingLink
+        case "theory_quota_exceeded":
+            return tr.secureJoinTheoryQuotaExceeded
         case "invalid_json":
         case "invalid_session_id":
         case "session_parse":
@@ -42,17 +45,24 @@ function messageForJoinCode(code: string | undefined, fallbackError?: string): s
     }
 }
 
-export async function fetchSecureStudentJoinUrl(sessionId: string): Promise<SecureJoinResult> {
+export async function fetchSecureStudentJoinUrl(
+    sessionId: string,
+    options?: { consume?: boolean }
+): Promise<SecureJoinResult> {
+    const consume = options?.consume !== false
     const res = await fetch("/api/session/join", {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
             session_id: sessionId,
+            consume,
         }),
     })
     const data = (await res.json().catch(() => ({}))) as {
         join_url?: string
+        preview?: boolean
+        can_join?: boolean
         error?: string
         code?: string
     }
@@ -64,9 +74,18 @@ export async function fetchSecureStudentJoinUrl(sessionId: string): Promise<Secu
             code,
         }
     }
+
     const url = typeof data.join_url === "string" ? data.join_url.trim() : ""
-    if (!url) return { ok: false, message: t().secureJoinInvalidResponse }
-    return { ok: true, join_url: url }
+    if (url) {
+        return { ok: true, join_url: url }
+    }
+
+    // Theory preview: entitlement/quota OK without exposing join_url for a new session.
+    if (data.preview === true) {
+        return { ok: true, preview: true, can_join: data.can_join !== false }
+    }
+
+    return { ok: false, message: t().secureJoinInvalidResponse }
 }
 
 function normalizeEmail(value: string): string {

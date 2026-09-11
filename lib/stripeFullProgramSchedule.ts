@@ -22,6 +22,16 @@ export function getSubscriptionItemPeriodEndUnix(
     return null
 }
 
+export function getSubscriptionItemPeriodStartUnix(
+    subscription: Stripe.Subscription
+): number | null {
+    const item = subscription.items?.data?.[0]
+    if (item && typeof item.current_period_start === "number" && Number.isFinite(item.current_period_start)) {
+        return item.current_period_start
+    }
+    return null
+}
+
 export function unixSecondsToIso(unixSeconds: number): string {
     return new Date(unixSeconds * 1000).toISOString()
 }

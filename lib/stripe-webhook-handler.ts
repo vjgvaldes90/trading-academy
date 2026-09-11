@@ -22,6 +22,7 @@ import {
 import {
     ensureFullProgramSubscriptionSchedule,
     getSubscriptionItemPeriodEndUnix,
+    getSubscriptionItemPeriodStartUnix,
     getSubscriptionPrimaryPriceId,
     unixSecondsToIso,
 } from "@/lib/stripeFullProgramSchedule"
@@ -179,6 +180,8 @@ type StudentPlanRow = {
     access_code: string | null
     subscription_schedule_id: string | null
     plan: string | null
+    theory_quota_period_start?: string | null
+    theory_quota_period_end?: string | null
 }
 
 async function fulfillPaidAccess(args: {
@@ -211,7 +214,9 @@ async function fulfillPaidAccess(args: {
 
     const { data: existingRow, error: existingErr } = await supabase
         .from("trading_students")
-        .select("id, access_code, subscription_schedule_id, plan")
+        .select(
+            "id, access_code, subscription_schedule_id, plan, theory_quota_period_start, theory_quota_period_end"
+        )
         .eq("email", emailForDb)
         .maybeSingle()
 
@@ -229,6 +234,8 @@ async function fulfillPaidAccess(args: {
     const isNewAccessCode = !existingCode
 
     let programTheoryUntil: string | null = null
+    let theoryQuotaPeriodStart: string | null = null
+    let theoryQuotaPeriodEnd: string | null = null
     const stripePriceId: string | null =
         plan === "full_program" ? getStripePriceIdFullProgram() : getStripePriceId()
     let subscriptionScheduleId: string | null =
@@ -240,11 +247,16 @@ async function fulfillPaidAccess(args: {
     if (subscriptionId) {
         try {
             const sub = await stripe.subscriptions.retrieve(subscriptionId)
+            const periodStartUnix = getSubscriptionItemPeriodStartUnix(sub)
             const periodEndUnix = getSubscriptionItemPeriodEndUnix(sub)
             if (periodEndUnix) {
                 accessExpiresAt = unixSecondsToIso(periodEndUnix)
                 if (plan === "full_program") {
                     programTheoryUntil = accessExpiresAt
+                    if (periodStartUnix && periodEndUnix > periodStartUnix) {
+                        theoryQuotaPeriodStart = unixSecondsToIso(periodStartUnix)
+                        theoryQuotaPeriodEnd = unixSecondsToIso(periodEndUnix)
+                    }
                 }
             }
         } catch (err) {
@@ -350,6 +362,14 @@ async function fulfillPaidAccess(args: {
         }
         if (subscriptionScheduleId) {
             upsertPayload.subscription_schedule_id = subscriptionScheduleId
+        }
+        // Persist first $450 window once — never overwrite on later fulfillments.
+        const alreadyHasQuotaPeriod =
+            typeof existing?.theory_quota_period_start === "string" &&
+            Boolean(existing.theory_quota_period_start.trim())
+        if (!alreadyHasQuotaPeriod && theoryQuotaPeriodStart && theoryQuotaPeriodEnd) {
+            upsertPayload.theory_quota_period_start = theoryQuotaPeriodStart
+            upsertPayload.theory_quota_period_end = theoryQuotaPeriodEnd
         }
     } else {
         upsertPayload.program_theory_until = null

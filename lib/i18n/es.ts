@@ -760,6 +760,8 @@ export const es: TranslationKeys = {
     secureJoinOutsideWindow:
         "Solo puedes unirte desde 10 minutos antes del inicio hasta 2 horas después",
     secureJoinMissingLink: "Enlace de reunión no configurado",
+    secureJoinTheoryQuotaExceeded:
+        "Has alcanzado el límite de 2 clases teóricas de tu Programa Completo.",
     secureJoinInternalError: "Error interno",
 
     // Weekdays

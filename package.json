@@ -11,7 +11,8 @@
         "typecheck": "tsc --noEmit",
         "generate:zoom-guide-pdf": "node scripts/generate-zoom-guide-pdf.cjs",
         "verify:private-class-completion": "npx --yes tsx scripts/verify-private-class-completion.ts",
-        "verify:pre-enrolled-checkout": "npx --yes tsx scripts/verify-pre-enrolled-checkout.ts"
+        "verify:pre-enrolled-checkout": "npx --yes tsx scripts/verify-pre-enrolled-checkout.ts",
+        "verify:theory-quota": "npx --yes tsx scripts/verify-theory-quota.ts"
     },
   "dependencies": {
     "@supabase/ssr": "^0.10.2",

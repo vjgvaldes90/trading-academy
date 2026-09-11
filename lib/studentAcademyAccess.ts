@@ -19,6 +19,7 @@ export const LIVE_SESSION_TYPES = ["trading", "theory"] as const
 export type LiveSessionType = (typeof LIVE_SESSION_TYPES)[number]
 
 export type TradingStudentAccessRow = {
+    id?: string | null
     access_code?: string | null
     access_type?: string | null
     is_active?: boolean | null
@@ -26,6 +27,9 @@ export type TradingStudentAccessRow = {
     /** NULL = legacy Solo Trading */
     plan?: string | null
     program_theory_until?: string | null
+    /** Immutable first Full Program $450 billing window (Theory quota). */
+    theory_quota_period_start?: string | null
+    theory_quota_period_end?: string | null
     subscription_id?: string | null
     subscription_status?: string | null
 }

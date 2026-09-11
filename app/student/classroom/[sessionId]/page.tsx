@@ -48,7 +48,6 @@ export default function StudentClassroomPage() {
     const [studentEmail, setStudentEmail] = useState<string>("")
     const [studentJoinName, setStudentJoinName] = useState<string>("")
     const [sessionPreview, setSessionPreview] = useState<SessionPreview | null>(null)
-    const [joinUrl, setJoinUrl] = useState<string>("")
     const [loadingJoin, setLoadingJoin] = useState(false)
     const [error, setError] = useState<string>("")
     const [zoomSetupPanel, setZoomSetupPanel] = useState<ZoomSetupPanelState>("loading")
@@ -118,54 +117,49 @@ export default function StudentClassroomPage() {
     const zoomPdfHref = zoomSetupGuidePdfUrl()
     const zoomVideoHref = zoomTutorialVideoUrl()
 
-    const prepareJoin = async (): Promise<string | null> => {
-        if (!sessionId || loadingJoin) return null
+    /** Preview (mount): validate access / Theory quota; never relies on join_url for new Theory. */
+    const prepareJoinPreview = async (): Promise<void> => {
+        if (!sessionId || loadingJoin) return
         setError("")
         setLoadingJoin(true)
         try {
-            const result = await fetchSecureStudentJoinUrl(sessionId)
+            const result = await fetchSecureStudentJoinUrl(sessionId, { consume: false })
             if (!result.ok) {
                 setError(result.message)
-                return null
             }
-            const preparedUrl = buildJoinUrlWithPreferredName(
-                result.join_url,
-                studentJoinName || studentEmail
-            )
-            setJoinUrl(preparedUrl)
-            return preparedUrl
         } finally {
             setLoadingJoin(false)
         }
     }
 
+    /** Enter: claim Theory (if new) then open Zoom with join_url. */
     const handleEnterLiveClass = async () => {
-        if (loadingJoin) return
-        let url: string | null = joinUrl || null
-        if (!url) {
-            url = await prepareJoin()
-        }
-        if (!url && sessionId) {
-            const result = await fetchSecureStudentJoinUrl(sessionId)
+        if (loadingJoin || !sessionId) return
+        setError("")
+        setLoadingJoin(true)
+        try {
+            const result = await fetchSecureStudentJoinUrl(sessionId, { consume: true })
             if (!result.ok) {
                 setError(result.message)
+                return
+            }
+            if (!("join_url" in result) || !result.join_url) {
+                setError(t.secureJoinInvalidResponse)
                 return
             }
             const preparedUrl = buildJoinUrlWithPreferredName(
                 result.join_url,
                 studentJoinName || studentEmail
             )
-            url = preparedUrl
-            setJoinUrl(preparedUrl)
-        }
-        if (url) {
-            window.location.href = url
+            window.location.href = preparedUrl
+        } finally {
+            setLoadingJoin(false)
         }
     }
 
     useEffect(() => {
         if (!sessionId) return
-        void prepareJoin()
+        void prepareJoinPreview()
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [sessionId, studentJoinName])
 
