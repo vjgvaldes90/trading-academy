@@ -39,18 +39,6 @@ export async function GET() {
             return NextResponse.json({ error: "Student not found", code: "not_found" }, { status: 404 })
         }
 
-        const access = await emailAcademyAccessEvaluation(supabase, email)
-        if (!access.ok) {
-            return NextResponse.json(
-                {
-                    error: "Academy access required",
-                    code: "academy_access_denied",
-                    reason: access.reason,
-                },
-                { status: 403 }
-            )
-        }
-
         const { data, error } = await supabase
             .from("private_class_requests")
             .select(PRIVATE_CLASS_REQUEST_SELECT)

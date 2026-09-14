@@ -31,12 +31,6 @@ export default function PrivateClassSection() {
     const [toast, setToast] = useState<{ message: string; tone: StudentToastTone } | null>(null)
 
     const load = useCallback(async () => {
-        if (!canAccess) {
-            setRequests([])
-            setLoading(false)
-            setError(null)
-            return
-        }
         setLoading(true)
         setError(null)
         try {
@@ -64,7 +58,7 @@ export default function PrivateClassSection() {
         } finally {
             setLoading(false)
         }
-    }, [canAccess, t])
+    }, [t])
 
     useEffect(() => {
         void load()
