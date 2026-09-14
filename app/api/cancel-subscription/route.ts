@@ -21,7 +21,7 @@ export async function POST(req: Request) {
         const supabase = createSupabaseServiceRoleClient()
         const { data: student, error: readErr } = await supabase
             .from("trading_students")
-            .select("subscription_id, subscription_status, access_expires_at")
+            .select("subscription_id, subscription_status, access_expires_at, subscription_schedule_id")
             .eq("email", email)
             .maybeSingle()
 
@@ -38,6 +38,11 @@ export async function POST(req: Request) {
         if (!subscriptionId) {
             return NextResponse.json({ ok: false, error: "No subscription_id found" }, { status: 400 })
         }
+
+        const subscriptionScheduleId =
+            typeof student?.subscription_schedule_id === "string" && student.subscription_schedule_id.trim()
+                ? student.subscription_schedule_id.trim()
+                : null
 
         const currentStatus =
             typeof student?.subscription_status === "string" ? student.subscription_status.trim() : ""
@@ -56,11 +61,16 @@ export async function POST(req: Request) {
         }
 
         const stripe = createStripeClient()
-        const { periodEndIso } = await scheduleSubscriptionCancelAtPeriodEnd(stripe, subscriptionId)
+        const { periodEndIso } = await scheduleSubscriptionCancelAtPeriodEnd(stripe, subscriptionId, {
+            subscriptionScheduleId,
+        })
 
         const { error: updateErr } = await supabase
             .from("trading_students")
-            .update({ subscription_status: SUBSCRIPTION_STATUS_CANCEL_AT_PERIOD_END })
+            .update({
+                subscription_status: SUBSCRIPTION_STATUS_CANCEL_AT_PERIOD_END,
+                subscription_schedule_id: null,
+            })
             .eq("email", email)
 
         if (updateErr) {

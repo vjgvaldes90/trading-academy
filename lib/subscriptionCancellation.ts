@@ -15,6 +15,48 @@ export type ScheduleCancelAtPeriodEndResult = {
     periodEndIso: string
 }
 
+export type ScheduleCancelAtPeriodEndOptions = {
+    /** Fallback from `trading_students.subscription_schedule_id` when Stripe omits `subscription.schedule`. */
+    subscriptionScheduleId?: string | null
+}
+
+/** Same resolution pattern as Full Program schedule helpers — do not invent a new source. */
+function resolveSubscriptionScheduleId(
+    subscription: Stripe.Subscription,
+    fallbackScheduleId?: string | null
+): string | null {
+    const attached =
+        typeof subscription.schedule === "string" && subscription.schedule.trim()
+            ? subscription.schedule.trim()
+            : subscription.schedule &&
+                typeof subscription.schedule === "object" &&
+                "id" in subscription.schedule &&
+                typeof (subscription.schedule as { id: string }).id === "string"
+              ? (subscription.schedule as { id: string }).id.trim()
+              : null
+
+    if (attached) return attached
+
+    if (typeof fallbackScheduleId === "string" && fallbackScheduleId.trim()) {
+        return fallbackScheduleId.trim()
+    }
+
+    return null
+}
+
+/**
+ * Full Program subscriptions are managed by a Subscription Schedule ($450 → $150).
+ * Stripe rejects cancelation updates on the subscription until the schedule is released.
+ * Trading-only (no schedule) skips release and only sets cancel_at_period_end.
+ */
+async function releaseScheduleIfActive(stripe: Stripe, scheduleId: string): Promise<void> {
+    const schedule = await stripe.subscriptionSchedules.retrieve(scheduleId)
+    if (schedule.status !== "active" && schedule.status !== "not_started") {
+        return
+    }
+    await stripe.subscriptionSchedules.release(scheduleId)
+}
+
 /**
  * Stop future renewals without revoking access immediately.
  * Stripe keeps the subscription `active` until `current_period_end`.
@@ -22,8 +64,16 @@ export type ScheduleCancelAtPeriodEndResult = {
  */
 export async function scheduleSubscriptionCancelAtPeriodEnd(
     stripe: Stripe,
-    subscriptionId: string
+    subscriptionId: string,
+    options?: ScheduleCancelAtPeriodEndOptions
 ): Promise<ScheduleCancelAtPeriodEndResult> {
+    const existing = await stripe.subscriptions.retrieve(subscriptionId)
+    const scheduleId = resolveSubscriptionScheduleId(existing, options?.subscriptionScheduleId)
+
+    if (scheduleId) {
+        await releaseScheduleIfActive(stripe, scheduleId)
+    }
+
     const subscription = await stripe.subscriptions.update(subscriptionId, {
         cancel_at_period_end: true,
     })

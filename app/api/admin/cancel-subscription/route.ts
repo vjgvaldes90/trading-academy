@@ -25,7 +25,7 @@ export async function POST(req: Request) {
         const supabase = createSupabaseServiceRoleClient()
         const { data: student, error: readErr } = await supabase
             .from("trading_students")
-            .select("subscription_id, subscription_status, access_expires_at")
+            .select("subscription_id, subscription_status, access_expires_at, subscription_schedule_id")
             .eq("id", userId)
             .maybeSingle()
 
@@ -44,6 +44,14 @@ export async function POST(req: Request) {
         if (!subscriptionId) {
             return NextResponse.json({ ok: false, error: "No subscription_id for user" }, { status: 400 })
         }
+
+        const subscriptionScheduleId =
+            student &&
+            typeof (student as { subscription_schedule_id?: unknown }).subscription_schedule_id ===
+                "string" &&
+            String((student as { subscription_schedule_id: string }).subscription_schedule_id).trim()
+                ? String((student as { subscription_schedule_id: string }).subscription_schedule_id).trim()
+                : null
 
         const currentStatus =
             typeof (student as { subscription_status?: unknown }).subscription_status === "string"
@@ -66,11 +74,16 @@ export async function POST(req: Request) {
         }
 
         const stripe = createStripeClient()
-        const { periodEndIso } = await scheduleSubscriptionCancelAtPeriodEnd(stripe, subscriptionId)
+        const { periodEndIso } = await scheduleSubscriptionCancelAtPeriodEnd(stripe, subscriptionId, {
+            subscriptionScheduleId,
+        })
 
         const { error: updateErr } = await supabase
             .from("trading_students")
-            .update({ subscription_status: SUBSCRIPTION_STATUS_CANCEL_AT_PERIOD_END })
+            .update({
+                subscription_status: SUBSCRIPTION_STATUS_CANCEL_AT_PERIOD_END,
+                subscription_schedule_id: null,
+            })
             .eq("id", userId)
 
         if (updateErr) {
