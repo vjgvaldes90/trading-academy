@@ -1,4 +1,8 @@
 import type Stripe from "stripe"
+import {
+    getSubscriptionItemPeriodEndUnix,
+    unixSecondsToIso,
+} from "@/lib/stripeFullProgramSchedule"
 
 /** DB `subscription_status` while Stripe subscription is active but set to end at period close. */
 export const SUBSCRIPTION_STATUS_CANCEL_AT_PERIOD_END = "cancel_at_period_end"
@@ -14,6 +18,7 @@ export type ScheduleCancelAtPeriodEndResult = {
 /**
  * Stop future renewals without revoking access immediately.
  * Stripe keeps the subscription `active` until `current_period_end`.
+ * With `cancel_at_period_end: true`, Stripe leaves `cancel_at` null — use item period end.
  */
 export async function scheduleSubscriptionCancelAtPeriodEnd(
     stripe: Stripe,
@@ -23,13 +28,15 @@ export async function scheduleSubscriptionCancelAtPeriodEnd(
         cancel_at_period_end: true,
     })
 
-    const periodEnd = subscription.cancel_at
-    if (!periodEnd || !Number.isFinite(periodEnd)) {
-        throw new Error("Stripe subscription missing cancel_at after scheduling period-end cancellation")
+    const periodEnd = getSubscriptionItemPeriodEndUnix(subscription)
+    if (!periodEnd) {
+        throw new Error(
+            "Stripe subscription missing current_period_end after scheduling period-end cancellation"
+        )
     }
 
     return {
         subscription,
-        periodEndIso: new Date(periodEnd * 1000).toISOString(),
+        periodEndIso: unixSecondsToIso(periodEnd),
     }
 }
