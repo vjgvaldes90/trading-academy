@@ -481,6 +481,9 @@ export const en = {
         "No refunds are issued. Access remains available until the end of the current paid billing period. Future renewals will stop; the student keeps access until the current billing period ends.",
     adminSubscriptionScheduledCancel:
         "Subscription scheduled to cancel at period end. No refund was issued.",
+    adminSubscriptionCancelScheduled: "Cancellation scheduled",
+    adminSubscriptionCancelScheduledHint:
+        "Access continues until the end of the current paid billing period.",
 
     // Create student modal
     createStudentTitle: "New Student",

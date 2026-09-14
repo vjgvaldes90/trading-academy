@@ -483,6 +483,9 @@ export const es: TranslationKeys = {
         "No se emiten reembolsos. El acceso permanece disponible hasta el final del periodo de facturación pagado actual. Las renovaciones futuras se detendrán; el estudiante conserva el acceso hasta el final del periodo de facturación actual.",
     adminSubscriptionScheduledCancel:
         "Suscripción programada para cancelarse al final del periodo. No se emitió reembolso.",
+    adminSubscriptionCancelScheduled: "Cancelación programada",
+    adminSubscriptionCancelScheduledHint:
+        "El acceso continúa hasta el final del periodo de facturación pagado actual.",
 
     // Create student modal
     createStudentTitle: "Nuevo estudiante",

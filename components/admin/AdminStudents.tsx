@@ -5,6 +5,7 @@ import CreateStudentModal, {
     type CreateStudentFormValues,
 } from "@/components/admin/CreateStudentModal"
 import { useLanguage } from "@/context/LanguageProvider"
+import { SUBSCRIPTION_STATUS_CANCEL_AT_PERIOD_END } from "@/lib/subscriptionCancellation"
 import { useCallback, useEffect, useMemo, useState } from "react"
 
 type TradingStudentListRow = {
@@ -281,7 +282,12 @@ export default function AdminStudents() {
                                         const active = r.is_active !== false
                                         const currentType = (r.access_type ?? "paid").toLowerCase()
                                         const showCancelSubscription =
-                                            Boolean(r.subscription_id) && r.subscription_status === "active"
+                                            Boolean(r.subscription_id) &&
+                                            r.subscription_status === "active"
+                                        const subscriptionCancelScheduled =
+                                            Boolean(r.subscription_id) &&
+                                            r.subscription_status ===
+                                                SUBSCRIPTION_STATUS_CANCEL_AT_PERIOD_END
                                         const baseOpts = [...ACCESS_TYPE_OPTIONS] as string[]
                                         const typeOptions = baseOpts.includes(currentType)
                                             ? baseOpts
@@ -416,6 +422,24 @@ export default function AdminStudents() {
                                                             >
                                                                 {cancelBusy ? t.loading : t.cancelSubscription}
                                                             </button>
+                                                        ) : null}
+                                                        {subscriptionCancelScheduled ? (
+                                                            <div
+                                                                title={t.adminSubscriptionCancelScheduledHint}
+                                                                style={{
+                                                                    maxWidth: 160,
+                                                                    padding: "6px 10px",
+                                                                    borderRadius: 10,
+                                                                    border: "1px solid rgba(245,158,11,0.4)",
+                                                                    background: "rgba(245,158,11,0.12)",
+                                                                    color: "#fde68a",
+                                                                    fontWeight: 700,
+                                                                    fontSize: "0.7rem",
+                                                                    lineHeight: 1.35,
+                                                                }}
+                                                            >
+                                                                {t.adminSubscriptionCancelScheduled}
+                                                            </div>
                                                         ) : null}
                                                     </div>
                                                 </td>
