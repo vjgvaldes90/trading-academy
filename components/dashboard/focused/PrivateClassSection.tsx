@@ -12,7 +12,10 @@ import StudentToast, {
 } from "@/components/dashboard/support/StudentToast"
 import { useLanguage } from "@/context/LanguageProvider"
 import { useSession } from "@/context/SessionContext"
-import type { PrivateClassRequestRow } from "@/lib/privateClassRequests"
+import {
+    isFreePrivateClass,
+    type PrivateClassRequestRow,
+} from "@/lib/privateClassRequests"
 import { useCallback, useEffect, useState } from "react"
 
 export default function PrivateClassSection() {
@@ -158,6 +161,7 @@ export default function PrivateClassSection() {
                         {requests.map((row) => {
                             const status = String(row.status)
                             const isPaying = payingId === row.id
+                            const isFree = isFreePrivateClass(row)
                             return (
                                 <li
                                     key={row.id}
@@ -171,14 +175,23 @@ export default function PrivateClassSection() {
                                             </p>
                                             <p className="text-xs text-slate-500">
                                                 {t.privateClassDurationDisplay} ·{" "}
-                                                {formatPrivateClassPriceCents(row.price_cents)}
+                                                {isFree
+                                                    ? t.privateClassFreeBadge
+                                                    : formatPrivateClassPriceCents(row.price_cents)}
                                             </p>
                                         </div>
-                                        <span
-                                            className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-bold ${privateClassStatusBadgeClass(status)}`}
-                                        >
-                                            {privateClassStatusLabel(status, t)}
-                                        </span>
+                                        <div className="flex flex-wrap items-center justify-end gap-2">
+                                            {isFree ? (
+                                                <span className="inline-flex rounded-full border border-emerald-400/35 bg-emerald-500/15 px-2.5 py-1 text-[11px] font-bold text-emerald-100">
+                                                    {t.privateClassFreeBadge}
+                                                </span>
+                                            ) : null}
+                                            <span
+                                                className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-bold ${privateClassStatusBadgeClass(status)}`}
+                                            >
+                                                {privateClassStatusLabel(status, t)}
+                                            </span>
+                                        </div>
                                     </div>
                                     {row.student_message ? (
                                         <p className="mt-3 text-sm leading-relaxed text-slate-400">
@@ -215,7 +228,7 @@ export default function PrivateClassSection() {
                                         </div>
                                     ) : null}
 
-                                    {status === "paid" ? (
+                                    {status === "paid" && !isFree ? (
                                         <p className="mt-3 text-sm font-semibold text-emerald-300">
                                             {t.privateClassPaymentCompleted}
                                         </p>

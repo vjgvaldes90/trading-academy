@@ -3,6 +3,9 @@ import { z } from "zod"
 /** Server-fixed product constants — never accept from the client. */
 export const PRIVATE_CLASS_DURATION_MINUTES = 120
 export const PRIVATE_CLASS_PRICE_CENTS = 25000
+/** Admin complimentary Private Class — no Stripe. */
+export const PRIVATE_CLASS_FREE_PRICE_CENTS = 0
+export const PRIVATE_CLASS_FREE_PAYMENT_STATUS = "free" as const
 export const PRIVATE_CLASS_CURRENCY = "usd" as const
 
 /** Academy wall-clock zone (same product convention as live sessions). */
@@ -79,6 +82,36 @@ export const createPrivateClassRequestSchema = z.object({
         .optional()
         .nullable(),
 })
+
+/** Admin-only: create a free Private Class (no Stripe). */
+export const createFreePrivateClassSchema = z.object({
+    student_id: z.string().uuid("student_id must be a uuid"),
+    requested_date: z
+        .string()
+        .trim()
+        .regex(/^\d{4}-\d{2}-\d{2}$/, "requested_date must be YYYY-MM-DD"),
+    requested_time: z
+        .string()
+        .trim()
+        .regex(/^([01]\d|2[0-3]):([0-5]\d)(?::([0-5]\d))?$/, "requested_time must be HH:mm or HH:mm:ss"),
+    admin_notes: z
+        .string()
+        .trim()
+        .max(2000, "admin_notes is too long")
+        .optional()
+        .nullable(),
+})
+
+export function isFreePrivateClass(row: {
+    price_cents?: number | null
+    stripe_payment_status?: string | null
+}): boolean {
+    if (row.price_cents === PRIVATE_CLASS_FREE_PRICE_CENTS) return true
+    return (
+        typeof row.stripe_payment_status === "string" &&
+        row.stripe_payment_status.trim().toLowerCase() === PRIVATE_CLASS_FREE_PAYMENT_STATUS
+    )
+}
 
 export const privateClassAdminActionSchema = z.object({
     action: z.enum(PRIVATE_CLASS_ADMIN_ACTIONS),
@@ -197,6 +230,10 @@ export function publicPrivateClassRequest(row: PrivateClassRequestRow) {
         completed_at: row.completed_at,
         created_at: row.created_at,
         updated_at: row.updated_at,
+        stripe_payment_status:
+            typeof row.stripe_payment_status === "string" && row.stripe_payment_status.trim()
+                ? row.stripe_payment_status.trim()
+                : null,
         /** Student-safe Zoom join URL only (never start_url / password). */
         zoom_join_url: joinUrl,
     }

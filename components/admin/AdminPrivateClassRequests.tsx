@@ -13,6 +13,7 @@ import StudentToast, {
 import DateTimeField from "@/components/shared/DateTimeField"
 import { useLanguage } from "@/context/LanguageProvider"
 import {
+    isFreePrivateClass,
     type PrivateClassRequestRow,
     type PrivateClassStatus,
 } from "@/lib/privateClassRequests"
@@ -20,6 +21,11 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 
 type StatusFilter = "" | PrivateClassStatus
 type ConfirmAction = "approve" | "cancel" | null
+
+type StudentOption = {
+    id: string
+    email: string
+}
 
 export default function AdminPrivateClassRequests() {
     const { t } = useLanguage()
@@ -40,6 +46,16 @@ export default function AdminPrivateClassRequests() {
     const [rescheduleTime, setRescheduleTime] = useState("")
     const [rescheduleSubmitting, setRescheduleSubmitting] = useState(false)
     const [rescheduleError, setRescheduleError] = useState<string | null>(null)
+    const [createFreeOpen, setCreateFreeOpen] = useState(false)
+    const [students, setStudents] = useState<StudentOption[]>([])
+    const [studentsLoading, setStudentsLoading] = useState(false)
+    const [studentsError, setStudentsError] = useState<string | null>(null)
+    const [freeStudentId, setFreeStudentId] = useState("")
+    const [freeDate, setFreeDate] = useState("")
+    const [freeTime, setFreeTime] = useState("")
+    const [freeNotes, setFreeNotes] = useState("")
+    const [freeSubmitting, setFreeSubmitting] = useState(false)
+    const [freeError, setFreeError] = useState<string | null>(null)
 
     const load = useCallback(async () => {
         setLoading(true)
@@ -142,6 +158,103 @@ export default function AdminPrivateClassRequests() {
         setRescheduleTime("")
     }
 
+    const openCreateFree = () => {
+        setFreeError(null)
+        setFreeStudentId("")
+        setFreeDate("")
+        setFreeTime("")
+        setFreeNotes("")
+        setCreateFreeOpen(true)
+        setStudentsLoading(true)
+        setStudentsError(null)
+        void (async () => {
+            try {
+                const res = await fetch("/api/admin/trading-students", {
+                    cache: "no-store",
+                    credentials: "include",
+                })
+                const payload = (await res.json().catch(() => [])) as unknown
+                if (!res.ok) {
+                    throw new Error(t.adminPrivateClassCreateFreeStudentError)
+                }
+                const list = Array.isArray(payload) ? (payload as Record<string, unknown>[]) : []
+                const options = list
+                    .map((r) => ({
+                        id: typeof r.id === "string" ? r.id : "",
+                        email: typeof r.email === "string" ? r.email.trim() : "",
+                    }))
+                    .filter((r) => r.id && r.email)
+                    .sort((a, b) => a.email.localeCompare(b.email))
+                setStudents(options)
+            } catch {
+                setStudents([])
+                setStudentsError(t.adminPrivateClassCreateFreeStudentError)
+            } finally {
+                setStudentsLoading(false)
+            }
+        })()
+    }
+
+    const closeCreateFree = () => {
+        if (freeSubmitting) return
+        setCreateFreeOpen(false)
+        setFreeError(null)
+    }
+
+    const submitCreateFree = async () => {
+        if (freeSubmitting) return
+        setFreeError(null)
+        if (!freeStudentId.trim() || !freeDate.trim() || !freeTime.trim()) {
+            setFreeError(t.supportFieldRequired)
+            return
+        }
+        setFreeSubmitting(true)
+        try {
+            const res = await fetch("/api/admin/private-class-requests", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                cache: "no-store",
+                body: JSON.stringify({
+                    student_id: freeStudentId.trim(),
+                    requested_date: freeDate.trim(),
+                    requested_time: freeTime.trim(),
+                    admin_notes: freeNotes.trim() || null,
+                }),
+            })
+            const payload = (await res.json().catch(() => ({}))) as {
+                ok?: boolean
+                error?: string
+                zoom_warning?: string | null
+            }
+            if (!res.ok || payload.ok === false) {
+                throw new Error(
+                    typeof payload.error === "string" && payload.error.trim()
+                        ? payload.error
+                        : t.adminPrivateClassCreateFreeError
+                )
+            }
+            setCreateFreeOpen(false)
+            if (payload.zoom_warning) {
+                setToast({
+                    message: t.adminPrivateClassCreateFreeZoomWarning,
+                    tone: "error",
+                })
+            } else {
+                setToast({ message: t.adminPrivateClassCreateFreeSuccess, tone: "success" })
+            }
+            await load()
+        } catch (e) {
+            setFreeError(
+                e instanceof Error && e.message.trim()
+                    ? e.message
+                    : t.adminPrivateClassCreateFreeError
+            )
+        } finally {
+            setFreeSubmitting(false)
+        }
+    }
+
     const ensureZoom = async (row: PrivateClassRequestRow) => {
         if (ensuringZoomId) return
         setEnsuringZoomId(row.id)
@@ -233,7 +346,16 @@ export default function AdminPrivateClassRequests() {
 
     return (
         <div className="space-y-6">
-            <p className="text-sm text-white/60">{t.adminPrivateClassSubtitle}</p>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+                <p className="text-sm text-white/60">{t.adminPrivateClassSubtitle}</p>
+                <button
+                    type="button"
+                    onClick={openCreateFree}
+                    className="rounded-lg border border-emerald-400/40 bg-emerald-500/15 px-3 py-2 text-xs font-bold text-emerald-100 transition hover:bg-emerald-500/25"
+                >
+                    {t.adminPrivateClassCreateFree}
+                </button>
+            </div>
 
             <div className="flex flex-wrap gap-2">
                 {filterButtons.map((btn) => {
@@ -279,6 +401,7 @@ export default function AdminPrivateClassRequests() {
                         const status = String(row.status)
                         const isPending = status === "pending"
                         const canCancel = status === "pending" || status === "awaiting_payment"
+                        const isFree = isFreePrivateClass(row)
                         return (
                             <li
                                 key={row.id}
@@ -297,11 +420,18 @@ export default function AdminPrivateClassRequests() {
                                             {formatPrivateClassTime(row.requested_time)}
                                         </p>
                                     </div>
-                                    <span
-                                        className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-bold ${privateClassStatusBadgeClass(status)}`}
-                                    >
-                                        {privateClassStatusLabel(status, t, { forAdmin: true })}
-                                    </span>
+                                    <div className="flex flex-wrap items-center justify-end gap-2">
+                                        {isFree ? (
+                                            <span className="inline-flex rounded-full border border-emerald-400/35 bg-emerald-500/15 px-2.5 py-1 text-[11px] font-bold text-emerald-100">
+                                                {t.privateClassFreeBadge}
+                                            </span>
+                                        ) : null}
+                                        <span
+                                            className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-bold ${privateClassStatusBadgeClass(status)}`}
+                                        >
+                                            {privateClassStatusLabel(status, t, { forAdmin: true })}
+                                        </span>
+                                    </div>
                                 </div>
 
                                 <div className="mt-3 grid gap-2 text-sm text-slate-400 sm:grid-cols-2 lg:grid-cols-3">
@@ -315,7 +445,9 @@ export default function AdminPrivateClassRequests() {
                                         <span className="font-semibold text-slate-500">
                                             {t.adminPrivateClassPrice}:{" "}
                                         </span>
-                                        {formatPrivateClassPriceCents(row.price_cents)}
+                                        {isFree
+                                            ? t.privateClassFreeBadge
+                                            : formatPrivateClassPriceCents(row.price_cents)}
                                     </p>
                                     <p>
                                         <span className="font-semibold text-slate-500">
@@ -369,7 +501,9 @@ export default function AdminPrivateClassRequests() {
                                             {t.adminPrivateClassRequested}: {row.requested_date} ·{" "}
                                             {formatPrivateClassTime(row.requested_time)}
                                             <span className="mx-2 text-slate-600">·</span>
-                                            {formatPrivateClassPriceCents(row.price_cents)}
+                                            {isFree
+                                                ? t.privateClassFreeBadge
+                                                : formatPrivateClassPriceCents(row.price_cents)}
                                         </p>
                                         {typeof row.zoom_start_url === "string" &&
                                         row.zoom_start_url.trim() ? (
@@ -651,6 +785,136 @@ export default function AdminPrivateClassRequests() {
                                 {rescheduleSubmitting
                                     ? t.adminPrivateClassRescheduleProcessing
                                     : t.adminPrivateClassRescheduleConfirm}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            ) : null}
+
+            {createFreeOpen ? (
+                <div
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="create-free-private-class-title"
+                    className="fixed inset-0 z-[62] flex items-center justify-center bg-black/70 p-4 sm:p-5"
+                    onClick={freeSubmitting ? undefined : closeCreateFree}
+                >
+                    <div
+                        className="max-h-[90dvh] w-full max-w-md overflow-y-auto rounded-2xl border border-emerald-400/25 bg-gradient-to-br from-[#111827] to-[#0B0F1A] p-5 shadow-[0_24px_48px_rgba(0,0,0,0.5)]"
+                        onClick={(ev) => ev.stopPropagation()}
+                    >
+                        <h2
+                            id="create-free-private-class-title"
+                            className="text-lg font-extrabold text-slate-50"
+                        >
+                            {t.adminPrivateClassCreateFreeTitle}
+                        </h2>
+                        <p className="mt-2 text-sm text-slate-400">
+                            {t.adminPrivateClassCreateFreeDescription}
+                        </p>
+
+                        <label
+                            htmlFor="create-free-private-class-student"
+                            className="mt-4 mb-1.5 block text-xs font-medium text-slate-400"
+                        >
+                            {t.adminPrivateClassCreateFreeStudent}
+                        </label>
+                        {studentsLoading ? (
+                            <p className="text-sm text-slate-500">
+                                {t.adminPrivateClassCreateFreeStudentLoading}
+                            </p>
+                        ) : studentsError ? (
+                            <p className="text-sm text-red-400">{studentsError}</p>
+                        ) : (
+                            <select
+                                id="create-free-private-class-student"
+                                value={freeStudentId}
+                                disabled={freeSubmitting}
+                                onChange={(e) => setFreeStudentId(e.target.value)}
+                                className="w-full rounded-xl border border-white/10 bg-[#0f172a] px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/40 disabled:opacity-60"
+                            >
+                                <option value="">
+                                    {t.adminPrivateClassCreateFreeStudentPlaceholder}
+                                </option>
+                                {students.map((s) => (
+                                    <option key={s.id} value={s.id}>
+                                        {s.email}
+                                    </option>
+                                ))}
+                            </select>
+                        )}
+
+                        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                            <DateTimeField
+                                id="create-free-private-class-date"
+                                type="date"
+                                label={t.adminPrivateClassCreateFreeDate}
+                                value={freeDate}
+                                disabled={freeSubmitting}
+                                required
+                                onChange={(e) => setFreeDate(e.target.value)}
+                            />
+                            <DateTimeField
+                                id="create-free-private-class-time"
+                                type="time"
+                                label={t.adminPrivateClassCreateFreeTime}
+                                value={freeTime}
+                                disabled={freeSubmitting}
+                                required
+                                onChange={(e) => setFreeTime(e.target.value)}
+                            />
+                        </div>
+
+                        <p className="mt-3 text-xs text-slate-500">
+                            {t.adminPrivateClassCreateFreeDurationFixed}
+                        </p>
+
+                        <label
+                            htmlFor="create-free-private-class-notes"
+                            className="mt-4 mb-1.5 block text-xs font-medium text-slate-400"
+                        >
+                            {t.adminPrivateClassCreateFreeNotes}
+                        </label>
+                        <textarea
+                            id="create-free-private-class-notes"
+                            value={freeNotes}
+                            onChange={(e) => setFreeNotes(e.target.value)}
+                            placeholder={t.adminPrivateClassCreateFreeNotesPlaceholder}
+                            disabled={freeSubmitting}
+                            rows={3}
+                            maxLength={2000}
+                            className="w-full resize-y rounded-xl border border-white/10 bg-[#0f172a] px-3 py-2.5 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 disabled:opacity-60"
+                        />
+
+                        {freeError ? (
+                            <p className="mt-3 text-sm text-red-400">{freeError}</p>
+                        ) : null}
+
+                        <div className="mt-4 flex flex-wrap justify-end gap-2">
+                            <button
+                                type="button"
+                                disabled={freeSubmitting}
+                                onClick={closeCreateFree}
+                                className="rounded-lg border border-white/15 px-3 py-2 text-xs font-semibold text-slate-200 disabled:opacity-60"
+                            >
+                                {t.close}
+                            </button>
+                            <button
+                                type="button"
+                                disabled={
+                                    freeSubmitting ||
+                                    studentsLoading ||
+                                    Boolean(studentsError) ||
+                                    !freeStudentId.trim() ||
+                                    !freeDate.trim() ||
+                                    !freeTime.trim()
+                                }
+                                onClick={() => void submitCreateFree()}
+                                className="rounded-lg border border-emerald-400/45 bg-emerald-500/20 px-3 py-2 text-xs font-bold text-emerald-100 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                                {freeSubmitting
+                                    ? t.adminPrivateClassCreateFreeProcessing
+                                    : t.adminPrivateClassCreateFreeConfirm}
                             </button>
                         </div>
                     </div>

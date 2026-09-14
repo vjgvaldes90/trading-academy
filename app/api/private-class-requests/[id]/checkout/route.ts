@@ -5,6 +5,7 @@ import { emailAcademyAccessEvaluation } from "@/lib/hasPaid"
 import {
     PRIVATE_CLASS_PRODUCT_TYPE,
     PRIVATE_CLASS_REQUEST_SELECT,
+    isFreePrivateClass,
     privateClassRequestIdSchema,
     type PrivateClassRequestRow,
 } from "@/lib/privateClassRequests"
@@ -102,6 +103,16 @@ export async function POST(_req: Request, context: RouteContext) {
         const request = row as PrivateClassRequestRow
         if (request.student_id !== student.id) {
             return NextResponse.json({ error: "Forbidden", code: "forbidden" }, { status: 403 })
+        }
+
+        if (isFreePrivateClass(request)) {
+            return NextResponse.json(
+                {
+                    error: "Free private classes do not use Stripe checkout",
+                    code: "free_class_no_checkout",
+                },
+                { status: 409 }
+            )
         }
 
         if (request.status !== "awaiting_payment") {
