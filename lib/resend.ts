@@ -1,10 +1,18 @@
 import { Resend } from "resend"
+import {
+    buildAdminNewSubscriptionSubject,
+    createAdminNewSubscriptionEmailHtml,
+    type AdminNewSubscriptionEmailProps,
+} from "@/lib/adminNewSubscriptionEmail"
 import { getAppLoginUrl } from "@/lib/app-url"
 import { createPrivateClassRescheduleEmailHtml } from "@/lib/privateClassRescheduleEmail"
 import { createWelcomeEmail } from "@/lib/welcomeEmail"
 
 /** Must match a verified domain in Resend (server-only; never import this module from client code). */
 const RESEND_FROM = "Smart Option Academy <tony@smartoptionacademy.com>"
+
+/** Internal IT inbox for new paid subscription alerts. */
+const ADMIN_NEW_SUBSCRIPTION_TO = "it@smartoptionacademy.com"
 
 type SendEmailResult =
     | { ok: true; id: string | null }
@@ -149,6 +157,71 @@ export async function sendPrivateClassRescheduleEmail(args: {
     } catch (err) {
         const message = err instanceof Error ? err.message : "Unknown Resend error"
         console.error("[resend] private class reschedule exception", message)
+        return { ok: false, error: message }
+    }
+}
+
+/**
+ * Internal IT notification when a new paid subscription is activated.
+ * Failures return `{ ok: false }` — callers must not fail student fulfillment on this.
+ */
+export async function sendNewSubscriptionAdminEmail(
+    props: AdminNewSubscriptionEmailProps
+): Promise<SendEmailResult> {
+    const apiKey = process.env.RESEND_API_KEY
+    if (!apiKey) {
+        const message = "Missing RESEND_API_KEY"
+        console.error("[resend] " + message)
+        return { ok: false, error: message }
+    }
+
+    const studentEmail =
+        typeof props.studentEmail === "string" ? props.studentEmail.trim().toLowerCase() : ""
+    if (!studentEmail) {
+        return { ok: false, error: "sendNewSubscriptionAdminEmail requires studentEmail" }
+    }
+
+    const subscriptionId =
+        typeof props.subscriptionId === "string" ? props.subscriptionId.trim() : ""
+    if (!subscriptionId) {
+        return { ok: false, error: "sendNewSubscriptionAdminEmail requires subscriptionId" }
+    }
+
+    const resend = new Resend(apiKey.trim())
+    const subject = buildAdminNewSubscriptionSubject(props.planLabel, studentEmail)
+    const html = createAdminNewSubscriptionEmailHtml({
+        ...props,
+        studentEmail,
+        subscriptionId,
+    })
+
+    try {
+        const { data, error } = await resend.emails.send({
+            from: RESEND_FROM,
+            to: ADMIN_NEW_SUBSCRIPTION_TO,
+            subject,
+            html,
+        })
+
+        if (error) {
+            console.error(
+                "[resend] admin new subscription FULL ERROR:",
+                JSON.stringify(error, null, 2)
+            )
+            const message = typeof error.message === "string" ? error.message : "Resend send failed"
+            return { ok: false, error: message }
+        }
+
+        console.log("[resend] Admin new subscription email sent", {
+            to: ADMIN_NEW_SUBSCRIPTION_TO,
+            studentEmail,
+            subscriptionId,
+            id: data?.id ?? null,
+        })
+        return { ok: true, id: data?.id ?? null }
+    } catch (err) {
+        const message = err instanceof Error ? err.message : "Unknown Resend error"
+        console.error("[resend] admin new subscription exception", message)
         return { ok: false, error: message }
     }
 }

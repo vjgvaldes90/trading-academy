@@ -12,6 +12,7 @@ import {
     tradingStudentExistsByEmail,
 } from "@/lib/adminNotifications"
 import { sendEmail } from "@/lib/sendEmail"
+import { sendNewSubscriptionAdminEmail } from "@/lib/resend"
 import { computeRenewalAccessExpiresAtIso } from "@/lib/studentSubscriptionRenewal"
 import { SUBSCRIPTION_STATUS_CANCEL_AT_PERIOD_END } from "@/lib/subscriptionCancellation"
 import {
@@ -178,6 +179,7 @@ async function updateStudentBySubscriptionId(
 type StudentPlanRow = {
     id: string | null
     access_code: string | null
+    subscription_id: string | null
     subscription_schedule_id: string | null
     plan: string | null
     theory_quota_period_start?: string | null
@@ -215,7 +217,7 @@ async function fulfillPaidAccess(args: {
     const { data: existingRow, error: existingErr } = await supabase
         .from("trading_students")
         .select(
-            "id, access_code, subscription_schedule_id, plan, theory_quota_period_start, theory_quota_period_end"
+            "id, access_code, subscription_id, subscription_schedule_id, plan, theory_quota_period_start, theory_quota_period_end"
         )
         .eq("email", emailForDb)
         .maybeSingle()
@@ -226,6 +228,10 @@ async function fulfillPaidAccess(args: {
     }
 
     const existing = existingRow as StudentPlanRow | null
+    const previousSubscriptionId =
+        typeof existing?.subscription_id === "string" && existing.subscription_id.trim()
+            ? existing.subscription_id.trim()
+            : null
     const existingCode =
         typeof existing?.access_code === "string" && existing.access_code.trim()
             ? existing.access_code.trim()
@@ -243,12 +249,16 @@ async function fulfillPaidAccess(args: {
             ? existing.subscription_schedule_id.trim()
             : null
     let accessExpiresAt: string | null = null
+    let periodStartIso: string | null = null
 
     if (subscriptionId) {
         try {
             const sub = await stripe.subscriptions.retrieve(subscriptionId)
             const periodStartUnix = getSubscriptionItemPeriodStartUnix(sub)
             const periodEndUnix = getSubscriptionItemPeriodEndUnix(sub)
+            if (periodStartUnix) {
+                periodStartIso = unixSecondsToIso(periodStartUnix)
+            }
             if (periodEndUnix) {
                 accessExpiresAt = unixSecondsToIso(periodEndUnix)
                 if (plan === "full_program") {
@@ -401,6 +411,44 @@ async function fulfillPaidAccess(args: {
         })
     }
 
+    const isNewPaidSubscription =
+        Boolean(subscriptionId) &&
+        (previousSubscriptionId === null || previousSubscriptionId !== subscriptionId)
+
+    if (isNewPaidSubscription && subscriptionId) {
+        const planLabel = plan === "full_program" ? "Full Program" : "Trading Only"
+        try {
+            const adminMail = await sendNewSubscriptionAdminEmail({
+                studentName: rawName ?? null,
+                studentEmail: emailForDb,
+                planLabel,
+                subscriptionId,
+                stripePriceId,
+                periodStartIso,
+                periodEndIso: accessExpiresAt,
+                notifiedAtIso: new Date().toISOString(),
+            })
+            if (!adminMail.ok) {
+                console.error(
+                    "[stripe-webhook] admin new subscription email failed (fulfill continues)",
+                    { email: emailForDb, subscriptionId, error: adminMail.error }
+                )
+            }
+        } catch (adminMailErr) {
+            console.error(
+                "[stripe-webhook] admin new subscription email exception (fulfill continues)",
+                {
+                    email: emailForDb,
+                    subscriptionId,
+                    error:
+                        adminMailErr instanceof Error
+                            ? adminMailErr.message
+                            : String(adminMailErr),
+                }
+            )
+        }
+    }
+
     console.log("[stripe-webhook] student fulfilled", {
         email: emailForDb,
         plan,
@@ -411,6 +459,7 @@ async function fulfillPaidAccess(args: {
         reusedAccessCode: !isNewAccessCode,
         codeMasked: maskAccessCode(accessCode),
         eventId: eventId ?? null,
+        adminNewSubscriptionEmail: isNewPaidSubscription,
     })
 
     if (isNewAccessCode) {
