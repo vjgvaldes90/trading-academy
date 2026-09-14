@@ -232,7 +232,12 @@ function DashboardShell({
 
                 <DashboardHeader welcomeName={welcomeName} sectionTitle={sectionTitles[activeView]} />
 
-                <div key={activeView} className={`${dashboardTheme.contentMax} ${dashboardTheme.viewEnter}`}>
+                <div
+                    key={activeView}
+                    className={`${dashboardTheme.viewEnter} ${
+                        activeView === "live" ? "max-w-7xl" : dashboardTheme.contentMax
+                    }`}
+                >
                     {activeView === "dashboard" ? (
                         <DashboardHome
                             userName={welcomeName}

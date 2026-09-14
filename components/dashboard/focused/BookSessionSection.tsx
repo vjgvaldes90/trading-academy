@@ -12,7 +12,7 @@ import {
 } from "@/lib/sessions"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { useMemo, useState } from "react"
+import { useCallback, useMemo, useState } from "react"
 
 function SlotRow({ session }: { session: DbSession }) {
     const { academyAccess, userEmail } = useSession()
@@ -23,6 +23,9 @@ function SlotRow({ session }: { session: DbSession }) {
     const [joining, setJoining] = useState(false)
 
     const label = `${sessionDisplayDay(session)} · ${sessionDisplayHour(session) || "—"}`
+    const title = session.title?.trim() || t.liveSessionDefault
+    const isTheory = session.session_type === "theory"
+    const typeLabel = isTheory ? t.sessionTypeTheoryClass : t.sessionTypeTradingSession
 
     const mayOpenLiveJoin = canShowStudentLiveJoinButton(session, now, {
         hasPaid: canAccess,
@@ -43,66 +46,75 @@ function SlotRow({ session }: { session: DbSession }) {
         isStudentSecureJoinWindowClosed(session, now) &&
         !isStudentJoinTooEarly(session, now)
 
+    let statusText = t.liveSession
+    let statusClass = "text-emerald-300"
+    if (!canAccess) {
+        statusText = t.accessNotAvailable
+        statusClass = "text-amber-200"
+    } else if (sessionClosed) {
+        statusText = t.sessionClosed
+        statusClass = "text-slate-400"
+    } else if (mayOpenLiveJoin) {
+        statusText = t.available
+        statusClass = "text-emerald-300"
+    } else if (isStudentJoinTooEarly(session, now)) {
+        statusText = t.availableTenMinBefore
+        statusClass = "text-slate-400"
+    }
+
     return (
-        <div className="flex flex-col gap-[var(--ds-2)] rounded-2xl border border-blue-500/20 bg-gradient-to-br from-[#111827] to-[#0B0F1A] p-[var(--ds-3)] shadow-xl shadow-blue-500/10 transition-all duration-200 hover:scale-[1.02]">
-            <div
-                style={{
-                    fontWeight: 600,
-                    color: "var(--ds-text)",
-                    fontSize: "0.9375rem",
-                }}
-            >
-                {label}
-            </div>
-            <p
-                style={{
-                    margin: 0,
-                    fontSize: "0.7rem",
-                    fontWeight: 700,
-                    letterSpacing: "0.04em",
-                    textTransform: "uppercase",
-                    color: session.session_type === "theory" ? "#c4b5fd" : "#7dd3fc",
-                }}
-            >
-                {session.session_type === "theory"
-                    ? t.sessionTypeTheoryClass
-                    : t.sessionTypeTradingSession}
-            </p>
-            <p style={{ margin: 0, fontSize: "0.75rem", color: "#22c55e" }}>{t.available}</p>
-            {!canAccess ? (
-                <>
-                    <p style={{ margin: 0, fontSize: "0.75rem", color: "#fcd34d" }}>{t.accessNotAvailable}</p>
-                    <Link
-                        href="/pricing"
-                        style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--ds-accent)" }}
-                    >
-                        {t.getAccess}
-                    </Link>
-                </>
-            ) : sessionClosed ? (
-                <p style={{ margin: 0, fontSize: "0.75rem", fontWeight: 600, color: "#94a3b8" }}>
-                    {t.sessionClosed}
+        <article className="flex flex-col rounded-xl border border-white/10 bg-[#0f172a]/80 transition-colors hover:border-sky-500/25">
+            <div className="border-b border-white/10 px-4 py-3">
+                <p className="text-[0.65rem] font-semibold uppercase tracking-wider text-slate-500">
+                    {label}
                 </p>
-            ) : mayOpenLiveJoin ? (
-                <button
-                    type="button"
-                    disabled={joining}
-                    onClick={() => void handleSecureJoin()}
-                    className="inline-flex w-full items-center justify-center rounded-xl bg-red-600 px-4 py-2 text-xs font-bold text-white shadow-lg shadow-red-900/30 hover:bg-red-500 disabled:cursor-wait disabled:opacity-70"
+                <h3 className="mt-1 line-clamp-2 text-sm font-semibold text-slate-100">{title}</h3>
+                <span
+                    className={`mt-2 inline-flex rounded-md border px-2 py-0.5 text-[0.65rem] font-bold uppercase tracking-wide ${
+                        isTheory
+                            ? "border-violet-400/35 bg-violet-500/15 text-violet-200"
+                            : "border-sky-400/35 bg-sky-500/15 text-sky-200"
+                    }`}
                 >
-                    {joining ? t.opening : t.joinLiveSession}
-                </button>
-            ) : isStudentJoinTooEarly(session, now) ? (
-                <p style={{ margin: 0, fontSize: "0.75rem", color: "#94a3b8" }}>
-                    {t.availableTenMinBefore}
-                </p>
-            ) : (
-                <p style={{ margin: 0, fontSize: "0.75rem", color: "#94a3b8" }}>{t.liveSession}</p>
-            )}
-        </div>
+                    {typeLabel}
+                </span>
+            </div>
+
+            <div className="flex flex-1 flex-col gap-3 px-4 py-3">
+                <div>
+                    <p className="text-[0.65rem] font-medium uppercase tracking-wide text-slate-500">
+                        {t.statusLabel}
+                    </p>
+                    <p className={`mt-0.5 text-sm font-semibold ${statusClass}`}>{statusText}</p>
+                </div>
+            </div>
+
+            {(!canAccess || mayOpenLiveJoin) ? (
+                <div className="mt-auto flex flex-col gap-2 border-t border-white/10 bg-black/20 px-3 py-3">
+                    {!canAccess ? (
+                        <Link
+                            href="/pricing"
+                            className="inline-flex w-full items-center justify-center rounded-lg border border-amber-400/40 bg-amber-500/10 px-3 py-2 text-xs font-bold text-amber-200 transition hover:bg-amber-500/20"
+                        >
+                            {t.getAccess}
+                        </Link>
+                    ) : (
+                        <button
+                            type="button"
+                            disabled={joining}
+                            onClick={() => void handleSecureJoin()}
+                            className="inline-flex w-full items-center justify-center rounded-lg border border-red-500/45 bg-red-600 px-3 py-2 text-xs font-bold text-white transition hover:bg-red-500 disabled:cursor-wait disabled:opacity-70"
+                        >
+                            {joining ? t.opening : t.joinLiveSession}
+                        </button>
+                    )}
+                </div>
+            ) : null}
+        </article>
     )
 }
 
+/** Same column chrome as AdminSessions `SessionCategoryBlock`. */
 function SessionCategoryBlock({
     title,
     countLabel,
@@ -120,13 +132,17 @@ function SessionCategoryBlock({
                 <h3 className="text-sm font-bold uppercase tracking-wider text-slate-200">{title}</h3>
                 <p className="mt-1 text-xs font-medium text-slate-500">{countLabel}</p>
             </div>
-            <div className="space-y-3 p-4">
-                {sessions.length === 0 ? (
-                    <p className="py-6 text-center text-sm text-slate-500">{emptyMessage}</p>
-                ) : (
-                    sessions.map((s) => <SlotRow key={s.id} session={s} />)
-                )}
-            </div>
+            {sessions.length === 0 ? (
+                <p className="px-4 py-8 text-center text-sm text-slate-500">{emptyMessage}</p>
+            ) : (
+                <ul className="divide-y divide-white/[0.06]">
+                    {sessions.map((s) => (
+                        <li key={s.id} className="p-4">
+                            <SlotRow session={s} />
+                        </li>
+                    ))}
+                </ul>
+            )}
         </div>
     )
 }
@@ -146,8 +162,17 @@ export default function BookSessionSection() {
         [upcomingLiveSessions]
     )
 
-    const sessionCountLabel = (n: number) =>
-        n === 1 ? t.studentLiveSessionCountOne : t.studentLiveSessionCountMany.replace("{count}", String(n))
+    const sessionCountLabel = useCallback(
+        (count: number) =>
+            count === 1
+                ? t.adminSessionCountOne.replace("{count}", String(count))
+                : t.adminSessionCountMany.replace("{count}", String(count)),
+        [t]
+    )
+
+    const visibleTotal = showTheoryColumn
+        ? theoryUpcoming.length + tradingUpcoming.length
+        : tradingUpcoming.length
 
     return (
         <section id="sesiones-en-vivo" aria-labelledby="sesiones-en-vivo-title" className="space-y-4">
@@ -157,30 +182,47 @@ export default function BookSessionSection() {
 
             {!sessions?.length ? (
                 <p className="text-center text-sm text-slate-500">{t.noSessionsAvailableYet}</p>
-            ) : showTheoryColumn ? (
-                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                    <SessionCategoryBlock
-                        title={t.sessionTypeTheoryClass}
-                        countLabel={sessionCountLabel(theoryUpcoming.length)}
-                        sessions={theoryUpcoming}
-                        emptyMessage={t.studentNoTheoryClassesScheduled}
-                    />
-                    <SessionCategoryBlock
-                        title={t.sessionTypeTradingSession}
-                        countLabel={sessionCountLabel(tradingUpcoming.length)}
-                        sessions={tradingUpcoming}
-                        emptyMessage={t.studentNoTradingSessionsScheduled}
-                    />
-                </div>
             ) : (
-                <div className="grid grid-cols-1 gap-4">
-                    <SessionCategoryBlock
-                        title={t.sessionTypeTradingSession}
-                        countLabel={sessionCountLabel(tradingUpcoming.length)}
-                        sessions={tradingUpcoming}
-                        emptyMessage={t.studentNoTradingSessionsScheduled}
-                    />
-                </div>
+                <>
+                    {showTheoryColumn ? (
+                        <>
+                            {/* Same summary strip as AdminSessions (Full Program only) */}
+                            <div className="rounded-2xl border border-sky-500/20 bg-gradient-to-br from-[#111827] to-[#0a0f1a] px-4 py-4 shadow-[0_28px_56px_-32px_rgba(37,99,235,0.45)]">
+                                <h2 className="text-base font-bold tracking-tight text-slate-100">
+                                    {t.adminScheduledSessions}
+                                </h2>
+                                <p className="mt-1 text-xs font-medium text-slate-500">
+                                    {sessionCountLabel(visibleTotal)}
+                                </p>
+                            </div>
+
+                            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                                <SessionCategoryBlock
+                                    title={t.sessionTypeTheoryClass}
+                                    countLabel={sessionCountLabel(theoryUpcoming.length)}
+                                    sessions={theoryUpcoming}
+                                    emptyMessage={t.adminNoTheoryClassesScheduled}
+                                />
+                                <SessionCategoryBlock
+                                    title={t.sessionTypeTradingSession}
+                                    countLabel={sessionCountLabel(tradingUpcoming.length)}
+                                    sessions={tradingUpcoming}
+                                    emptyMessage={t.adminNoTradingSessionsScheduled}
+                                />
+                            </div>
+                        </>
+                    ) : (
+                        /* Trading Only: one Admin-width column (same SessionCategoryBlock chrome), no theory column */
+                        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                            <SessionCategoryBlock
+                                title={t.sessionTypeTradingSession}
+                                countLabel={sessionCountLabel(tradingUpcoming.length)}
+                                sessions={tradingUpcoming}
+                                emptyMessage={t.adminNoTradingSessionsScheduled}
+                            />
+                        </div>
+                    )}
+                </>
             )}
         </section>
     )
