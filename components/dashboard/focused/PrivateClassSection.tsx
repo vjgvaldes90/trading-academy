@@ -18,7 +18,7 @@ import {
 } from "@/lib/privateClassRequests"
 import { useCallback, useEffect, useState } from "react"
 
-export default function PrivateClassSection() {
+export default function PrivateClassSection({ compact = false }: { compact?: boolean }) {
     const { t } = useLanguage()
     const { academyAccess } = useSession()
     const canAccess = academyAccess.canAccess === true
@@ -97,177 +97,303 @@ export default function PrivateClassSection() {
         }
     }
 
-    return (
-        <div className="space-y-5">
-            <div className="rounded-2xl border border-violet-400/20 bg-gradient-to-br from-[#151b2e] to-[#0f1424] p-4 sm:p-6">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="min-w-0 space-y-2">
-                        <h3 className="text-lg font-bold tracking-tight text-slate-50">
-                            {t.privateClassTitle}
-                        </h3>
-                        <p className="text-sm leading-relaxed text-slate-400">{t.privateClassSubtitle}</p>
-                        <p className="text-sm text-slate-300">
-                            <span className="font-semibold text-slate-400">{t.privateClassPriceLabel}:</span>{" "}
-                            <span className="font-bold text-amber-300">{t.privateClassPriceDisplay}</span>
-                            <span className="mx-2 text-slate-600">·</span>
-                            <span className="font-medium text-slate-300">{t.privateClassDurationDisplay}</span>
-                        </p>
-                    </div>
+    const promo = (
+        <div
+            className={
+                compact
+                    ? "rounded-2xl border border-violet-400/20 bg-gradient-to-br from-[#151b2e] to-[#0f1424] px-4 py-3 sm:px-5 sm:py-3.5"
+                    : "rounded-2xl border border-violet-400/20 bg-gradient-to-br from-[#151b2e] to-[#0f1424] p-4 sm:p-6"
+            }
+        >
+            <div
+                className={
+                    compact
+                        ? "flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+                        : "flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"
+                }
+            >
+                <div className="min-w-0 space-y-1 sm:space-y-2">
+                    <h3
+                        className={
+                            compact
+                                ? "text-base font-bold tracking-tight text-slate-50"
+                                : "text-lg font-bold tracking-tight text-slate-50"
+                        }
+                    >
+                        {t.privateClassTitle}
+                    </h3>
+                    <p
+                        className={
+                            compact
+                                ? "text-sm leading-snug text-slate-400"
+                                : "text-sm leading-relaxed text-slate-400"
+                        }
+                    >
+                        {t.privateClassSubtitle}
+                    </p>
+                    <p className="text-xs text-slate-300 sm:text-sm">
+                        <span className="font-semibold text-slate-400">{t.privateClassPriceLabel}:</span>{" "}
+                        <span className="font-bold text-amber-300">{t.privateClassPriceDisplay}</span>
+                        <span className="mx-2 text-slate-600">·</span>
+                        <span className="font-medium text-slate-300">{t.privateClassDurationDisplay}</span>
+                    </p>
+                </div>
+                <button
+                    type="button"
+                    disabled={!canAccess}
+                    onClick={() => setModalOpen(true)}
+                    title={!canAccess ? t.privateClassAccessRequired : undefined}
+                    className={
+                        compact
+                            ? "shrink-0 rounded-lg border border-violet-400/40 bg-violet-500/15 px-3 py-2 text-xs font-bold text-violet-100 transition hover:border-violet-300/55 hover:bg-violet-500/25 disabled:cursor-not-allowed disabled:opacity-50 sm:text-sm"
+                            : "shrink-0 rounded-lg border border-violet-400/40 bg-violet-500/15 px-4 py-2.5 text-sm font-bold text-violet-100 transition hover:border-violet-300/55 hover:bg-violet-500/25 disabled:cursor-not-allowed disabled:opacity-50"
+                    }
+                >
+                    {t.privateClassRequestButton}
+                </button>
+            </div>
+            {!canAccess ? (
+                <p className="mt-2 text-xs text-amber-200/90">{t.privateClassAccessRequired}</p>
+            ) : null}
+        </div>
+    )
+
+    const requestsBlock = (
+        <div className={compact ? "mt-3" : undefined}>
+            <h4
+                className={
+                    compact
+                        ? "mb-2 text-[0.65rem] font-semibold uppercase tracking-wide text-slate-500"
+                        : "mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500"
+                }
+            >
+                {t.privateClassYourRequests}
+            </h4>
+
+            {loading ? (
+                <p className={compact ? "py-2 text-center text-xs text-slate-500" : "py-6 text-center text-sm text-slate-500"}>
+                    {t.loading}
+                </p>
+            ) : error ? (
+                <div
+                    className={
+                        compact
+                            ? "rounded-lg border border-red-400/25 bg-red-500/10 px-3 py-2 text-center"
+                            : "rounded-xl border border-red-400/25 bg-red-500/10 px-4 py-5 text-center"
+                    }
+                >
+                    <p className="text-sm text-red-300">{error}</p>
                     <button
                         type="button"
-                        disabled={!canAccess}
-                        onClick={() => setModalOpen(true)}
-                        title={!canAccess ? t.privateClassAccessRequired : undefined}
-                        className="shrink-0 rounded-lg border border-violet-400/40 bg-violet-500/15 px-4 py-2.5 text-sm font-bold text-violet-100 transition hover:border-violet-300/55 hover:bg-violet-500/25 disabled:cursor-not-allowed disabled:opacity-50"
+                        onClick={() => void load()}
+                        className="mt-2 text-xs font-semibold text-red-200 underline"
                     >
-                        {t.privateClassRequestButton}
+                        {t.adminPrivateClassRetry}
                     </button>
                 </div>
-                {!canAccess ? (
-                    <p className="mt-3 text-xs text-amber-200/90">{t.privateClassAccessRequired}</p>
-                ) : null}
-            </div>
-
-            <div>
-                <h4 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">
-                    {t.privateClassYourRequests}
-                </h4>
-
-                {loading ? (
-                    <p className="py-6 text-center text-sm text-slate-500">{t.loading}</p>
-                ) : error ? (
-                    <div className="rounded-xl border border-red-400/25 bg-red-500/10 px-4 py-5 text-center">
-                        <p className="text-sm text-red-300">{error}</p>
-                        <button
-                            type="button"
-                            onClick={() => void load()}
-                            className="mt-3 text-xs font-semibold text-red-200 underline"
-                        >
-                            {t.adminPrivateClassRetry}
-                        </button>
-                    </div>
-                ) : requests.length === 0 ? (
+            ) : requests.length === 0 ? (
+                compact ? null : (
                     <p className="rounded-xl border border-dashed border-white/10 bg-white/[0.02] px-4 py-8 text-center text-sm text-slate-500">
                         {t.privateClassEmpty}
                     </p>
-                ) : (
-                    <ul className="space-y-3">
-                        {requests.map((row) => {
-                            const status = String(row.status)
-                            const isPaying = payingId === row.id
-                            const isFree = isFreePrivateClass(row)
-                            return (
-                                <li
-                                    key={row.id}
-                                    className="rounded-xl border border-white/10 bg-[#0c1222]/80 px-4 py-4"
-                                >
-                                    <div className="flex flex-wrap items-start justify-between gap-3">
-                                        <div className="space-y-1">
-                                            <p className="text-sm font-semibold text-slate-100">
-                                                {row.requested_date} ·{" "}
-                                                {formatPrivateClassTime(row.requested_time)}
-                                            </p>
-                                            <p className="text-xs text-slate-500">
-                                                {t.privateClassDurationDisplay} ·{" "}
-                                                {isFree
-                                                    ? t.privateClassFreeBadge
-                                                    : formatPrivateClassPriceCents(row.price_cents)}
-                                            </p>
-                                        </div>
-                                        <div className="flex flex-wrap items-center justify-end gap-2">
-                                            {isFree ? (
-                                                <span className="inline-flex rounded-full border border-emerald-400/35 bg-emerald-500/15 px-2.5 py-1 text-[11px] font-bold text-emerald-100">
-                                                    {t.privateClassFreeBadge}
-                                                </span>
-                                            ) : null}
-                                            <span
-                                                className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-bold ${privateClassStatusBadgeClass(status)}`}
-                                            >
-                                                {privateClassStatusLabel(status, t)}
-                                            </span>
-                                        </div>
-                                    </div>
-                                    {row.student_message ? (
-                                        <p className="mt-3 text-sm leading-relaxed text-slate-400">
-                                            <span className="font-semibold text-slate-500">
-                                                {t.privateClassMessage}:{" "}
-                                            </span>
-                                            {row.student_message}
-                                        </p>
-                                    ) : null}
-                                    {row.admin_notes &&
-                                    (status === "rejected" ||
-                                        status === "cancelled" ||
-                                        status === "awaiting_payment") ? (
-                                        <p className="mt-2 text-sm leading-relaxed text-slate-400">
-                                            <span className="font-semibold text-slate-500">
-                                                {t.privateClassAdminNotesLabel}:{" "}
-                                            </span>
-                                            {row.admin_notes}
-                                        </p>
-                                    ) : null}
+                )
+            ) : compact ? (
+                <ul className="divide-y divide-white/[0.06] overflow-hidden rounded-xl border border-white/10 bg-[#0c1222]/80">
+                    {requests.map((row) => {
+                        const status = String(row.status)
+                        const isPaying = payingId === row.id
+                        const isFree = isFreePrivateClass(row)
+                        const joinUrl =
+                            typeof row.zoom_join_url === "string" && row.zoom_join_url.trim()
+                                ? row.zoom_join_url.trim()
+                                : null
 
+                        return (
+                            <li
+                                key={row.id}
+                                className="flex flex-col gap-2 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3"
+                            >
+                                <div className="min-w-0 flex flex-wrap items-center gap-x-2 gap-y-1">
+                                    <p className="text-sm font-semibold text-slate-100">
+                                        {row.requested_date} · {formatPrivateClassTime(row.requested_time)}
+                                    </p>
+                                    <span className="text-xs text-slate-500">
+                                        {t.privateClassDurationDisplay}
+                                        {isFree ? ` · ${t.privateClassFreeBadge}` : ""}
+                                    </span>
+                                    {isFree ? (
+                                        <span className="inline-flex rounded-full border border-emerald-400/35 bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold text-emerald-100">
+                                            {t.privateClassFreeBadge}
+                                        </span>
+                                    ) : null}
+                                    <span
+                                        className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-bold ${privateClassStatusBadgeClass(status)}`}
+                                    >
+                                        {privateClassStatusLabel(status, t)}
+                                    </span>
+                                </div>
+                                <div className="flex shrink-0 flex-wrap items-center gap-2">
                                     {status === "awaiting_payment" ? (
-                                        <div className="mt-4">
-                                            <button
-                                                type="button"
-                                                disabled={payingId !== null}
-                                                onClick={() => void startCheckout(row.id)}
-                                                className="inline-flex w-full items-center justify-center rounded-lg border border-amber-300/40 bg-gradient-to-r from-amber-500 to-amber-600 px-4 py-2.5 text-sm font-bold text-slate-950 shadow-[0_10px_28px_rgba(245,158,11,0.28)] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
-                                            >
-                                                {isPaying
-                                                    ? t.privateClassPaymentProcessing
-                                                    : t.privateClassPayButton}
-                                            </button>
-                                        </div>
+                                        <button
+                                            type="button"
+                                            disabled={payingId !== null}
+                                            onClick={() => void startCheckout(row.id)}
+                                            className="rounded-md border border-amber-300/40 bg-amber-500/90 px-2.5 py-1.5 text-xs font-bold text-slate-950 disabled:opacity-60"
+                                        >
+                                            {isPaying
+                                                ? t.privateClassPaymentProcessing
+                                                : t.privateClassPayButton}
+                                        </button>
                                     ) : null}
-
-                                    {status === "paid" && !isFree ? (
-                                        <p className="mt-3 text-sm font-semibold text-emerald-300">
-                                            {t.privateClassPaymentCompleted}
-                                        </p>
+                                    {status === "confirmed" && joinUrl ? (
+                                        <a
+                                            href={joinUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="rounded-md border border-violet-400/40 bg-violet-500/20 px-2.5 py-1.5 text-xs font-bold text-violet-100 transition hover:bg-violet-500/30"
+                                        >
+                                            {t.privateClassJoinZoom}
+                                        </a>
                                     ) : null}
-
-                                    {status === "paid" && !row.zoom_join_url ? (
-                                        <p className="mt-2 text-sm text-slate-400">
+                                    {status === "confirmed" && !joinUrl ? (
+                                        <span className="text-xs text-slate-500">
                                             {t.privateClassZoomPreparing}
-                                        </p>
+                                        </span>
                                     ) : null}
+                                    {status === "paid" && !joinUrl ? (
+                                        <span className="text-xs text-slate-500">
+                                            {t.privateClassZoomPreparing}
+                                        </span>
+                                    ) : null}
+                                </div>
+                            </li>
+                        )
+                    })}
+                </ul>
+            ) : (
+                <ul className="space-y-3">
+                    {requests.map((row) => {
+                        const status = String(row.status)
+                        const isPaying = payingId === row.id
+                        const isFree = isFreePrivateClass(row)
+                        return (
+                            <li
+                                key={row.id}
+                                className="rounded-xl border border-white/10 bg-[#0c1222]/80 px-4 py-4"
+                            >
+                                <div className="flex flex-wrap items-start justify-between gap-3">
+                                    <div className="space-y-1">
+                                        <p className="text-sm font-semibold text-slate-100">
+                                            {row.requested_date} ·{" "}
+                                            {formatPrivateClassTime(row.requested_time)}
+                                        </p>
+                                        <p className="text-xs text-slate-500">
+                                            {t.privateClassDurationDisplay} ·{" "}
+                                            {isFree
+                                                ? t.privateClassFreeBadge
+                                                : formatPrivateClassPriceCents(row.price_cents)}
+                                        </p>
+                                    </div>
+                                    <div className="flex flex-wrap items-center justify-end gap-2">
+                                        {isFree ? (
+                                            <span className="inline-flex rounded-full border border-emerald-400/35 bg-emerald-500/15 px-2.5 py-1 text-[11px] font-bold text-emerald-100">
+                                                {t.privateClassFreeBadge}
+                                            </span>
+                                        ) : null}
+                                        <span
+                                            className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-bold ${privateClassStatusBadgeClass(status)}`}
+                                        >
+                                            {privateClassStatusLabel(status, t)}
+                                        </span>
+                                    </div>
+                                </div>
+                                {row.student_message ? (
+                                    <p className="mt-3 text-sm leading-relaxed text-slate-400">
+                                        <span className="font-semibold text-slate-500">
+                                            {t.privateClassMessage}:{" "}
+                                        </span>
+                                        {row.student_message}
+                                    </p>
+                                ) : null}
+                                {row.admin_notes &&
+                                (status === "rejected" ||
+                                    status === "cancelled" ||
+                                    status === "awaiting_payment") ? (
+                                    <p className="mt-2 text-sm leading-relaxed text-slate-400">
+                                        <span className="font-semibold text-slate-500">
+                                            {t.privateClassAdminNotesLabel}:{" "}
+                                        </span>
+                                        {row.admin_notes}
+                                    </p>
+                                ) : null}
 
-                                    {status === "confirmed" ? (
-                                        <div className="mt-4 space-y-3">
-                                            <p className="text-sm font-semibold text-emerald-300">
-                                                🟢 {t.privateClassClassConfirmed}
+                                {status === "awaiting_payment" ? (
+                                    <div className="mt-4">
+                                        <button
+                                            type="button"
+                                            disabled={payingId !== null}
+                                            onClick={() => void startCheckout(row.id)}
+                                            className="inline-flex w-full items-center justify-center rounded-lg border border-amber-300/40 bg-gradient-to-r from-amber-500 to-amber-600 px-4 py-2.5 text-sm font-bold text-slate-950 shadow-[0_10px_28px_rgba(245,158,11,0.28)] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+                                        >
+                                            {isPaying
+                                                ? t.privateClassPaymentProcessing
+                                                : t.privateClassPayButton}
+                                        </button>
+                                    </div>
+                                ) : null}
+
+                                {status === "paid" && !isFree ? (
+                                    <p className="mt-3 text-sm font-semibold text-emerald-300">
+                                        {t.privateClassPaymentCompleted}
+                                    </p>
+                                ) : null}
+
+                                {status === "paid" && !row.zoom_join_url ? (
+                                    <p className="mt-2 text-sm text-slate-400">
+                                        {t.privateClassZoomPreparing}
+                                    </p>
+                                ) : null}
+
+                                {status === "confirmed" ? (
+                                    <div className="mt-4 space-y-3">
+                                        <p className="text-sm font-semibold text-emerald-300">
+                                            🟢 {t.privateClassClassConfirmed}
+                                        </p>
+                                        {typeof row.zoom_join_url === "string" &&
+                                        row.zoom_join_url.trim() ? (
+                                            <a
+                                                href={row.zoom_join_url.trim()}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="inline-flex w-full items-center justify-center rounded-lg border border-violet-400/40 bg-violet-500/20 px-4 py-2.5 text-sm font-bold text-violet-100 transition hover:bg-violet-500/30 sm:w-auto"
+                                            >
+                                                {t.privateClassJoinZoom}
+                                            </a>
+                                        ) : (
+                                            <p className="text-sm text-slate-400">
+                                                {t.privateClassZoomPreparing}
                                             </p>
-                                            {typeof row.zoom_join_url === "string" &&
-                                            row.zoom_join_url.trim() ? (
-                                                <a
-                                                    href={row.zoom_join_url.trim()}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="inline-flex w-full items-center justify-center rounded-lg border border-violet-400/40 bg-violet-500/20 px-4 py-2.5 text-sm font-bold text-violet-100 transition hover:bg-violet-500/30 sm:w-auto"
-                                                >
-                                                    {t.privateClassJoinZoom}
-                                                </a>
-                                            ) : (
-                                                <p className="text-sm text-slate-400">
-                                                    {t.privateClassZoomPreparing}
-                                                </p>
-                                            )}
-                                        </div>
-                                    ) : null}
+                                        )}
+                                    </div>
+                                ) : null}
 
-                                    {status === "completed" ? (
-                                        <p className="mt-4 text-sm font-semibold text-slate-300">
-                                            {t.privateClassClassCompleted}
-                                        </p>
-                                    ) : null}
-                                </li>
-                            )
-                        })}
-                    </ul>
-                )}
-            </div>
+                                {status === "completed" ? (
+                                    <p className="mt-4 text-sm font-semibold text-slate-300">
+                                        {t.privateClassClassCompleted}
+                                    </p>
+                                ) : null}
+                            </li>
+                        )
+                    })}
+                </ul>
+            )}
+        </div>
+    )
+
+    return (
+        <div className={compact ? "space-y-0" : "space-y-5"}>
+            {promo}
+            {requestsBlock}
 
             <RequestPrivateClassModal
                 open={modalOpen}
