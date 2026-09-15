@@ -11,6 +11,7 @@ type Props = {
 export default function AdminLoginClient({ queryErrorCode }: Props) {
     const { t } = useLanguage()
     const [email, setEmail] = useState("")
+    const [password, setPassword] = useState("")
     const [busy, setBusy] = useState(false)
     const [message, setMessage] = useState<string | null>(null)
     const [error, setError] = useState<string | null>(null)
@@ -32,7 +33,7 @@ export default function AdminLoginClient({ queryErrorCode }: Props) {
             const res = await fetch("/api/admin/auth/login", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ email: normalizedEmail }),
+                body: JSON.stringify({ email: normalizedEmail, password }),
             })
             const payload = (await res.json().catch(() => ({}))) as {
                 error?: string
@@ -40,11 +41,7 @@ export default function AdminLoginClient({ queryErrorCode }: Props) {
                 redirect?: string
             }
             if (!res.ok || payload.ok !== true) {
-                throw new Error(
-                    typeof payload.error === "string" && payload.error.trim()
-                        ? payload.error
-                        : t.adminLoginFailed
-                )
+                throw new Error(t.adminLoginInvalidCredentials)
             }
             const target =
                 typeof payload.redirect === "string" && payload.redirect.startsWith("/")
@@ -81,7 +78,20 @@ export default function AdminLoginClient({ queryErrorCode }: Props) {
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value.toLowerCase())}
                                 placeholder={t.adminLoginEmailPlaceholder}
-                                autoComplete="email"
+                                autoComplete="username"
+                                required
+                                className="w-full rounded-xl border border-slate-700 bg-slate-900/80 px-4 py-3 text-sm text-slate-100 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-500/35"
+                            />
+                        </label>
+
+                        <label className="block space-y-2">
+                            <span className="text-sm font-semibold text-slate-200">{t.adminLoginPasswordLabel}</span>
+                            <input
+                                type="password"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                placeholder={t.adminLoginPasswordPlaceholder}
+                                autoComplete="current-password"
                                 required
                                 className="w-full rounded-xl border border-slate-700 bg-slate-900/80 px-4 py-3 text-sm text-slate-100 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-500/35"
                             />

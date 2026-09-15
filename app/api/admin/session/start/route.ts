@@ -1,9 +1,8 @@
 import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
-import { isAuthorizedAdminEmail } from "@/lib/adminAuth"
+import { requireAuthorizedAdminFromCookies } from "@/lib/adminAuth"
 import { createSupabaseServiceRoleClient } from "@/lib/access"
-import { SESSION_COOKIE, SESSION_TOKEN_COOKIE, USER_EMAIL_COOKIE } from "@/lib/authCookies"
-import { getVerifiedStudentEmailFromCookies } from "@/lib/requireVerifiedSessionCookie"
+import { ADMIN_SESSION_COOKIE } from "@/lib/adminSession"
 import { mapSupabaseSessionRow } from "@/lib/mapSessionRow"
 import { isWithinAdminHostWindow } from "@/lib/sessions"
 
@@ -14,9 +13,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-
 type Body = { session_id?: unknown }
 
 type CookieFlags = {
-    user_email: boolean
-    session_token: boolean
-    session: boolean
+    admin_session: boolean
 }
 
 function logAdminAuthDebug(params: {
@@ -26,9 +23,7 @@ function logAdminAuthDebug(params: {
     extra?: Record<string, unknown>
 }) {
     const { cookieFlags, adminEmailDetected, denialReason, extra } = params
-    const authSource = adminEmailDetected
-        ? "verified_trading_student_session"
-        : "missing_or_invalid_session_cookies"
+    const authSource = adminEmailDetected ? "verified_admin_session" : "missing_or_invalid_admin_session"
     console.log("[ADMIN AUTH DEBUG]", {
         cookieFlags,
         adminEmailDetected,
@@ -39,39 +34,37 @@ function logAdminAuthDebug(params: {
 }
 
 /**
- * Host start uses the same verified academy session as dashboard routes guarded by
- * `proxy.ts` (`user_email` + `session_token` matching `trading_students`).
- * Other `/api/admin/*` routes do not check identity; this endpoint does so Zoom host URLs
- * are not returned anonymously. Identity must also match the admin allowlist.
+ * Host start requires a valid signed admin_session + ADMIN_EMAILS allowlist
+ * via requireAuthorizedAdminFromCookies.
  */
 export async function POST(req: Request) {
     let cookieFlags: CookieFlags = {
-        user_email: false,
-        session_token: false,
-        session: false,
+        admin_session: false,
     }
     let verifiedEmail: string | null = null
 
     try {
         const jar = await cookies()
         cookieFlags = {
-            user_email: Boolean(jar.get(USER_EMAIL_COOKIE)?.value?.trim()),
-            session_token: Boolean(jar.get(SESSION_TOKEN_COOKIE)?.value?.trim()),
-            session: Boolean(jar.get(SESSION_COOKIE)?.value?.trim()),
+            admin_session: Boolean(jar.get(ADMIN_SESSION_COOKIE)?.value?.trim()),
         }
-        const maybeVerifiedEmail = await getVerifiedStudentEmailFromCookies()
-        verifiedEmail = maybeVerifiedEmail && isAuthorizedAdminEmail(maybeVerifiedEmail) ? maybeVerifiedEmail : null
+        const auth = await requireAuthorizedAdminFromCookies()
+        if (!auth.ok) {
+            logAdminAuthDebug({
+                cookieFlags,
+                adminEmailDetected: null,
+                denialReason: "unauthorized",
+            })
+            console.log("[ADMIN SESSION START DENIED]", { reason: "unauthorized" })
+            return auth.response
+        }
+        verifiedEmail = auth.email
 
         logAdminAuthDebug({
             cookieFlags,
-            adminEmailDetected: maybeVerifiedEmail,
-            denialReason: verifiedEmail ? null : "unauthorized",
+            adminEmailDetected: verifiedEmail,
+            denialReason: null,
         })
-
-        if (!verifiedEmail) {
-            console.log("[ADMIN SESSION START DENIED]", { reason: "unauthorized" })
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-        }
 
         let body: Body
         try {

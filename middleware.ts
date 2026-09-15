@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js"
 import { type NextRequest, NextResponse } from "next/server"
 import { isAuthorizedAdminEmail } from "@/lib/adminEmails"
 import { SESSION_TOKEN_COOKIE, USER_EMAIL_COOKIE } from "@/lib/authCookies"
+import { ADMIN_SESSION_COOKIE, verifyAdminSessionToken } from "@/lib/adminSession"
 
 function supabaseUrlForEdge(): string | null {
     const u = process.env.SUPABASE_URL?.trim() || process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()
@@ -48,17 +49,33 @@ function requiresSingleSessionCheck(pathname: string): boolean {
     return false
 }
 
+async function guardAdminPages(request: NextRequest): Promise<NextResponse> {
+    const token = request.cookies.get(ADMIN_SESSION_COOKIE)?.value
+    const email = await verifyAdminSessionToken(token)
+    if (!email || !isAuthorizedAdminEmail(email)) {
+        const login = new URL("/admin-login", request.url)
+        login.searchParams.set("error", "session_expired")
+        return NextResponse.redirect(login)
+    }
+    return NextResponse.next()
+}
+
 export async function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl
     if (!requiresSingleSessionCheck(pathname)) {
         return NextResponse.next()
     }
 
+    // Admin UI: signed admin_session only (never student trading_students session).
+    if (pathname.startsWith("/admin")) {
+        return guardAdminPages(request)
+    }
+
     const token = request.cookies.get(SESSION_TOKEN_COOKIE)?.value?.trim() ?? ""
     const userEmail = request.cookies.get(USER_EMAIL_COOKIE)?.value?.trim().toLowerCase() ?? ""
 
     if (!token || !userEmail) {
-        const login = new URL(pathname.startsWith("/admin") ? "/admin-login" : "/login", request.url)
+        const login = new URL("/login", request.url)
         login.searchParams.set("error", "session_expired")
         return NextResponse.redirect(login)
     }
@@ -67,7 +84,7 @@ export async function middleware(request: NextRequest) {
     const key = supabaseServiceRoleKeyForEdge()
     if (!url || !key) {
         console.error("[single-session] proxy: missing Supabase URL or service role key")
-        const login = new URL(pathname.startsWith("/admin") ? "/admin-login" : "/login", request.url)
+        const login = new URL("/login", request.url)
         login.searchParams.set("error", "session_expired")
         return NextResponse.redirect(login)
     }
@@ -81,21 +98,15 @@ export async function middleware(request: NextRequest) {
 
     if (error) {
         console.error("[single-session] proxy DB error", error)
-        const login = new URL(pathname.startsWith("/admin") ? "/admin-login" : "/login", request.url)
+        const login = new URL("/login", request.url)
         login.searchParams.set("error", "session_expired")
         return NextResponse.redirect(login)
     }
 
     const dbToken = data?.session_token != null ? String(data.session_token).trim() : ""
     if (!dbToken || dbToken !== token) {
-        const login = new URL(pathname.startsWith("/admin") ? "/admin-login" : "/login", request.url)
+        const login = new URL("/login", request.url)
         login.searchParams.set("error", "session_expired")
-        return NextResponse.redirect(login)
-    }
-
-    if (pathname.startsWith("/admin") && !isAuthorizedAdminEmail(userEmail)) {
-        const login = new URL("/admin-login", request.url)
-        login.searchParams.set("error", "unauthorized")
         return NextResponse.redirect(login)
     }
 
@@ -104,6 +115,7 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
     matcher: [
+        "/admin",
         "/admin/:path*",
         "/dashboard/:path*",
         "/complete-profile/:path*",

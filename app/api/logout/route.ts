@@ -1,6 +1,10 @@
 import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
 import { SESSION_COOKIE, USER_EMAIL_COOKIE, clearAuthCookies } from "@/lib/authCookies"
+import {
+    ADMIN_SESSION_COOKIE,
+    clearAdminSessionCookieOptions,
+} from "@/lib/adminSession"
 import { clearStudentSessionTokenInDb } from "@/lib/studentSingleSession"
 
 export const runtime = "nodejs"
@@ -17,5 +21,6 @@ export async function POST() {
 
     const res = NextResponse.json({ ok: true })
     clearAuthCookies(res)
+    res.cookies.set(ADMIN_SESSION_COOKIE, "", clearAdminSessionCookieOptions())
     return res
 }
