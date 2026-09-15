@@ -551,6 +551,16 @@ export const en = {
     welcome: "Welcome,",
     welcomeBack: "Welcome back,",
     continueLearningSubtitle: "Continue your learning and reach your goals.",
+    dashboardHomeSubtitle: "Your class hub — next sessions, live trading, and private 1:1 support.",
+    dashboardNextClassTitle: "Next class",
+    dashboardClassAvailable: "Class available",
+    dashboardEnterClassNow: "Enter now",
+    dashboardMyClassesTitle: "My classes",
+    dashboardUpcomingClassesHint: "Upcoming classes available",
+    dashboardUpcomingSessionsHint: "Upcoming sessions available",
+    dashboardComingSoonTitle: "Coming soon",
+    dashboardComingSoonRecorded: "Recorded classes",
+    dashboardComingSoonResources: "Resource library",
 
     // Dashboard home
     continueLearning: "CONTINUE LEARNING",

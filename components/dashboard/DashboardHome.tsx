@@ -1,6 +1,11 @@
 "use client"
 
-import { useSession } from "@/context/SessionContext"
+import PrivateClassSection from "@/components/dashboard/focused/PrivateClassSection"
+import PendingAnnouncementsCard from "@/components/dashboard/PendingAnnouncementsCard"
+import type { StudentDashboardView } from "@/components/student/Sidebar"
+import { useLanguage } from "@/context/LanguageProvider"
+import { getStudentUpcomingLiveSessions, useSession } from "@/context/SessionContext"
+import type { StudentAnnouncementItem } from "@/lib/announcements"
 import {
     canShowStudentLiveJoinButton,
     getNextUpcomingSession,
@@ -8,43 +13,244 @@ import {
     isStudentSecureJoinWindowClosed,
     sessionDisplayDay,
     sessionDisplayHour,
+    type DbSession,
 } from "@/lib/sessions"
-import type { StudentDashboardView } from "@/components/student/Sidebar"
-import PendingAnnouncementsCard from "@/components/dashboard/PendingAnnouncementsCard"
-import QuickActions from "@/components/dashboard/QuickActions"
-import { useLanguage } from "@/context/LanguageProvider"
-import type { StudentAnnouncementItem } from "@/lib/announcements"
+import { BookOpen, Clapperboard, Library, LineChart } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 
-type Lesson = {
-    id: string
-    title: string
-    description: string | null
-    video_url: string
-    created_at: string
+function NextClassHero({
+    session,
+    onOpenLive,
+}: {
+    session: DbSession | null
+    onOpenLive: () => void
+}) {
+    const { academyAccess, userEmail } = useSession()
+    const { t } = useLanguage()
+    const [now, setNow] = useState(() => new Date())
+    const [joining, setJoining] = useState(false)
+
+    useEffect(() => {
+        const id = window.setInterval(() => setNow(new Date()), 30_000)
+        return () => window.clearInterval(id)
+    }, [])
+
+    const isTheory = session?.session_type === "theory"
+    const typeLabel = isTheory ? t.sessionTypeTheoryClass : t.sessionTypeTradingSession
+
+    const joinAllowed =
+        session != null &&
+        Boolean(userEmail) &&
+        canShowStudentLiveJoinButton(session, now, {
+            hasPaid: academyAccess.canAccess,
+        })
+
+    const sessionClosed =
+        session != null &&
+        academyAccess.canAccess &&
+        isStudentSecureJoinWindowClosed(session, now) &&
+        !isStudentJoinTooEarly(session, now)
+
+    const statusText = (() => {
+        if (!session) return t.noSessionsScheduled
+        if (!academyAccess.canAccess) return t.accessNotAvailable
+        if (sessionClosed) return t.sessionClosed
+        if (joinAllowed) return t.dashboardClassAvailable
+        if (isStudentJoinTooEarly(session, now)) return t.availableTenMinBefore
+        return t.liveSession
+    })()
+
+    return (
+        <section
+            aria-labelledby="dashboard-next-class-title"
+            className="overflow-hidden rounded-2xl border border-sky-500/25 bg-gradient-to-br from-[#111827] via-[#0f172a] to-[#0a0f1a] p-5 shadow-[0_28px_56px_-32px_rgba(37,99,235,0.45)] sm:p-7"
+        >
+            <p
+                id="dashboard-next-class-title"
+                className="text-[0.7rem] font-bold uppercase tracking-[0.18em] text-sky-300/90"
+            >
+                {t.dashboardNextClassTitle}
+            </p>
+
+            {!session ? (
+                <div className="mt-4 space-y-4">
+                    <p className="text-base text-slate-400">{t.noSessionsScheduled}</p>
+                    <button
+                        type="button"
+                        onClick={onOpenLive}
+                        className="rounded-xl border border-sky-400/40 bg-sky-500/15 px-4 py-2.5 text-sm font-bold text-sky-100 transition hover:bg-sky-500/25"
+                    >
+                        {t.viewSessions}
+                    </button>
+                </div>
+            ) : (
+                <div className="mt-4 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+                    <div className="min-w-0 space-y-3">
+                        <span
+                            className={`inline-flex rounded-md border px-2.5 py-1 text-[0.65rem] font-bold uppercase tracking-wide ${
+                                isTheory
+                                    ? "border-violet-400/35 bg-violet-500/15 text-violet-200"
+                                    : "border-sky-400/35 bg-sky-500/15 text-sky-200"
+                            }`}
+                        >
+                            {typeLabel}
+                        </span>
+                        <h2 className="text-2xl font-extrabold tracking-tight text-slate-50 sm:text-3xl">
+                            {session.title?.trim() || t.liveSessionDefault}
+                        </h2>
+                        <p className="text-base font-semibold text-slate-300 sm:text-lg">
+                            {sessionDisplayDay(session)} · {sessionDisplayHour(session) || "—"}
+                        </p>
+                        <p
+                            className={`text-sm font-semibold ${
+                                joinAllowed
+                                    ? "text-emerald-300"
+                                    : !academyAccess.canAccess
+                                      ? "text-amber-200"
+                                      : "text-slate-400"
+                            }`}
+                        >
+                            {statusText}
+                        </p>
+                    </div>
+
+                    <div className="flex w-full flex-col gap-2 sm:max-w-xs lg:w-auto lg:min-w-[220px]">
+                        {joinAllowed ? (
+                            <button
+                                type="button"
+                                disabled={joining || !userEmail}
+                                onClick={() => {
+                                    if (!session || joining) return
+                                    setJoining(true)
+                                    window.location.assign(`/student/classroom/${session.id}`)
+                                }}
+                                className="w-full rounded-xl border border-red-500/40 bg-gradient-to-r from-red-600 to-red-700 px-4 py-3 text-sm font-extrabold text-white shadow-[0_12px_28px_rgba(220,38,38,0.35)] transition hover:brightness-110 disabled:cursor-wait disabled:opacity-70"
+                            >
+                                {joining ? t.opening : t.dashboardEnterClassNow}
+                            </button>
+                        ) : (
+                            <button
+                                type="button"
+                                onClick={onOpenLive}
+                                className="w-full rounded-xl border border-sky-400/40 bg-sky-500/15 px-4 py-3 text-sm font-extrabold text-sky-100 transition hover:bg-sky-500/25"
+                            >
+                                {t.viewSessions}
+                            </button>
+                        )}
+                    </div>
+                </div>
+            )}
+        </section>
+    )
 }
 
-function extractYouTubeId(url: string): string | null {
-    const s = (url || "").trim()
-    if (!s) return null
-    const m1 = /youtube\.com\/embed\/([a-zA-Z0-9_-]+)/.exec(s)
-    if (m1?.[1]) return m1[1]
-    const m2 = /v=([a-zA-Z0-9_-]+)/.exec(s)
-    if (m2?.[1]) return m2[1]
-    const m3 = /youtu\.be\/([a-zA-Z0-9_-]+)/.exec(s)
-    if (m3?.[1]) return m3[1]
-    return null
+function MyClassesSection({
+    showTheory,
+    theoryCount,
+    tradingCount,
+    onOpenLive,
+}: {
+    showTheory: boolean
+    theoryCount: number
+    tradingCount: number
+    onOpenLive: () => void
+}) {
+    const { t } = useLanguage()
+
+    const countLabel = (n: number) =>
+        n === 1
+            ? t.adminSessionCountOne.replace("{count}", String(n))
+            : t.adminSessionCountMany.replace("{count}", String(n))
+
+    return (
+        <section aria-labelledby="dashboard-my-classes-title" className="space-y-4">
+            <h2 id="dashboard-my-classes-title" className="text-lg font-extrabold text-slate-50">
+                {t.dashboardMyClassesTitle}
+            </h2>
+            <div
+                className={`grid grid-cols-1 gap-4 ${showTheory ? "lg:grid-cols-2" : "lg:grid-cols-1 lg:max-w-xl"}`}
+            >
+                {showTheory ? (
+                    <button
+                        type="button"
+                        onClick={onOpenLive}
+                        className="rounded-2xl border border-violet-400/25 bg-gradient-to-br from-[#151b2e] to-[#0f1424] p-5 text-left shadow-sm transition hover:border-violet-300/40 hover:bg-violet-500/5"
+                    >
+                        <div className="flex items-start gap-3">
+                            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-violet-400/30 bg-violet-500/15 text-violet-200">
+                                <BookOpen className="h-5 w-5" aria-hidden />
+                            </span>
+                            <div className="min-w-0">
+                                <p className="text-sm font-bold uppercase tracking-wide text-violet-200">
+                                    {t.sessionTypeTheoryClass}
+                                </p>
+                                <p className="mt-1 text-sm text-slate-400">
+                                    {t.dashboardUpcomingClassesHint}
+                                </p>
+                                <p className="mt-3 text-xs font-semibold text-slate-500">
+                                    {countLabel(theoryCount)}
+                                </p>
+                            </div>
+                        </div>
+                    </button>
+                ) : null}
+
+                <button
+                    type="button"
+                    onClick={onOpenLive}
+                    className="rounded-2xl border border-sky-400/25 bg-gradient-to-br from-[#111827] to-[#0a0f1a] p-5 text-left shadow-sm transition hover:border-sky-300/40 hover:bg-sky-500/5"
+                >
+                    <div className="flex items-start gap-3">
+                        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-sky-400/30 bg-sky-500/15 text-sky-200">
+                            <LineChart className="h-5 w-5" aria-hidden />
+                        </span>
+                        <div className="min-w-0">
+                            <p className="text-sm font-bold uppercase tracking-wide text-sky-200">
+                                {t.sessionTypeTradingSession}
+                            </p>
+                            <p className="mt-1 text-sm text-slate-400">
+                                {t.dashboardUpcomingSessionsHint}
+                            </p>
+                            <p className="mt-3 text-xs font-semibold text-slate-500">
+                                {countLabel(tradingCount)}
+                            </p>
+                        </div>
+                    </div>
+                </button>
+            </div>
+        </section>
+    )
 }
 
-function thumbUrl(lesson: Lesson): string | null {
-    const id = extractYouTubeId(lesson.video_url)
-    return id ? `https://img.youtube.com/vi/${id}/hqdefault.jpg` : null
+function ComingSoonSection() {
+    const { t } = useLanguage()
+    return (
+        <section
+            aria-labelledby="dashboard-coming-soon-title"
+            className="rounded-2xl border border-dashed border-white/15 bg-[#0c1222]/80 p-5 sm:p-6"
+        >
+            <h2
+                id="dashboard-coming-soon-title"
+                className="text-sm font-bold uppercase tracking-wider text-slate-500"
+            >
+                {t.dashboardComingSoonTitle}
+            </h2>
+            <ul className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <li className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-slate-400">
+                    <Clapperboard className="h-5 w-5 shrink-0 text-slate-500" aria-hidden />
+                    <span>{t.dashboardComingSoonRecorded}</span>
+                </li>
+                <li className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-slate-400">
+                    <Library className="h-5 w-5 shrink-0 text-slate-500" aria-hidden />
+                    <span>{t.dashboardComingSoonResources}</span>
+                </li>
+            </ul>
+        </section>
+    )
 }
 
 export default function DashboardHome({
     userName,
-    onWatchNow,
-    activeView,
     setActiveView,
     pendingAnnouncements = [],
     onViewAnnouncements,
@@ -52,87 +258,56 @@ export default function DashboardHome({
     onDismissAnnouncement,
 }: {
     userName: string
-    onWatchNow: () => void
-    activeView: StudentDashboardView
+    /** @deprecated Kept for call-site compatibility; recorded classes are hidden from home. */
+    onWatchNow?: () => void
+    activeView?: StudentDashboardView
     setActiveView: (view: StudentDashboardView) => void
     pendingAnnouncements?: StudentAnnouncementItem[]
     onViewAnnouncements?: () => void
     onReadAnnouncement?: (announcement: StudentAnnouncementItem) => void
     onDismissAnnouncement?: (announcement: StudentAnnouncementItem) => Promise<void>
 }) {
-    const { sessions, academyAccess, userEmail } = useSession()
+    const { sessions, subscriptionPlan, upcomingLiveSessions } = useSession()
     const { t } = useLanguage()
     const [now, setNow] = useState(() => new Date())
 
-    const [lessons, setLessons] = useState<Lesson[]>([])
-    const [activeLesson, setActiveLesson] = useState<Lesson | null>(null)
-    const [lessonsLoading, setLessonsLoading] = useState(true)
-    const [lessonsError, setLessonsError] = useState<string | null>(null)
-
     useEffect(() => {
-        const t = window.setInterval(() => setNow(new Date()), 30_000)
-        return () => window.clearInterval(t)
+        const id = window.setInterval(() => setNow(new Date()), 30_000)
+        return () => window.clearInterval(id)
     }, [])
 
-    useEffect(() => {
-        let cancelled = false
-        const load = async () => {
-            setLessonsLoading(true)
-            setLessonsError(null)
-            try {
-                const res = await fetch("/api/lessons", { cache: "no-store", credentials: "include" })
-                const payload = (await res.json().catch(() => null)) as unknown
-                if (!res.ok) {
-                    const msg =
-                        typeof (payload as { error?: unknown })?.error === "string"
-                            ? String((payload as { error: unknown }).error)
-                            : t.failedToLoadLessons
-                    throw new Error(msg)
-                }
-                const rows = Array.isArray(payload) ? (payload as Lesson[]) : []
-                if (cancelled) return
-                setLessons(rows)
-                setActiveLesson(rows[0] ?? null)
-            } catch (e) {
-                if (!cancelled) {
-                    setLessons([])
-                    setActiveLesson(null)
-                    setLessonsError(e instanceof Error ? e.message : t.failedToLoadLessons)
-                }
-            } finally {
-                if (!cancelled) setLessonsLoading(false)
-            }
-        }
-        void load()
-        return () => {
-            cancelled = true
-        }
-    }, [])
+    const showTheory = subscriptionPlan === "full_program"
 
-    const nextBooked = useMemo(() => getNextUpcomingSession(sessions, now), [sessions, now])
-    const joinAllowed =
-        nextBooked != null &&
-        Boolean(userEmail) &&
-        canShowStudentLiveJoinButton(nextBooked, now, {
-            hasPaid: academyAccess.canAccess,
-        })
+    const liveUpcoming = useMemo(() => {
+        if (upcomingLiveSessions.length > 0) return upcomingLiveSessions
+        return getStudentUpcomingLiveSessions(sessions, now)
+    }, [upcomingLiveSessions, sessions, now])
 
-    const nextClosed =
-        nextBooked != null &&
-        academyAccess.canAccess &&
-        isStudentSecureJoinWindowClosed(nextBooked, now) &&
-        !isStudentJoinTooEarly(nextBooked, now)
+    const theoryCount = useMemo(
+        () => liveUpcoming.filter((s) => s.session_type === "theory").length,
+        [liveUpcoming]
+    )
+    const tradingCount = useMemo(
+        () => liveUpcoming.filter((s) => s.session_type !== "theory").length,
+        [liveUpcoming]
+    )
 
-    const heroTitle = activeLesson?.title ?? (lessonsLoading ? t.loading : t.noClassesAvailable)
-    const heroThumb = activeLesson ? thumbUrl(activeLesson) : null
+    const nextSession = useMemo(() => {
+        const pool = showTheory
+            ? liveUpcoming
+            : liveUpcoming.filter((s) => s.session_type !== "theory")
+        return getNextUpcomingSession(pool, now)
+    }, [liveUpcoming, showTheory, now])
+
+    const openLive = () => setActiveView("live")
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-8">
             <header>
-                <h1 className="text-2xl font-semibold">
+                <h1 className="text-2xl font-semibold text-slate-50 sm:text-[1.65rem]">
                     {t.welcomeBack} {userName}
                 </h1>
-                <p className="text-white/60 mt-1">{t.continueLearningSubtitle}</p>
+                <p className="mt-1 text-sm text-white/60 sm:text-base">{t.dashboardHomeSubtitle}</p>
             </header>
 
             <PendingAnnouncementsCard
@@ -150,129 +325,23 @@ export default function DashboardHome({
                 }}
             />
 
-            <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2 bg-gradient-to-r from-[#111827] to-[#0B1120] rounded-2xl p-6 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 border border-white/10 shadow-sm">
-                    <div className="min-w-0">
-                        <div className="text-white/60 text-xs font-extrabold tracking-[0.18em] uppercase">
-                            {t.continueLearning}
-                        </div>
-                        <div className="mt-2 text-slate-50 text-xl font-extrabold truncate">{heroTitle}</div>
-                        <div className="mt-2 text-white/60 text-sm">{t.instructorLabel}</div>
-                        <div className="mt-4">
-                            <div className="h-2 w-full rounded-full bg-white/10 overflow-hidden">
-                                <div className="h-full w-[38%] bg-blue-500/70 rounded-full" />
-                            </div>
-                            <div className="mt-2 text-white/60 text-xs">{t.progressLabel.replace("{percent}", "38")}</div>
-                        </div>
-                    </div>
+            <NextClassHero session={nextSession} onOpenLive={openLive} />
 
-                    <div className="w-full lg:w-[280px] flex-shrink-0">
-                        <div className="rounded-2xl overflow-hidden border border-white/10 bg-black/40">
-                            {heroThumb ? (
-                                <img src={heroThumb} alt="" className="w-full h-[160px] object-cover" />
-                            ) : (
-                                <div className="w-full h-[160px] bg-white/5" />
-                            )}
-                        </div>
-                        <button
-                            type="button"
-                            disabled={!activeLesson}
-                            onClick={onWatchNow}
-                            className="mt-3 w-full rounded-xl bg-blue-600/20 text-blue-300 border border-white/10 px-4 py-2.5 font-extrabold hover:bg-white/10 transition disabled:opacity-60 disabled:cursor-not-allowed"
-                        >
-                            {t.watchNow}
-                        </button>
-                    </div>
-                </div>
+            <MyClassesSection
+                showTheory={showTheory}
+                theoryCount={theoryCount}
+                tradingCount={tradingCount}
+                onOpenLive={openLive}
+            />
 
-                <div className="rounded-2xl p-6 bg-[#111827] border border-white/10 shadow-sm">
-                    <div className="text-slate-50 font-extrabold">{t.nextLiveSession}</div>
-                    {!nextBooked ? (
-                        <div className="mt-3 text-white/60 text-sm">{t.noSessionsScheduled}</div>
-                    ) : (
-                        <div className="mt-4 flex flex-col gap-4">
-                            <div className="flex items-center gap-4">
-                                <div className="rounded-2xl bg-white/5 border border-white/10 px-4 py-3 text-center">
-                                    <div className="text-2xl font-extrabold text-slate-50">
-                                        {(sessionDisplayDay(nextBooked).match(/\d{1,2}/)?.[0] ?? "").trim() || "—"}
-                                    </div>
-                                    <div className="text-white/60 text-xs">{t.dayLabel}</div>
-                                </div>
-                                <div className="min-w-0">
-                                    <div className="text-slate-100 font-bold truncate">
-                                        {nextBooked.title ?? t.liveSessionDefault}
-                                    </div>
-                                    <div className="text-white/60 text-sm">
-                                        {sessionDisplayDay(nextBooked)} · {sessionDisplayHour(nextBooked) || "—"}
-                                    </div>
-                                </div>
-                            </div>
-                            <button
-                                type="button"
-                                disabled={!joinAllowed}
-                                onClick={() => {
-                                    if (!nextBooked || !joinAllowed) return
-                                    window.location.assign(`/student/classroom/${nextBooked.id}`)
-                                }}
-                                className={[
-                                    "rounded-xl px-4 py-2.5 font-extrabold transition border border-white/10",
-                                    joinAllowed
-                                        ? "bg-blue-600/20 text-blue-300 hover:bg-white/10"
-                                        : "cursor-not-allowed bg-white/5 text-white/40",
-                                ].join(" ")}
-                            >
-                                {t.joinNow}
-                            </button>
-                            {nextClosed ? <div className="text-white/60 text-xs">{t.sessionClosed}</div> : null}
-                        </div>
-                    )}
-                </div>
+            <section aria-labelledby="dashboard-private-class-title" className="space-y-3">
+                <h2 id="dashboard-private-class-title" className="sr-only">
+                    {t.privateClassTitle}
+                </h2>
+                <PrivateClassSection />
             </section>
 
-            <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <QuickActions activeView={activeView} setActiveView={setActiveView} />
-
-                <aside className="rounded-2xl p-6 bg-[#111827] border border-white/10 shadow-sm">
-                    <div className="text-slate-50 font-extrabold">{t.recentClasses}</div>
-                    <div className="mt-4 max-h-[420px] overflow-auto pr-1">
-                        {lessonsLoading ? (
-                            <p className="m-0 text-white/60 text-sm">{t.loading}</p>
-                        ) : lessonsError ? (
-                            <p className="m-0 text-red-400 text-sm">{lessonsError}</p>
-                        ) : lessons.length === 0 ? (
-                            <p className="m-0 text-white/60 text-sm">{t.noLessonsYet}</p>
-                        ) : (
-                            <div className="flex flex-col gap-3">
-                                {lessons.slice(0, 6).map((lesson) => {
-                                    const thumb = thumbUrl(lesson)
-                                    return (
-                                        <button
-                                            key={lesson.id}
-                                            type="button"
-                                            onClick={() => setActiveLesson(lesson)}
-                                            className="w-full text-left rounded-xl border border-white/10 p-3 bg-white/5 hover:bg-white/10 transition"
-                                        >
-                                            <div className="flex gap-3">
-                                                <div className="h-12 w-20 rounded-lg overflow-hidden bg-black/40 border border-white/10 flex-shrink-0">
-                                                    {thumb ? <img src={thumb} alt="" className="h-full w-full object-cover" /> : null}
-                                                </div>
-                                                <div className="min-w-0">
-                                                    <div className="font-extrabold text-sm truncate text-slate-100">
-                                                        {lesson.title}
-                                                    </div>
-                                                    <div className="text-white/60 text-xs mt-1">
-                                                        {t.instructorLabel}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </button>
-                                    )
-                                })}
-                            </div>
-                        )}
-                    </div>
-                </aside>
-            </section>
+            <ComingSoonSection />
         </div>
     )
 }

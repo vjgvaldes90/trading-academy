@@ -241,8 +241,6 @@ function DashboardShell({
                     {activeView === "dashboard" ? (
                         <DashboardHome
                             userName={welcomeName}
-                            onWatchNow={() => setActiveView("classes")}
-                            activeView={activeView}
                             setActiveView={setActiveView}
                             pendingAnnouncements={announcements}
                             onViewAnnouncements={openAnnouncementsList}

@@ -553,6 +553,16 @@ export const es: TranslationKeys = {
     welcome: "Bienvenido,",
     welcomeBack: "Bienvenido de vuelta,",
     continueLearningSubtitle: "Continúa tu aprendizaje y alcanza tus metas.",
+    dashboardHomeSubtitle: "Tu centro de clases — próximas sesiones, trading en vivo y apoyo privado 1:1.",
+    dashboardNextClassTitle: "Próxima clase",
+    dashboardClassAvailable: "Clase disponible",
+    dashboardEnterClassNow: "Entrar ahora",
+    dashboardMyClassesTitle: "Mis clases",
+    dashboardUpcomingClassesHint: "Próximas clases disponibles",
+    dashboardUpcomingSessionsHint: "Próximas sesiones disponibles",
+    dashboardComingSoonTitle: "Próximamente",
+    dashboardComingSoonRecorded: "Clases grabadas",
+    dashboardComingSoonResources: "Biblioteca de recursos",
 
     // Dashboard home
     continueLearning: "CONTINÚA APRENDIENDO",
