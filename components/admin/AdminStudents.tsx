@@ -6,11 +6,16 @@ import CreateStudentModal, {
 } from "@/components/admin/CreateStudentModal"
 import { useLanguage } from "@/context/LanguageProvider"
 import { SUBSCRIPTION_STATUS_CANCEL_AT_PERIOD_END } from "@/lib/subscriptionCancellation"
+import { resolveSubscriptionPlan } from "@/lib/subscriptionPlans"
 import { useCallback, useEffect, useMemo, useState } from "react"
 
 type TradingStudentListRow = {
     id: string
     email: string
+    first_name: string | null
+    last_name: string | null
+    phone: string | null
+    plan: string | null
     access_type: string | null
     is_active: boolean | null
     subscription_id: string | null
@@ -28,6 +33,18 @@ function studentPathEmail(email: string): string {
     return encodeURIComponent(email.trim().toLowerCase())
 }
 
+function displayName(row: TradingStudentListRow): string {
+    const first = typeof row.first_name === "string" ? row.first_name.trim() : ""
+    const last = typeof row.last_name === "string" ? row.last_name.trim() : ""
+    const full = `${first} ${last}`.trim()
+    return full || "—"
+}
+
+function displayPhone(row: TradingStudentListRow): string {
+    const phone = typeof row.phone === "string" ? row.phone.trim() : ""
+    return phone || "—"
+}
+
 export default function AdminStudents() {
     const { t } = useLanguage()
     const [rows, setRows] = useState<TradingStudentListRow[]>([])
@@ -37,8 +54,31 @@ export default function AdminStudents() {
     const [cancelModal, setCancelModal] = useState<CancelModalTarget | null>(null)
     const [createModalOpen, setCreateModalOpen] = useState(false)
 
+    const programLabel = useCallback(
+        (raw: string | null): { text: string; kind: "full" | "trading" | "other" } => {
+            const plan = resolveSubscriptionPlan(raw)
+            if (plan === "full_program") {
+                return { text: t.pricingFullProgramName, kind: "full" }
+            }
+            if (plan === "trading_only") {
+                return { text: t.pricingTradingOnlyName, kind: "trading" }
+            }
+            const fallback = typeof raw === "string" && raw.trim() ? raw.trim() : "—"
+            return { text: fallback, kind: "other" }
+        },
+        [t]
+    )
+
     const tableHeaders = useMemo(
-        () => [t.emailLabel, t.accessTypeLabel, t.activeLabel, t.actions],
+        () => [
+            t.adminStudentNameLabel,
+            t.emailLabel,
+            t.phoneLabel,
+            t.adminProgramLabel,
+            t.accessTypeLabel,
+            t.activeLabel,
+            t.actions,
+        ],
         [t]
     )
 
@@ -69,6 +109,7 @@ export default function AdminStudents() {
             if (response.success === true) {
                 console.log("Student payload accepted", response)
                 setCreateModalOpen(false)
+                await load()
                 return
             }
 
@@ -99,6 +140,10 @@ export default function AdminStudents() {
                 list.map((r) => ({
                     id: typeof r.id === "string" ? r.id : "",
                     email: typeof r.email === "string" ? r.email : "",
+                    first_name: typeof r.first_name === "string" ? r.first_name : null,
+                    last_name: typeof r.last_name === "string" ? r.last_name : null,
+                    phone: typeof r.phone === "string" ? r.phone : null,
+                    plan: typeof r.plan === "string" ? r.plan : null,
                     access_type: typeof r.access_type === "string" ? r.access_type : "paid",
                     is_active: r.is_active !== false,
                     subscription_id:
@@ -175,7 +220,7 @@ export default function AdminStudents() {
 
     return (
         <div className="space-y-6 text-[#e5e7eb]">
-            <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+            <div style={{ maxWidth: 1280, margin: "0 auto" }}>
                 <div
                     style={{
                         display: "flex",
@@ -253,7 +298,7 @@ export default function AdminStudents() {
                                     await load()
                                 }}
                             />
-                            <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 640 }}>
+                            <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 960 }}>
                                 <thead>
                                     <tr style={{ background: "rgba(15,23,42,0.7)" }}>
                                         {tableHeaders.map((h) => (
@@ -267,6 +312,7 @@ export default function AdminStudents() {
                                                     letterSpacing: "0.06em",
                                                     textTransform: "uppercase",
                                                     borderBottom: "1px solid rgba(59,130,246,0.2)",
+                                                    whiteSpace: "nowrap",
                                                 }}
                                             >
                                                 {h}
@@ -292,17 +338,66 @@ export default function AdminStudents() {
                                         const typeOptions = baseOpts.includes(currentType)
                                             ? baseOpts
                                             : [currentType, ...baseOpts]
+                                        const program = programLabel(r.plan)
                                         return (
-                                            <tr key={r.id || key} style={{ borderBottom: "1px solid rgba(148,163,184,0.1)" }}>
+                                            <tr
+                                                key={r.id || key}
+                                                style={{ borderBottom: "1px solid rgba(148,163,184,0.1)" }}
+                                            >
+                                                <td
+                                                    style={{
+                                                        padding: "12px 14px",
+                                                        color: "#e5e7eb",
+                                                        fontSize: "0.875rem",
+                                                        fontWeight: 600,
+                                                        maxWidth: 180,
+                                                    }}
+                                                >
+                                                    <span
+                                                        title={displayName(r) === "—" ? undefined : displayName(r)}
+                                                        style={{
+                                                            display: "block",
+                                                            overflow: "hidden",
+                                                            textOverflow: "ellipsis",
+                                                            whiteSpace: "nowrap",
+                                                        }}
+                                                    >
+                                                        {displayName(r)}
+                                                    </span>
+                                                </td>
                                                 <td
                                                     style={{
                                                         padding: "12px 14px",
                                                         color: "#e5e7eb",
                                                         fontSize: "0.875rem",
                                                         wordBreak: "break-all",
+                                                        maxWidth: 220,
                                                     }}
                                                 >
                                                     {r.email}
+                                                </td>
+                                                <td
+                                                    style={{
+                                                        padding: "12px 14px",
+                                                        color: "#94a3b8",
+                                                        fontSize: "0.8125rem",
+                                                        whiteSpace: "nowrap",
+                                                    }}
+                                                >
+                                                    {displayPhone(r)}
+                                                </td>
+                                                <td style={{ padding: "10px 14px" }}>
+                                                    <span
+                                                        className={
+                                                            program.kind === "full"
+                                                                ? "inline-flex rounded-md border border-violet-400/35 bg-violet-500/15 px-2 py-0.5 text-[0.65rem] font-bold uppercase tracking-wide text-violet-200"
+                                                                : program.kind === "trading"
+                                                                  ? "inline-flex rounded-md border border-sky-400/35 bg-sky-500/15 px-2 py-0.5 text-[0.65rem] font-bold uppercase tracking-wide text-sky-200"
+                                                                  : "inline-flex rounded-md border border-slate-400/30 bg-slate-500/10 px-2 py-0.5 text-[0.65rem] font-bold uppercase tracking-wide text-slate-300"
+                                                        }
+                                                    >
+                                                        {program.text}
+                                                    </span>
                                                 </td>
                                                 <td style={{ padding: "10px 14px" }}>
                                                     <select
@@ -330,8 +425,68 @@ export default function AdminStudents() {
                                                         ))}
                                                     </select>
                                                 </td>
-                                                <td style={{ padding: "10px 14px", color: "#94a3b8", fontSize: "0.875rem" }}>
-                                                    {active ? t.yes : t.no}
+                                                <td style={{ padding: "10px 14px" }}>
+                                                    <label
+                                                        style={{
+                                                            display: "inline-flex",
+                                                            alignItems: "center",
+                                                            gap: 10,
+                                                            cursor: busy || cancelBusy ? "wait" : "pointer",
+                                                            userSelect: "none",
+                                                        }}
+                                                    >
+                                                        <span style={{ fontSize: "0.75rem", color: "#64748b" }}>
+                                                            {active ? t.activeLabel : t.inactiveLabel}
+                                                        </span>
+                                                        <span
+                                                            style={{
+                                                                position: "relative",
+                                                                width: 44,
+                                                                height: 24,
+                                                                borderRadius: 9999,
+                                                                background: active
+                                                                    ? "linear-gradient(180deg, #22c55e 0%, #15803d 100%)"
+                                                                    : "rgba(51,65,85,0.95)",
+                                                                boxShadow: "inset 0 1px 2px rgba(0,0,0,0.25)",
+                                                                transition: "background 0.2s ease",
+                                                            }}
+                                                        >
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={active}
+                                                                disabled={busy || cancelBusy}
+                                                                onChange={() => {
+                                                                    void patchStudent(r.email, {
+                                                                        is_active: !active,
+                                                                    })
+                                                                }}
+                                                                style={{
+                                                                    position: "absolute",
+                                                                    inset: 0,
+                                                                    opacity: 0,
+                                                                    width: "100%",
+                                                                    height: "100%",
+                                                                    cursor:
+                                                                        busy || cancelBusy ? "wait" : "pointer",
+                                                                    margin: 0,
+                                                                }}
+                                                            />
+                                                            <span
+                                                                aria-hidden
+                                                                style={{
+                                                                    position: "absolute",
+                                                                    top: 3,
+                                                                    left: active ? 22 : 3,
+                                                                    width: 18,
+                                                                    height: 18,
+                                                                    borderRadius: "50%",
+                                                                    background: "#f8fafc",
+                                                                    boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
+                                                                    transition: "left 0.2s ease",
+                                                                }}
+                                                            />
+                                                        </span>
+                                                    </label>
                                                 </td>
                                                 <td style={{ padding: "10px 14px", textAlign: "right" }}>
                                                     <div
@@ -342,66 +497,6 @@ export default function AdminStudents() {
                                                             gap: 10,
                                                         }}
                                                     >
-                                                        <label
-                                                            style={{
-                                                                display: "inline-flex",
-                                                                alignItems: "center",
-                                                                gap: 10,
-                                                                cursor: busy || cancelBusy ? "wait" : "pointer",
-                                                                userSelect: "none",
-                                                            }}
-                                                        >
-                                                            <span style={{ fontSize: "0.75rem", color: "#64748b" }}>
-                                                                {active ? t.activeLabel : t.inactiveLabel}
-                                                            </span>
-                                                            <span
-                                                                style={{
-                                                                    position: "relative",
-                                                                    width: 44,
-                                                                    height: 24,
-                                                                    borderRadius: 9999,
-                                                                    background: active
-                                                                        ? "linear-gradient(180deg, #22c55e 0%, #15803d 100%)"
-                                                                        : "rgba(51,65,85,0.95)",
-                                                                    boxShadow: "inset 0 1px 2px rgba(0,0,0,0.25)",
-                                                                    transition: "background 0.2s ease",
-                                                                }}
-                                                            >
-                                                                <input
-                                                                    type="checkbox"
-                                                                    checked={active}
-                                                                    disabled={busy || cancelBusy}
-                                                                    onChange={() => {
-                                                                        void patchStudent(r.email, {
-                                                                            is_active: !active,
-                                                                        })
-                                                                    }}
-                                                                    style={{
-                                                                        position: "absolute",
-                                                                        inset: 0,
-                                                                        opacity: 0,
-                                                                        width: "100%",
-                                                                        height: "100%",
-                                                                        cursor: busy || cancelBusy ? "wait" : "pointer",
-                                                                        margin: 0,
-                                                                    }}
-                                                                />
-                                                                <span
-                                                                    aria-hidden
-                                                                    style={{
-                                                                        position: "absolute",
-                                                                        top: 3,
-                                                                        left: active ? 22 : 3,
-                                                                        width: 18,
-                                                                        height: 18,
-                                                                        borderRadius: "50%",
-                                                                        background: "#f8fafc",
-                                                                        boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
-                                                                        transition: "left 0.2s ease",
-                                                                    }}
-                                                                />
-                                                            </span>
-                                                        </label>
                                                         {showCancelSubscription ? (
                                                             <button
                                                                 type="button"
@@ -417,7 +512,8 @@ export default function AdminStudents() {
                                                                     color: "#fff",
                                                                     fontWeight: 700,
                                                                     fontSize: "0.75rem",
-                                                                    cursor: busy || cancelBusy ? "wait" : "pointer",
+                                                                    cursor:
+                                                                        busy || cancelBusy ? "wait" : "pointer",
                                                                 }}
                                                             >
                                                                 {cancelBusy ? t.loading : t.cancelSubscription}
@@ -440,6 +536,17 @@ export default function AdminStudents() {
                                                             >
                                                                 {t.adminSubscriptionCancelScheduled}
                                                             </div>
+                                                        ) : null}
+                                                        {!showCancelSubscription &&
+                                                        !subscriptionCancelScheduled ? (
+                                                            <span
+                                                                style={{
+                                                                    fontSize: "0.75rem",
+                                                                    color: "#64748b",
+                                                                }}
+                                                            >
+                                                                —
+                                                            </span>
                                                         ) : null}
                                                     </div>
                                                 </td>

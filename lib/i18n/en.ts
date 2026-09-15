@@ -470,6 +470,8 @@ export const en = {
     adminStudentsSubtitle: "Manage access type and activation. Changes apply immediately.",
     adminNewStudent: "New Student",
     noStudentsFound: "No students found.",
+    adminStudentNameLabel: "Name",
+    adminProgramLabel: "Program",
     accessTypeLabel: "Access type",
     activeLabel: "Active",
     inactiveLabel: "Inactive",

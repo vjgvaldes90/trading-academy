@@ -472,6 +472,8 @@ export const es: TranslationKeys = {
     adminStudentsSubtitle: "Gestiona el tipo de acceso y la activación. Los cambios se aplican de inmediato.",
     adminNewStudent: "Nuevo estudiante",
     noStudentsFound: "No se encontraron estudiantes.",
+    adminStudentNameLabel: "Nombre",
+    adminProgramLabel: "Programa",
     accessTypeLabel: "Tipo de acceso",
     activeLabel: "Activo",
     inactiveLabel: "Inactivo",
