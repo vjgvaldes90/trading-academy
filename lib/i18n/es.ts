@@ -563,6 +563,10 @@ export const es: TranslationKeys = {
     dashboardComingSoonTitle: "Próximamente",
     dashboardComingSoonRecorded: "Clases grabadas",
     dashboardComingSoonResources: "Biblioteca de recursos",
+    comingSoonModalTitle: "Próximamente",
+    comingSoonRecordedMessage: "Las clases grabadas estarán disponibles próximamente.",
+    comingSoonResourcesMessage: "Los recursos de aprendizaje estarán disponibles próximamente.",
+    comingSoonGotIt: "Entendido",
 
     // Dashboard home
     continueLearning: "CONTINÚA APRENDIENDO",

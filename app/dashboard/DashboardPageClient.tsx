@@ -7,6 +7,9 @@ import dashboardTheme from "@/components/dashboard/dashboardTheme.module.css"
 import type { StudentDashboardView } from "@/components/student/Sidebar"
 import AnnouncementBanner from "@/components/dashboard/AnnouncementBanner"
 import AnnouncementsView from "@/components/dashboard/AnnouncementsView"
+import ComingSoonModal, {
+    type ComingSoonFeature,
+} from "@/components/dashboard/ComingSoonModal"
 import DashboardHome from "@/components/dashboard/DashboardHome"
 import ClassesView from "@/components/dashboard/ClassesView"
 import LiveSessionsView from "@/components/dashboard/LiveSessionsView"
@@ -45,6 +48,7 @@ function DashboardShell({
     const { t } = useLanguage()
     const { dashboardDataReady } = useSession()
     const [activeView, setActiveView] = useState<StudentDashboardView>("dashboard")
+    const [comingSoonFeature, setComingSoonFeature] = useState<ComingSoonFeature | null>(null)
     const [isCancelling, setIsCancelling] = useState(false)
     const [cancelModalOpen, setCancelModalOpen] = useState(false)
     const [announcements, setAnnouncements] = useState<StudentAnnouncementItem[]>([])
@@ -52,6 +56,14 @@ function DashboardShell({
     const [announcementsError, setAnnouncementsError] = useState(false)
     const [unreadAnnouncementsCount, setUnreadAnnouncementsCount] = useState(0)
     const [focusAnnouncementId, setFocusAnnouncementId] = useState<string | null>(null)
+
+    const navigateStudentView = useCallback((view: StudentDashboardView) => {
+        if (view === "classes" || view === "resources") {
+            setComingSoonFeature(view)
+            return
+        }
+        setActiveView(view)
+    }, [])
 
     const loadAnnouncements = useCallback(async () => {
         setAnnouncementsLoading(true)
@@ -206,7 +218,7 @@ function DashboardShell({
                 userName={welcomeName}
                 roleLabel={t.roleStudent}
                 activeView={activeView}
-                setActiveView={setActiveView}
+                setActiveView={navigateStudentView}
                 unreadAnnouncementsCount={unreadAnnouncementsCount}
             />
 
@@ -241,7 +253,7 @@ function DashboardShell({
                     {activeView === "dashboard" ? (
                         <DashboardHome
                             userName={welcomeName}
-                            setActiveView={setActiveView}
+                            setActiveView={navigateStudentView}
                             pendingAnnouncements={announcements}
                             onViewAnnouncements={openAnnouncementsList}
                             onReadAnnouncement={openAnnouncementFromBanner}
@@ -273,6 +285,11 @@ function DashboardShell({
                     ) : null}
                 </div>
             </main>
+            <ComingSoonModal
+                open={comingSoonFeature !== null}
+                feature={comingSoonFeature}
+                onClose={() => setComingSoonFeature(null)}
+            />
             <CancelSessionConfirmModal
                 open={cancelModalOpen}
                 onClose={() => setCancelModalOpen(false)}

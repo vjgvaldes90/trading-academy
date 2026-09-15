@@ -561,6 +561,10 @@ export const en = {
     dashboardComingSoonTitle: "Coming soon",
     dashboardComingSoonRecorded: "Recorded classes",
     dashboardComingSoonResources: "Resource library",
+    comingSoonModalTitle: "Coming Soon",
+    comingSoonRecordedMessage: "Recorded classes will be available soon.",
+    comingSoonResourcesMessage: "Learning resources will be available soon.",
+    comingSoonGotIt: "Got it",
 
     // Dashboard home
     continueLearning: "CONTINUE LEARNING",

@@ -214,24 +214,38 @@ function MyClassesSection({
     )
 }
 
-function ComingSoonSection() {
+function ComingSoonSection({
+    onOpenRecorded,
+    onOpenResources,
+}: {
+    onOpenRecorded: () => void
+    onOpenResources: () => void
+}) {
     const { t } = useLanguage()
     return (
         <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500">
             <span className="font-semibold uppercase tracking-wide text-slate-600">
                 {t.dashboardComingSoonTitle}:
             </span>
-            <span className="inline-flex items-center gap-1.5">
+            <button
+                type="button"
+                onClick={onOpenRecorded}
+                className="inline-flex items-center gap-1.5 rounded-md text-slate-500 transition hover:text-sky-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/50"
+            >
                 <Clapperboard className="h-3.5 w-3.5 shrink-0" aria-hidden />
                 {t.dashboardComingSoonRecorded}
-            </span>
+            </button>
             <span className="text-slate-700" aria-hidden>
                 ·
             </span>
-            <span className="inline-flex items-center gap-1.5">
+            <button
+                type="button"
+                onClick={onOpenResources}
+                className="inline-flex items-center gap-1.5 rounded-md text-slate-500 transition hover:text-sky-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/50"
+            >
                 <Library className="h-3.5 w-3.5 shrink-0" aria-hidden />
                 {t.dashboardComingSoonResources}
-            </span>
+            </button>
         </p>
     )
 }
@@ -324,7 +338,10 @@ export default function DashboardHome({
 
             <PrivateClassSection compact />
 
-            <ComingSoonSection />
+            <ComingSoonSection
+                onOpenRecorded={() => setActiveView("classes")}
+                onOpenResources={() => setActiveView("resources")}
+            />
         </div>
     )
 }
