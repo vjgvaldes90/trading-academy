@@ -474,6 +474,7 @@ export const es: TranslationKeys = {
     noStudentsFound: "No se encontraron estudiantes.",
     adminStudentNameLabel: "Nombre",
     adminProgramLabel: "Programa",
+    adminStudentsSearchPlaceholder: "Buscar por nombre, correo, teléfono o programa...",
     accessTypeLabel: "Tipo de acceso",
     activeLabel: "Activo",
     inactiveLabel: "Inactivo",

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { requireAuthorizedAdminFromCookies } from "@/lib/adminAuth"
 import { createSupabaseServiceRoleClient } from "@/lib/access"
+import { isAuthorizedAdminEmail } from "@/lib/adminEmails"
 import { isAllowedAdminAccessType } from "@/lib/studentAcademyAccess"
 
 export const runtime = "nodejs"
@@ -29,7 +30,14 @@ export async function GET() {
             return NextResponse.json({ error: "Failed to load students", details: error.message }, { status: 500 })
         }
 
-        return NextResponse.json(Array.isArray(data) ? data : [])
+        const rows = (Array.isArray(data) ? data : []).filter((row) => {
+            const email = typeof (row as { email?: unknown }).email === "string"
+                ? (row as { email: string }).email
+                : null
+            return !isAuthorizedAdminEmail(email)
+        })
+
+        return NextResponse.json(rows)
     } catch (e) {
         console.error("[api/admin/trading-students] GET", e)
         return NextResponse.json({ error: "Internal error" }, { status: 500 })

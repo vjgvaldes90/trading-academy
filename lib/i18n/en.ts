@@ -472,6 +472,7 @@ export const en = {
     noStudentsFound: "No students found.",
     adminStudentNameLabel: "Name",
     adminProgramLabel: "Program",
+    adminStudentsSearchPlaceholder: "Search by name, email, phone or program...",
     accessTypeLabel: "Access type",
     activeLabel: "Active",
     inactiveLabel: "Inactive",

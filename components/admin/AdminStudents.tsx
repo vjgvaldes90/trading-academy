@@ -7,6 +7,7 @@ import CreateStudentModal, {
 import { useLanguage } from "@/context/LanguageProvider"
 import { SUBSCRIPTION_STATUS_CANCEL_AT_PERIOD_END } from "@/lib/subscriptionCancellation"
 import { resolveSubscriptionPlan } from "@/lib/subscriptionPlans"
+import { Search } from "lucide-react"
 import { useCallback, useEffect, useMemo, useState } from "react"
 
 type TradingStudentListRow = {
@@ -45,9 +46,48 @@ function displayPhone(row: TradingStudentListRow): string {
     return phone || "—"
 }
 
+/** Normalize for client-side search (future server-side can reuse same rules). */
+function normalizeStudentSearchText(value: string): string {
+    return value
+        .trim()
+        .toLowerCase()
+        .replace(/_/g, " ")
+        .replace(/\s+/g, " ")
+}
+
+function studentMatchesSearch(
+    row: TradingStudentListRow,
+    query: string,
+    programDisplayText: string
+): boolean {
+    const q = normalizeStudentSearchText(query)
+    if (!q) return true
+
+    const first = typeof row.first_name === "string" ? row.first_name : ""
+    const last = typeof row.last_name === "string" ? row.last_name : ""
+    const planRaw = typeof row.plan === "string" ? row.plan : ""
+    const planResolved = resolveSubscriptionPlan(row.plan)
+
+    const haystack = normalizeStudentSearchText(
+        [
+            first,
+            last,
+            `${first} ${last}`.trim(),
+            row.email,
+            typeof row.phone === "string" ? row.phone : "",
+            planRaw,
+            planResolved,
+            programDisplayText,
+        ].join(" ")
+    )
+
+    return haystack.includes(q)
+}
+
 export default function AdminStudents() {
     const { t } = useLanguage()
     const [rows, setRows] = useState<TradingStudentListRow[]>([])
+    const [searchQuery, setSearchQuery] = useState("")
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
     const [busyEmail, setBusyEmail] = useState<string | null>(null)
@@ -81,6 +121,12 @@ export default function AdminStudents() {
         ],
         [t]
     )
+
+    const filteredRows = useMemo(() => {
+        const q = searchQuery.trim()
+        if (!q) return rows
+        return rows.filter((row) => studentMatchesSearch(row, q, programLabel(row.plan).text))
+    }, [rows, searchQuery, programLabel])
 
     const handleCreateStudent = async (values: CreateStudentFormValues) => {
         try {
@@ -249,6 +295,21 @@ export default function AdminStudents() {
                     onSubmit={handleCreateStudent}
                 />
 
+                <div className="relative mb-4">
+                    <Search
+                        className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500"
+                        aria-hidden
+                    />
+                    <input
+                        type="search"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder={t.adminStudentsSearchPlaceholder}
+                        aria-label={t.adminStudentsSearchPlaceholder}
+                        className="w-full rounded-xl border border-white/10 bg-[#0f172a] py-2.5 pl-10 pr-3 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                    />
+                </div>
+
                 <section
                     style={{
                         border: "1px solid rgba(59,130,246,0.25)",
@@ -258,46 +319,46 @@ export default function AdminStudents() {
                         overflow: "hidden",
                     }}
                 >
+                    <CancelSessionConfirmModal
+                        open={cancelModal !== null}
+                        title={t.cancelSubscriptionTitle}
+                        description={t.adminCancelSubscriptionModalDescription}
+                        confirmText={t.cancelSubscriptionConfirm}
+                        onClose={() => setCancelModal(null)}
+                        onConfirm={async () => {
+                            if (!cancelModal) return
+                            const res = await fetch("/api/admin/cancel-subscription", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                credentials: "include",
+                                cache: "no-store",
+                                body: JSON.stringify({ userId: cancelModal.userId }),
+                            })
+                            const data = (await res.json().catch(() => ({}))) as {
+                                ok?: unknown
+                                error?: string
+                            }
+                            if (!res.ok || data.ok !== true) {
+                                const msg =
+                                    typeof data.error === "string" && data.error.trim()
+                                        ? data.error
+                                        : t.cancelFailed
+                                throw new Error(msg)
+                            }
+                        }}
+                        onAfterConfirm={async () => {
+                            alert(t.adminSubscriptionScheduledCancel)
+                            await load()
+                        }}
+                    />
                     {loading ? (
                         <p style={{ margin: 0, padding: "16px", color: "#9ca3af" }}>{t.loading}</p>
                     ) : error ? (
                         <p style={{ margin: 0, padding: "16px", color: "#f87171" }}>{error}</p>
-                    ) : rows.length === 0 ? (
+                    ) : rows.length === 0 || filteredRows.length === 0 ? (
                         <p style={{ margin: 0, padding: "16px", color: "#9ca3af" }}>{t.noStudentsFound}</p>
                     ) : (
                         <div style={{ overflowX: "auto" }}>
-                            <CancelSessionConfirmModal
-                                open={cancelModal !== null}
-                                title={t.cancelSubscriptionTitle}
-                                description={t.adminCancelSubscriptionModalDescription}
-                                confirmText={t.cancelSubscriptionConfirm}
-                                onClose={() => setCancelModal(null)}
-                                onConfirm={async () => {
-                                    if (!cancelModal) return
-                                    const res = await fetch("/api/admin/cancel-subscription", {
-                                        method: "POST",
-                                        headers: { "Content-Type": "application/json" },
-                                        credentials: "include",
-                                        cache: "no-store",
-                                        body: JSON.stringify({ userId: cancelModal.userId }),
-                                    })
-                                    const data = (await res.json().catch(() => ({}))) as {
-                                        ok?: unknown
-                                        error?: string
-                                    }
-                                    if (!res.ok || data.ok !== true) {
-                                        const msg =
-                                            typeof data.error === "string" && data.error.trim()
-                                                ? data.error
-                                                : t.cancelFailed
-                                        throw new Error(msg)
-                                    }
-                                }}
-                                onAfterConfirm={async () => {
-                                    alert(t.adminSubscriptionScheduledCancel)
-                                    await load()
-                                }}
-                            />
                             <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 960 }}>
                                 <thead>
                                     <tr style={{ background: "rgba(15,23,42,0.7)" }}>
@@ -321,7 +382,7 @@ export default function AdminStudents() {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {rows.map((r) => {
+                                    {filteredRows.map((r) => {
                                         const key = r.email.trim().toLowerCase()
                                         const busy = busyEmail === key
                                         const cancelBusy = false
