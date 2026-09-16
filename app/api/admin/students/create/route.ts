@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { requireAuthorizedAdminFromCookies } from "@/lib/adminAuth"
 import { provisionAcademyStudent } from "@/lib/provisionAcademyStudent"
 
 export const runtime = "nodejs"
@@ -11,6 +12,9 @@ function trimString(value: unknown): string {
 }
 
 export async function POST(req: Request) {
+    const auth = await requireAuthorizedAdminFromCookies()
+    if (!auth.ok) return auth.response
+
     let body: unknown
     try {
         body = await req.json()
