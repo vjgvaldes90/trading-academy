@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { createSupabaseServiceRoleClient } from "@/lib/access"
+import { getVerifiedStudentEmailFromCookies } from "@/lib/requireVerifiedSessionCookie"
 import { createStripeClient } from "@/lib/stripe-server"
 import {
     CANCEL_SUBSCRIPTION_POLICY_MESSAGE,
@@ -9,13 +10,13 @@ import {
 
 export const runtime = "nodejs"
 
-export async function POST(req: Request) {
+export async function POST() {
     try {
-        const body = (await req.json().catch(() => null)) as { email?: unknown } | null
-        const email = typeof body?.email === "string" ? body.email.trim().toLowerCase() : ""
+        // Identity comes from the verified session cookie; a request body cannot target another student.
+        const email = await getVerifiedStudentEmailFromCookies()
 
         if (!email) {
-            return NextResponse.json({ ok: false, error: "Email required" }, { status: 400 })
+            return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 })
         }
 
         const supabase = createSupabaseServiceRoleClient()
