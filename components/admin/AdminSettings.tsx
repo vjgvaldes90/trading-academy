@@ -1,23 +1,29 @@
 "use client"
 
 import { LogOut, Shield } from "lucide-react"
+import { getAuthorizedAdminEmailAction } from "@/app/actions/admin"
 import { useLanguage } from "@/context/LanguageProvider"
-import { useMemo, useState } from "react"
+import { useEffect, useState } from "react"
 
 export default function AdminSettings() {
     const { t } = useLanguage()
     const [busy, setBusy] = useState(false)
     const [error, setError] = useState<string | null>(null)
+    const [adminEmail, setAdminEmail] = useState("")
 
-    const adminEmail = useMemo(() => {
-        if (typeof document === "undefined") return ""
-        const key = "ta_student_email="
-        const hit = document.cookie
-            .split(";")
-            .map((part) => part.trim())
-            .find((part) => part.startsWith(key))
-        if (!hit) return ""
-        return decodeURIComponent(hit.slice(key.length)).trim()
+    useEffect(() => {
+        let cancelled = false
+        void (async () => {
+            try {
+                const email = await getAuthorizedAdminEmailAction()
+                if (!cancelled && email) setAdminEmail(email)
+            } catch {
+                // Keep the safe "—" fallback on transient failures.
+            }
+        })()
+        return () => {
+            cancelled = true
+        }
     }, [])
 
     const handleLogout = async () => {
