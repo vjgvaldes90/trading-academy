@@ -35,6 +35,29 @@ export async function POST(req: Request) {
 
         const stripe = createStripeClient()
         const session = await stripe.checkout.sessions.retrieve(sessionId)
+
+        // Fulfillment belongs to the Stripe webhook; this route only confirms a paid Academy
+        // subscription checkout before issuing cookies (mode "payment" = Private Class, not Academy).
+        const isPaidAcademyCheckout =
+            session.status === "complete" &&
+            session.payment_status === "paid" &&
+            session.mode === "subscription" &&
+            Boolean(session.subscription)
+
+        if (!isPaidAcademyCheckout) {
+            console.warn("[get-session] rejected unpaid or non-academy checkout session", {
+                sessionId: session.id,
+                status: session.status,
+                payment_status: session.payment_status,
+                mode: session.mode,
+                has_subscription: Boolean(session.subscription),
+            })
+            return NextResponse.json(
+                { ok: false, error: "Checkout session is not a completed subscription payment" },
+                { status: 402 }
+            )
+        }
+
         const raw =
             session.customer_details?.email?.trim() ||
             session.customer_email?.trim() ||
