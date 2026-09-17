@@ -16,9 +16,16 @@ import {
     isFreePrivateClass,
     type PrivateClassRequestRow,
 } from "@/lib/privateClassRequests"
-import { useCallback, useEffect, useState } from "react"
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useState } from "react"
 
-export default function PrivateClassSection({ compact = false }: { compact?: boolean }) {
+export type PrivateClassSectionHandle = {
+    openRequestModal: () => void
+}
+
+const PrivateClassSection = forwardRef<
+    PrivateClassSectionHandle,
+    { compact?: boolean }
+>(function PrivateClassSection({ compact = false }, ref) {
     const { t } = useLanguage()
     const { academyAccess } = useSession()
     const canAccess = academyAccess.canAccess === true
@@ -29,6 +36,16 @@ export default function PrivateClassSection({ compact = false }: { compact?: boo
     const [modalOpen, setModalOpen] = useState(false)
     const [payingId, setPayingId] = useState<string | null>(null)
     const [toast, setToast] = useState<{ message: string; tone: StudentToastTone } | null>(null)
+
+    useImperativeHandle(
+        ref,
+        () => ({
+            openRequestModal: () => {
+                if (canAccess) setModalOpen(true)
+            },
+        }),
+        [canAccess]
+    )
 
     const load = useCallback(async () => {
         setLoading(true)
@@ -412,4 +429,6 @@ export default function PrivateClassSection({ compact = false }: { compact?: boo
             ) : null}
         </div>
     )
-}
+})
+
+export default PrivateClassSection

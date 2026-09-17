@@ -1,6 +1,8 @@
 "use client"
 
-import PrivateClassSection from "@/components/dashboard/focused/PrivateClassSection"
+import PrivateClassSection, {
+    type PrivateClassSectionHandle,
+} from "@/components/dashboard/focused/PrivateClassSection"
 import PendingAnnouncementsCard from "@/components/dashboard/PendingAnnouncementsCard"
 import type { StudentDashboardView } from "@/components/student/Sidebar"
 import { useLanguage } from "@/context/LanguageProvider"
@@ -15,8 +17,16 @@ import {
     sessionDisplayHour,
     type DbSession,
 } from "@/lib/sessions"
-import { BookOpen, Clapperboard, Library, LineChart } from "lucide-react"
-import { useEffect, useMemo, useState } from "react"
+import {
+    BookOpen,
+    Clapperboard,
+    GraduationCap,
+    Library,
+    LifeBuoy,
+    LineChart,
+    Video,
+} from "lucide-react"
+import { useEffect, useMemo, useRef, useState } from "react"
 
 function NextClassHero({
     session,
@@ -210,6 +220,108 @@ function MyClassesSection({
                     </div>
                 </button>
             </div>
+
+            <button
+                type="button"
+                onClick={onOpenLive}
+                className="mt-3 w-full rounded-lg border border-sky-400/40 bg-sky-500/15 px-3 py-2.5 text-sm font-extrabold text-sky-100 transition hover:bg-sky-500/25"
+            >
+                {t.dashboardViewMyClasses}
+            </button>
+        </section>
+    )
+}
+
+function WhatDoYouNeedSection({
+    onOpenLive,
+    onRequestPrivateClass,
+    onOpenSupport,
+}: {
+    onOpenLive: () => void
+    onRequestPrivateClass: () => void
+    onOpenSupport: () => void
+}) {
+    const { t } = useLanguage()
+
+    const cards = [
+        {
+            key: "join",
+            Icon: Video,
+            title: t.dashboardActionJoinClass,
+            description: t.dashboardActionJoinClassDescription,
+            button: t.dashboardActionJoinClassButton,
+            onClick: onOpenLive,
+            accent:
+                "border-sky-400/25 bg-sky-500/[0.07] hover:border-sky-300/40 hover:bg-sky-500/10",
+            iconWrap: "border-sky-400/30 bg-sky-500/15 text-sky-200",
+            buttonClass:
+                "border-sky-400/40 bg-sky-500/15 text-sky-100 hover:bg-sky-500/25",
+        },
+        {
+            key: "private",
+            Icon: GraduationCap,
+            title: t.dashboardActionPrivateClass,
+            description: t.dashboardActionPrivateClassDescription,
+            button: t.dashboardActionPrivateClassButton,
+            onClick: onRequestPrivateClass,
+            accent:
+                "border-violet-400/25 bg-violet-500/[0.07] hover:border-violet-300/40 hover:bg-violet-500/10",
+            iconWrap: "border-violet-400/30 bg-violet-500/15 text-violet-200",
+            buttonClass:
+                "border-violet-400/40 bg-violet-500/15 text-violet-100 hover:bg-violet-500/25",
+        },
+        {
+            key: "support",
+            Icon: LifeBuoy,
+            title: t.dashboardActionSupport,
+            description: t.dashboardActionSupportDescription,
+            button: t.dashboardActionSupportButton,
+            onClick: onOpenSupport,
+            accent:
+                "border-amber-400/25 bg-amber-500/[0.07] hover:border-amber-300/40 hover:bg-amber-500/10",
+            iconWrap: "border-amber-400/30 bg-amber-500/15 text-amber-200",
+            buttonClass:
+                "border-amber-400/40 bg-amber-500/15 text-amber-100 hover:bg-amber-500/25",
+        },
+    ] as const
+
+    return (
+        <section aria-labelledby="dashboard-what-do-you-need-title" className="space-y-3">
+            <h2
+                id="dashboard-what-do-you-need-title"
+                className="text-[0.65rem] font-bold uppercase tracking-[0.16em] text-slate-400"
+            >
+                {t.dashboardWhatDoYouNeed}
+            </h2>
+            <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
+                {cards.map(({ key, Icon, title, description, button, onClick, accent, iconWrap, buttonClass }) => (
+                    <div
+                        key={key}
+                        className={`flex flex-col rounded-2xl border p-4 shadow-sm transition ${accent}`}
+                    >
+                        <div className="flex items-start gap-3">
+                            <span
+                                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border ${iconWrap}`}
+                            >
+                                <Icon className="h-5 w-5" aria-hidden />
+                            </span>
+                            <div className="min-w-0 flex-1">
+                                <p className="text-sm font-extrabold uppercase tracking-wide text-slate-100">
+                                    {title}
+                                </p>
+                                <p className="mt-1 text-xs leading-snug text-slate-400">{description}</p>
+                            </div>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={onClick}
+                            className={`mt-3 w-full rounded-lg border px-3 py-2.5 text-sm font-extrabold transition ${buttonClass}`}
+                        >
+                            {button}
+                        </button>
+                    </div>
+                ))}
+            </div>
         </section>
     )
 }
@@ -271,6 +383,7 @@ export default function DashboardHome({
     const { sessions, subscriptionPlan, upcomingLiveSessions } = useSession()
     const { t } = useLanguage()
     const [now, setNow] = useState(() => new Date())
+    const privateClassRef = useRef<PrivateClassSectionHandle>(null)
 
     useEffect(() => {
         const id = window.setInterval(() => setNow(new Date()), 30_000)
@@ -301,6 +414,10 @@ export default function DashboardHome({
     }, [liveUpcoming, showTheory, now])
 
     const openLive = () => setActiveView("live")
+    const openSupport = () => setActiveView("support")
+    const openPrivateClassRequest = () => {
+        privateClassRef.current?.openRequestModal()
+    }
 
     return (
         <div className="space-y-4 sm:space-y-5">
@@ -336,7 +453,13 @@ export default function DashboardHome({
                 />
             </div>
 
-            <PrivateClassSection compact />
+            <WhatDoYouNeedSection
+                onOpenLive={openLive}
+                onRequestPrivateClass={openPrivateClassRequest}
+                onOpenSupport={openSupport}
+            />
+
+            <PrivateClassSection ref={privateClassRef} compact />
 
             <ComingSoonSection
                 onOpenRecorded={() => setActiveView("classes")}

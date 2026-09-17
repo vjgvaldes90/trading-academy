@@ -10,6 +10,7 @@ import AnnouncementsView from "@/components/dashboard/AnnouncementsView"
 import ComingSoonModal, {
     type ComingSoonFeature,
 } from "@/components/dashboard/ComingSoonModal"
+import BackToDashboardButton from "@/components/dashboard/BackToDashboardButton"
 import DashboardHome from "@/components/dashboard/DashboardHome"
 import ClassesView from "@/components/dashboard/ClassesView"
 import LiveSessionsView from "@/components/dashboard/LiveSessionsView"
@@ -250,6 +251,9 @@ function DashboardShell({
                         activeView === "live" ? "max-w-7xl" : dashboardTheme.contentMax
                     }`}
                 >
+                    {activeView !== "dashboard" ? (
+                        <BackToDashboardButton onBack={() => setActiveView("dashboard")} />
+                    ) : null}
                     {activeView === "dashboard" ? (
                         <DashboardHome
                             userName={welcomeName}
