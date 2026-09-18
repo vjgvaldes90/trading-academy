@@ -126,7 +126,7 @@ export async function fetchSecureAdminStartUrl(
     return { ok: true, zoom_start_url: url }
 }
 
-/** IT/Admin private-class enter — server authorizes via admin_session cookie only. */
+/** IT/Admin private-class HOST enter — uses host-join (zoom_start_url preferred). */
 export async function fetchSecureAdminPrivateClassHostUrl(
     requestId: string
 ): Promise<AdminStartResult> {
@@ -158,4 +158,69 @@ export async function fetchSecureAdminPrivateClassHostUrl(
         ""
     if (!url) return { ok: false, message: t().secureJoinInvalidResponse }
     return { ok: true, zoom_start_url: url }
+}
+
+export type AdminItJoinResult =
+    | { ok: true; join_url: string }
+    | { ok: false; message: string; code?: string }
+
+/** IT-only live participant join — `sessions.link` only. */
+export async function fetchSecureAdminItJoinUrl(sessionId: string): Promise<AdminItJoinResult> {
+    const res = await fetch("/api/admin/session/it-join", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ session_id: sessionId }),
+    })
+    const data = (await res.json().catch(() => ({}))) as {
+        join_url?: string
+        error?: string
+        code?: string
+    }
+    if (!res.ok) {
+        return {
+            ok: false,
+            message:
+                typeof data.error === "string" && data.error.trim()
+                    ? data.error
+                    : t().secureAdminStartFailed,
+            code: typeof data.code === "string" ? data.code : undefined,
+        }
+    }
+    const url = typeof data.join_url === "string" ? data.join_url.trim() : ""
+    if (!url) return { ok: false, message: t().secureJoinInvalidResponse }
+    return { ok: true, join_url: url }
+}
+
+/** IT-only private-class participant join — `zoom_join_url` only. */
+export async function fetchSecureAdminPrivateClassItJoinUrl(
+    requestId: string
+): Promise<AdminItJoinResult> {
+    const res = await fetch(
+        `/api/admin/private-class-requests/${encodeURIComponent(requestId)}/it-join`,
+        {
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({}),
+        }
+    )
+    const data = (await res.json().catch(() => ({}))) as {
+        join_url?: string
+        error?: string
+        code?: string
+    }
+    if (!res.ok) {
+        return {
+            ok: false,
+            message:
+                typeof data.error === "string" && data.error.trim()
+                    ? data.error
+                    : t().secureAdminStartFailed,
+            code: typeof data.code === "string" ? data.code : undefined,
+        }
+    }
+    const url = typeof data.join_url === "string" ? data.join_url.trim() : ""
+    if (!url) return { ok: false, message: t().secureJoinInvalidResponse }
+    return { ok: true, join_url: url }
 }

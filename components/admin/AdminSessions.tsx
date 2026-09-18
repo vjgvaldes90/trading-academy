@@ -10,8 +10,13 @@ import LiveSessionCard from "@/components/admin/liveSessions/LiveSessionCard"
 import CancelSessionConfirmModal from "@/app/admin/CancelSessionConfirmModal"
 import CreateSessionModal from "@/app/admin/CreateSessionModal"
 import EditSessionModal from "@/app/admin/EditSessionModal"
+import { getAuthorizedAdminEmailAction } from "@/app/actions/admin"
 import { useLanguage } from "@/context/LanguageProvider"
-import { fetchSecureAdminStartUrl } from "@/lib/secureJoinClient"
+import { isAuthorizedItAdminEmail } from "@/lib/adminEmails"
+import {
+    fetchSecureAdminItJoinUrl,
+    fetchSecureAdminStartUrl,
+} from "@/lib/secureJoinClient"
 import { getMinutesUntilSessionStart, type DbSession } from "@/lib/sessions"
 import { useCallback, useEffect, useMemo, useState } from "react"
 
@@ -54,6 +59,8 @@ function SessionCategoryBlock({
     onRequestCancelSession,
     now,
     onHostStart,
+    showItEnter,
+    onItJoin,
     emptyMessage,
 }: {
     title: string
@@ -64,6 +71,8 @@ function SessionCategoryBlock({
     onRequestCancelSession: (row: AdminSessionRow) => void
     now: Date
     onHostStart: (sessionId: string) => void | Promise<void>
+    showItEnter?: boolean
+    onItJoin?: (sessionId: string) => void | Promise<void>
     emptyMessage: string
 }) {
     return (
@@ -79,6 +88,8 @@ function SessionCategoryBlock({
                 onRequestCancelSession={onRequestCancelSession}
                 now={now}
                 onHostStart={onHostStart}
+                showItEnter={showItEnter}
+                onItJoin={onItJoin}
                 emptyMessage={emptyMessage}
             />
         </div>
@@ -92,6 +103,8 @@ function SessionList({
     onRequestCancelSession,
     now,
     onHostStart,
+    showItEnter,
+    onItJoin,
     emptyMessage,
 }: {
     rows: AdminSessionRow[]
@@ -100,6 +113,8 @@ function SessionList({
     onRequestCancelSession: (row: AdminSessionRow) => void
     now: Date
     onHostStart: (sessionId: string) => void | Promise<void>
+    showItEnter?: boolean
+    onItJoin?: (sessionId: string) => void | Promise<void>
     emptyMessage: string
 }) {
     if (rows.length === 0) {
@@ -114,9 +129,11 @@ function SessionList({
                         row={r}
                         highlighted={highlightedIds.has(r.id)}
                         now={now}
+                        showItEnter={showItEnter}
                         onEditSession={onEditSession}
                         onRequestCancelSession={onRequestCancelSession}
                         onHostStart={onHostStart}
+                        onItJoin={onItJoin}
                     />
                 </li>
             ))}
@@ -219,6 +236,24 @@ export default function AdminSessions() {
         return decodeURIComponent(hit.slice(key.length)).trim().toLowerCase()
     }, [])
 
+    const [verifiedAdminEmail, setVerifiedAdminEmail] = useState<string | null>(null)
+    const showItEnter = isAuthorizedItAdminEmail(verifiedAdminEmail)
+
+    useEffect(() => {
+        let cancelled = false
+        void (async () => {
+            try {
+                const email = await getAuthorizedAdminEmailAction()
+                if (!cancelled) setVerifiedAdminEmail(email)
+            } catch {
+                if (!cancelled) setVerifiedAdminEmail(null)
+            }
+        })()
+        return () => {
+            cancelled = true
+        }
+    }, [])
+
     const handleAdminHostStart = useCallback(
         async (sessionId: string) => {
             const r = await fetchSecureAdminStartUrl(sessionId, adminEmailFromCookie)
@@ -230,6 +265,15 @@ export default function AdminSessions() {
         },
         [adminEmailFromCookie]
     )
+
+    const handleAdminItJoin = useCallback(async (sessionId: string) => {
+        const r = await fetchSecureAdminItJoinUrl(sessionId)
+        if (r.ok) {
+            window.open(r.join_url, "_blank", "noopener,noreferrer")
+        } else {
+            window.alert(r.message)
+        }
+    }, [])
 
     return (
         <div className="mx-auto max-w-7xl space-y-8 text-[#e5e7eb]">
@@ -332,6 +376,8 @@ export default function AdminSessions() {
                                 onRequestCancelSession={setCancelTarget}
                                 now={now}
                                 onHostStart={handleAdminHostStart}
+                                showItEnter={showItEnter}
+                                onItJoin={handleAdminItJoin}
                                 emptyMessage={t.adminNoTheoryClassesScheduled}
                             />
                             <SessionCategoryBlock
@@ -343,6 +389,8 @@ export default function AdminSessions() {
                                 onRequestCancelSession={setCancelTarget}
                                 now={now}
                                 onHostStart={handleAdminHostStart}
+                                showItEnter={showItEnter}
+                                onItJoin={handleAdminItJoin}
                                 emptyMessage={t.adminNoTradingSessionsScheduled}
                             />
                         </div>

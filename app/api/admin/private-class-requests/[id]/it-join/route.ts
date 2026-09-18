@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { createSupabaseServiceRoleClient } from "@/lib/access"
 import { requireAuthorizedAdminFromCookies } from "@/lib/adminAuth"
+import { isAuthorizedItAdminEmail } from "@/lib/adminEmails"
 import {
     PRIVATE_CLASS_REQUEST_SELECT,
     privateClassRequestIdSchema,
@@ -14,17 +15,25 @@ type RouteContext = { params: Promise<{ id: string }> }
 const BLOCKED_STATUSES = new Set(["cancelled", "rejected"])
 
 /**
- * Admin/Host secure enter for a private class Zoom meeting.
- * Prefers zoom_start_url (host); falls back to zoom_join_url only if start is missing.
- * Auth: signed admin_session cookie only (never body email).
+ * IT-only participant join for private classes.
+ * Returns `zoom_join_url` only — never zoom_start_url.
  * Does not touch Stripe, payment status, student access, or bookings.
- * IT participant monitoring uses `/it-join` instead.
  */
 export async function POST(_req: Request, context: RouteContext) {
     try {
         const auth = await requireAuthorizedAdminFromCookies()
         if (!auth.ok) return auth.response
-        const verifiedAdmin = auth.email
+
+        if (!isAuthorizedItAdminEmail(auth.email)) {
+            return NextResponse.json(
+                {
+                    ok: false,
+                    error: "Forbidden — IT access only",
+                    code: "it_only",
+                },
+                { status: 403 }
+            )
+        }
 
         const { id: rawId } = await context.params
         const idParsed = privateClassRequestIdSchema.safeParse(rawId)
@@ -44,7 +53,7 @@ export async function POST(_req: Request, context: RouteContext) {
             .maybeSingle()
 
         if (loadErr) {
-            console.error("[api/admin/private-class-requests/host-join] load", loadErr.message)
+            console.error("[api/admin/private-class-requests/it-join] load", loadErr.message)
             return NextResponse.json(
                 { ok: false, error: "Failed to load private class request", code: "db_load_failed" },
                 { status: 500 }
@@ -71,41 +80,34 @@ export async function POST(_req: Request, context: RouteContext) {
             )
         }
 
-        // Prefer host start URL (same as existing Admin "Start Zoom"); fall back to participant join.
-        const startUrl =
-            typeof row.zoom_start_url === "string" && row.zoom_start_url.trim()
-                ? row.zoom_start_url.trim()
-                : ""
         const joinUrl =
             typeof row.zoom_join_url === "string" && row.zoom_join_url.trim()
                 ? row.zoom_join_url.trim()
                 : ""
-        const hostUrl = startUrl || joinUrl
-        if (!hostUrl) {
+        if (!joinUrl) {
             return NextResponse.json(
                 {
                     ok: false,
-                    error: "No Zoom meeting URL configured for this private class",
+                    error: "No participant Zoom join URL configured for this private class",
                     code: "missing_meeting_link",
                 },
                 { status: 503 }
             )
         }
 
-        console.log("[ADMIN PRIVATE CLASS HOST JOIN SUCCESS]", {
+        console.log("[ADMIN PRIVATE CLASS IT JOIN SUCCESS]", {
             request_id: requestId,
-            admin: verifiedAdmin,
+            admin: auth.email,
             status,
-            url_source: startUrl ? "zoom_start_url" : "zoom_join_url",
+            url_source: "zoom_join_url",
         })
 
         return NextResponse.json({
             ok: true,
-            join_url: hostUrl,
-            zoom_start_url: hostUrl,
+            join_url: joinUrl,
         })
     } catch (e) {
-        console.error("[api/admin/private-class-requests/host-join] POST", e)
+        console.error("[api/admin/private-class-requests/it-join] POST", e)
         return NextResponse.json(
             { ok: false, error: "Internal error", code: "internal_error" },
             { status: 500 }

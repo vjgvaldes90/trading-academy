@@ -456,6 +456,7 @@ export const en = {
     adminFilterStatus: "Status",
     adminSessionStartingSoon: "Your session starts in less than 10 minutes",
     adminEnterSession: "Enter session",
+    adminEnterAsIt: "Enter as IT",
     loadingSessions: "Loading sessions…",
     errorLoadingSessions: "Error loading sessions",
     failedToLoadAdminSessions: "Failed to load admin sessions",

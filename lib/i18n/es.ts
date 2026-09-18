@@ -458,6 +458,7 @@ export const es: TranslationKeys = {
     adminFilterStatus: "Estado",
     adminSessionStartingSoon: "Tu sesión comienza en menos de 10 minutos",
     adminEnterSession: "Entrar a la sesión",
+    adminEnterAsIt: "Entrar como IT",
     loadingSessions: "Cargando sesiones…",
     errorLoadingSessions: "Error al cargar sesiones",
     failedToLoadAdminSessions: "No se pudieron cargar las sesiones de admin",

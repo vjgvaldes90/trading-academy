@@ -1,6 +1,7 @@
 "use client"
 
 import CancelSessionConfirmModal from "@/app/admin/CancelSessionConfirmModal"
+import { getAuthorizedAdminEmailAction } from "@/app/actions/admin"
 import {
     formatPrivateClassPriceCents,
     formatPrivateClassTime,
@@ -12,7 +13,8 @@ import StudentToast, {
 } from "@/components/dashboard/support/StudentToast"
 import DateTimeField from "@/components/shared/DateTimeField"
 import { useLanguage } from "@/context/LanguageProvider"
-import { fetchSecureAdminPrivateClassHostUrl } from "@/lib/secureJoinClient"
+import { isAuthorizedItAdminEmail } from "@/lib/adminEmails"
+import { fetchSecureAdminPrivateClassItJoinUrl } from "@/lib/secureJoinClient"
 import {
     isFreePrivateClass,
     type PrivateClassRequestRow,
@@ -43,6 +45,8 @@ export default function AdminPrivateClassRequests() {
     const [toast, setToast] = useState<{ message: string; tone: StudentToastTone } | null>(null)
     const [ensuringZoomId, setEnsuringZoomId] = useState<string | null>(null)
     const [enteringSessionId, setEnteringSessionId] = useState<string | null>(null)
+    const [verifiedAdminEmail, setVerifiedAdminEmail] = useState<string | null>(null)
+    const showItEnter = isAuthorizedItAdminEmail(verifiedAdminEmail)
     const [rescheduleTarget, setRescheduleTarget] = useState<PrivateClassRequestRow | null>(null)
     const [rescheduleDate, setRescheduleDate] = useState("")
     const [rescheduleTime, setRescheduleTime] = useState("")
@@ -93,6 +97,21 @@ export default function AdminPrivateClassRequests() {
     useEffect(() => {
         void load()
     }, [load])
+
+    useEffect(() => {
+        let cancelled = false
+        void (async () => {
+            try {
+                const email = await getAuthorizedAdminEmailAction()
+                if (!cancelled) setVerifiedAdminEmail(email)
+            } catch {
+                if (!cancelled) setVerifiedAdminEmail(null)
+            }
+        })()
+        return () => {
+            cancelled = true
+        }
+    }, [])
 
     const filterButtons = useMemo(
         () =>
@@ -292,16 +311,16 @@ export default function AdminPrivateClassRequests() {
         }
     }
 
-    const enterPrivateClassSession = async (row: PrivateClassRequestRow) => {
+    const enterPrivateClassAsIt = async (row: PrivateClassRequestRow) => {
         if (enteringSessionId) return
         setEnteringSessionId(row.id)
         try {
-            const result = await fetchSecureAdminPrivateClassHostUrl(row.id)
+            const result = await fetchSecureAdminPrivateClassItJoinUrl(row.id)
             if (!result.ok) {
                 setToast({ message: result.message, tone: "error" })
                 return
             }
-            window.open(result.zoom_start_url, "_blank", "noopener,noreferrer")
+            window.open(result.join_url, "_blank", "noopener,noreferrer")
         } catch {
             setToast({ message: t.secureAdminStartFailed, tone: "error" })
         } finally {
@@ -553,16 +572,18 @@ export default function AdminPrivateClassRequests() {
                                                             {t.adminPrivateClassStartZoom}
                                                         </a>
                                                     ) : null}
-                                                    <button
-                                                        type="button"
-                                                        disabled={enteringSessionId !== null}
-                                                        onClick={() => void enterPrivateClassSession(row)}
-                                                        className="inline-flex items-center justify-center rounded-lg border border-sky-500/45 bg-blue-950/40 px-3 py-2 text-xs font-bold text-sky-200 transition hover:bg-blue-950/60 disabled:cursor-not-allowed disabled:opacity-60"
-                                                    >
-                                                        {enteringSessionId === row.id
-                                                            ? t.opening
-                                                            : t.adminEnterSession}
-                                                    </button>
+                                                    {showItEnter && hasJoin ? (
+                                                        <button
+                                                            type="button"
+                                                            disabled={enteringSessionId !== null}
+                                                            onClick={() => void enterPrivateClassAsIt(row)}
+                                                            className="inline-flex items-center justify-center rounded-lg border border-violet-400/45 bg-violet-950/40 px-3 py-2 text-xs font-bold text-violet-200 transition hover:bg-violet-950/60 disabled:cursor-not-allowed disabled:opacity-60"
+                                                        >
+                                                            {enteringSessionId === row.id
+                                                                ? t.opening
+                                                                : t.adminEnterAsIt}
+                                                        </button>
+                                                    ) : null}
                                                 </div>
                                             )
                                         })()}

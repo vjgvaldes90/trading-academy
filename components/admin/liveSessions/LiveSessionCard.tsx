@@ -4,22 +4,27 @@ import type { AdminSessionRow } from "@/components/admin/liveSessions/types"
 import { useLanguage } from "@/context/LanguageProvider"
 
 /**
- * Single live session row — IT/Admin host enter (server-authorized).
+ * Single live session row — Admin/Host enter + optional IT participant enter.
  */
 export default function LiveSessionCard({
     row,
     highlighted,
+    showItEnter = false,
     onEditSession,
     onRequestCancelSession,
     onHostStart,
+    onItJoin,
 }: {
     row: AdminSessionRow
     highlighted: boolean
-    /** Kept for call-site compatibility; host enter is no longer gated by wall-clock window. */
+    /** Kept for call-site compatibility; host enter is not gated by wall-clock window. */
     now?: Date
+    /** Only true for the authorized IT admin (UI); server still enforces IT-only. */
+    showItEnter?: boolean
     onEditSession: (row: AdminSessionRow) => void
     onRequestCancelSession: (row: AdminSessionRow) => void
     onHostStart: (sessionId: string) => void | Promise<void>
+    onItJoin?: (sessionId: string) => void | Promise<void>
 }) {
     const { t } = useLanguage()
     const hostAllowed = (row.status ?? "active") === "active"
@@ -87,6 +92,16 @@ export default function LiveSessionCard({
                     >
                         {t.enterAsHostZoom}
                     </button>
+                    {showItEnter ? (
+                        <button
+                            type="button"
+                            disabled={!hostAllowed || !onItJoin}
+                            onClick={() => void onItJoin?.(row.id)}
+                            className="rounded-lg border border-violet-400/45 bg-violet-950/40 px-3 py-2 text-xs font-bold text-violet-200 transition enabled:cursor-pointer enabled:hover:bg-violet-950/60 disabled:cursor-not-allowed disabled:opacity-55"
+                        >
+                            {t.adminEnterAsIt}
+                        </button>
+                    ) : null}
                 </div>
             </div>
         </article>

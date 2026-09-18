@@ -4,7 +4,7 @@ import { isAuthorizedAdminEmail, normalizeUserEmail } from "@/lib/adminEmails"
 import { ADMIN_SESSION_COOKIE, verifyAdminSessionToken } from "@/lib/adminSession"
 
 export { ADMIN_EMAILS } from "@/lib/adminEmails"
-export { isAuthorizedAdminEmail } from "@/lib/adminEmails"
+export { isAuthorizedAdminEmail, isAuthorizedItAdminEmail } from "@/lib/adminEmails"
 
 /**
  * Admin identity from signed HttpOnly `admin_session` + ADMIN_EMAILS allowlist.
