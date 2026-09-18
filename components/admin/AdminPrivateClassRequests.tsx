@@ -439,6 +439,8 @@ export default function AdminPrivateClassRequests() {
                         const status = String(row.status)
                         const isPending = status === "pending"
                         const canCancel = status === "pending" || status === "awaiting_payment"
+                        const canCancelFreeConfirmed =
+                            status === "confirmed" && isFreePrivateClass(row)
                         const isFree = isFreePrivateClass(row)
                         return (
                             <li
@@ -595,6 +597,15 @@ export default function AdminPrivateClassRequests() {
                                         >
                                             {t.adminPrivateClassReschedule}
                                         </button>
+                                        {canCancelFreeConfirmed ? (
+                                            <button
+                                                type="button"
+                                                onClick={() => openConfirm("cancel", row)}
+                                                className="rounded-lg border border-red-400/40 bg-red-500/15 px-3 py-2 text-xs font-bold text-red-100 transition hover:bg-red-500/25"
+                                            >
+                                                {t.adminPrivateClassCancelFreeClass}
+                                            </button>
+                                        ) : null}
                                     </div>
                                 ) : null}
 
@@ -665,9 +676,27 @@ export default function AdminPrivateClassRequests() {
                         ? `${confirmTarget.student_email} · ${confirmTarget.requested_date} · ${formatPrivateClassTime(confirmTarget.requested_time)}`
                         : ""
                 }
-                title={t.adminPrivateClassCancelTitle}
-                description={t.adminPrivateClassCancelDescription}
-                confirmText={t.adminPrivateClassCancelConfirm}
+                title={
+                    confirmTarget &&
+                    String(confirmTarget.status) === "confirmed" &&
+                    isFreePrivateClass(confirmTarget)
+                        ? t.adminPrivateClassCancelFreeTitle
+                        : t.adminPrivateClassCancelTitle
+                }
+                description={
+                    confirmTarget &&
+                    String(confirmTarget.status) === "confirmed" &&
+                    isFreePrivateClass(confirmTarget)
+                        ? t.adminPrivateClassCancelFreeDescription
+                        : t.adminPrivateClassCancelDescription
+                }
+                confirmText={
+                    confirmTarget &&
+                    String(confirmTarget.status) === "confirmed" &&
+                    isFreePrivateClass(confirmTarget)
+                        ? t.adminPrivateClassCancelFreeConfirm
+                        : t.adminPrivateClassCancelConfirm
+                }
                 onClose={closeConfirm}
                 onConfirm={async () => {
                     if (!confirmTarget) return

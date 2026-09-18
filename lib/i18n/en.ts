@@ -978,6 +978,11 @@ export const en = {
     adminPrivateClassCancelTitle: "Cancel this private class request?",
     adminPrivateClassCancelDescription: "This will mark the request as cancelled.",
     adminPrivateClassCancelConfirm: "Cancel request",
+    adminPrivateClassCancelFreeClass: "Cancel class",
+    adminPrivateClassCancelFreeTitle: "Cancel this free private class?",
+    adminPrivateClassCancelFreeDescription:
+        "This free confirmed class will be marked as cancelled. The student will no longer be able to join Zoom. Zoom links are kept for history.",
+    adminPrivateClassCancelFreeConfirm: "Cancel class",
     adminPrivateClassActionSuccess: "Request updated.",
     adminPrivateClassActionError: "Could not update the request.",
     adminPrivateClassNoMessage: "No message",

@@ -981,6 +981,11 @@ export const es: TranslationKeys = {
     adminPrivateClassCancelTitle: "¿Cancelar esta solicitud de clase privada?",
     adminPrivateClassCancelDescription: "La solicitud quedará marcada como cancelada.",
     adminPrivateClassCancelConfirm: "Cancelar solicitud",
+    adminPrivateClassCancelFreeClass: "Cancelar clase",
+    adminPrivateClassCancelFreeTitle: "¿Cancelar esta clase privada gratuita?",
+    adminPrivateClassCancelFreeDescription:
+        "Esta clase gratuita confirmada quedará marcada como cancelada. El estudiante ya no podrá unirse a Zoom. Los enlaces de Zoom se conservan por historial.",
+    adminPrivateClassCancelFreeConfirm: "Cancelar clase",
     adminPrivateClassActionSuccess: "Solicitud actualizada.",
     adminPrivateClassActionError: "No se pudo actualizar la solicitud.",
     adminPrivateClassNoMessage: "Sin mensaje",

@@ -6,6 +6,7 @@ import {
     privateClassAdminActionSchema,
     privateClassRequestIdSchema,
     adminPrivateClassRequest,
+    isFreePrivateClass,
     type PrivateClassRequestRow,
 } from "@/lib/privateClassRequests"
 
@@ -163,11 +164,11 @@ export async function PATCH(req: Request, context: RouteContext) {
             return NextResponse.json({ request: adminPrivateClassRequest(result.row) })
         }
 
-        // cancel — load current status first for post-payment messaging
+        // cancel — load current status (+ price) first for free vs post-payment rules
         const supabase = createSupabaseServiceRoleClient()
         const { data: existing, error: loadErr } = await supabase
             .from("private_class_requests")
-            .select("id, status")
+            .select("id, status, price_cents, stripe_payment_status")
             .eq("id", id)
             .maybeSingle()
 
@@ -180,7 +181,20 @@ export async function PATCH(req: Request, context: RouteContext) {
         }
 
         const status = String(existing.status ?? "")
-        if (status === "paid" || status === "confirmed") {
+        const free = isFreePrivateClass({
+            price_cents:
+                typeof (existing as { price_cents?: unknown }).price_cents === "number"
+                    ? (existing as { price_cents: number }).price_cents
+                    : null,
+            stripe_payment_status:
+                typeof (existing as { stripe_payment_status?: unknown }).stripe_payment_status ===
+                "string"
+                    ? (existing as { stripe_payment_status: string }).stripe_payment_status
+                    : null,
+        })
+
+        // Paid path (including paid+confirmed): still not implemented.
+        if (status === "paid" || (status === "confirmed" && !free)) {
             return NextResponse.json(
                 {
                     error: "Post-payment cancellation will be implemented in a later stage",
@@ -189,7 +203,13 @@ export async function PATCH(req: Request, context: RouteContext) {
                 { status: 409 }
             )
         }
-        if (status !== "pending" && status !== "awaiting_payment") {
+
+        // Allowed: pending, awaiting_payment, or FREE confirmed.
+        if (
+            status !== "pending" &&
+            status !== "awaiting_payment" &&
+            !(status === "confirmed" && free)
+        ) {
             return NextResponse.json(
                 {
                     error: `Cannot cancel a request in status "${status}"`,
