@@ -93,6 +93,12 @@ export default function AdminStudents() {
     const [busyEmail, setBusyEmail] = useState<string | null>(null)
     const [cancelModal, setCancelModal] = useState<CancelModalTarget | null>(null)
     const [createModalOpen, setCreateModalOpen] = useState(false)
+    const [revealedCodes, setRevealedCodes] = useState<Record<string, string>>({})
+    const [revealingEmail, setRevealingEmail] = useState<string | null>(null)
+    const [copiedEmail, setCopiedEmail] = useState<string | null>(null)
+    const [rotateTarget, setRotateTarget] = useState<TradingStudentListRow | null>(null)
+    const [rotateResult, setRotateResult] = useState<{ email: string; code: string } | null>(null)
+    const [rotateBusy, setRotateBusy] = useState(false)
 
     const programLabel = useCallback(
         (raw: string | null): { text: string; kind: "full" | "trading" | "other" } => {
@@ -117,6 +123,7 @@ export default function AdminStudents() {
             t.adminProgramLabel,
             t.accessTypeLabel,
             t.activeLabel,
+            t.adminAccessCodeLabel,
             t.actions,
         ],
         [t]
@@ -264,6 +271,111 @@ export default function AdminStudents() {
         setCancelModal({ userId: row.id })
     }
 
+    const revealAccessCode = async (row: TradingStudentListRow) => {
+        const key = row.email.trim().toLowerCase()
+        if (revealedCodes[key]) {
+            setRevealedCodes((prev) => {
+                const next = { ...prev }
+                delete next[key]
+                return next
+            })
+            return
+        }
+        if (revealingEmail) return
+        setRevealingEmail(key)
+        setError(null)
+        try {
+            const res = await fetch(`/api/admin/students/${studentPathEmail(row.email)}/access-code`, {
+                method: "GET",
+                credentials: "include",
+                cache: "no-store",
+            })
+            const data = (await res.json().catch(() => ({}))) as {
+                ok?: unknown
+                access_code?: unknown
+                error?: string
+                code?: string
+            }
+            if (!res.ok || data.ok !== true) {
+                throw new Error(
+                    typeof data.error === "string" && data.error.trim()
+                        ? data.error
+                        : data.code === "missing_access_code"
+                          ? t.adminAccessCodeMissing
+                          : t.adminAccessCodeRevealFailed
+                )
+            }
+            const code =
+                typeof data.access_code === "string" && data.access_code.trim()
+                    ? data.access_code.trim()
+                    : ""
+            if (!code) throw new Error(t.adminAccessCodeMissing)
+            setRevealedCodes((prev) => ({ ...prev, [key]: code }))
+        } catch (e: unknown) {
+            setError(e instanceof Error ? e.message : t.adminAccessCodeRevealFailed)
+        } finally {
+            setRevealingEmail(null)
+        }
+    }
+
+    const copyAccessCode = async (email: string, code: string) => {
+        const key = email.trim().toLowerCase()
+        try {
+            await navigator.clipboard.writeText(code)
+            setCopiedEmail(key)
+            window.setTimeout(() => {
+                setCopiedEmail((prev) => (prev === key ? null : prev))
+            }, 1600)
+        } catch {
+            setError(t.adminAccessCodeRevealFailed)
+        }
+    }
+
+    const confirmRotateAccessCode = async () => {
+        if (!rotateTarget || rotateBusy) return
+        const email = rotateTarget.email
+        const key = email.trim().toLowerCase()
+        setRotateBusy(true)
+        setError(null)
+        try {
+            const res = await fetch(
+                `/api/admin/students/${studentPathEmail(email)}/rotate-access-code`,
+                {
+                    method: "POST",
+                    credentials: "include",
+                    cache: "no-store",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({}),
+                }
+            )
+            const data = (await res.json().catch(() => ({}))) as {
+                ok?: unknown
+                access_code?: unknown
+                error?: string
+            }
+            if (!res.ok || data.ok !== true) {
+                throw new Error(
+                    typeof data.error === "string" && data.error.trim()
+                        ? data.error
+                        : t.adminAccessCodeRotateFailed
+                )
+            }
+            const code =
+                typeof data.access_code === "string" && data.access_code.trim()
+                    ? data.access_code.trim()
+                    : ""
+            if (!code) throw new Error(t.adminAccessCodeRotateFailed)
+            setRevealedCodes((prev) => ({ ...prev, [key]: code }))
+            setRotateTarget(null)
+            setRotateResult({ email, code })
+        } catch (e: unknown) {
+            setError(e instanceof Error ? e.message : t.adminAccessCodeRotateFailed)
+            throw e instanceof Error ? e : new Error(t.adminAccessCodeRotateFailed)
+        } finally {
+            setRotateBusy(false)
+        }
+    }
+
     return (
         <div className="space-y-6 text-[#e5e7eb]">
             <div style={{ maxWidth: 1280, margin: "0 auto" }}>
@@ -294,6 +406,240 @@ export default function AdminStudents() {
                     onClose={() => setCreateModalOpen(false)}
                     onSubmit={handleCreateStudent}
                 />
+
+                {rotateTarget ? (
+                    <div
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="admin-rotate-access-code-title"
+                        style={{
+                            position: "fixed",
+                            inset: 0,
+                            zIndex: 62,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            padding: 20,
+                            background: "rgba(0,0,0,0.72)",
+                        }}
+                        onClick={rotateBusy ? undefined : () => setRotateTarget(null)}
+                    >
+                        <div
+                            onClick={(ev) => ev.stopPropagation()}
+                            style={{
+                                width: "100%",
+                                maxWidth: 440,
+                                borderRadius: 16,
+                                border: "1px solid rgba(245,158,11,0.4)",
+                                background: "linear-gradient(145deg, #111827 0%, #0B0F1A 100%)",
+                                boxShadow: "0 24px 48px rgba(0,0,0,0.5)",
+                            }}
+                        >
+                            <div style={{ padding: "20px 22px 16px" }}>
+                                <h2
+                                    id="admin-rotate-access-code-title"
+                                    style={{
+                                        margin: "0 0 12px",
+                                        fontSize: "1.1rem",
+                                        fontWeight: 800,
+                                        color: "#f8fafc",
+                                    }}
+                                >
+                                    {t.adminAccessCodeChangeTitle}
+                                </h2>
+                                <p
+                                    style={{
+                                        margin: 0,
+                                        color: "#94a3b8",
+                                        fontSize: "0.875rem",
+                                        lineHeight: 1.55,
+                                    }}
+                                >
+                                    {t.adminAccessCodeChangeDescription}
+                                </p>
+                                <p
+                                    style={{
+                                        margin: "12px 0 0",
+                                        color: "#cbd5e1",
+                                        fontSize: "0.8125rem",
+                                        wordBreak: "break-all",
+                                    }}
+                                >
+                                    {rotateTarget.email}
+                                </p>
+                            </div>
+                            <div
+                                style={{
+                                    display: "flex",
+                                    gap: 10,
+                                    justifyContent: "flex-end",
+                                    flexWrap: "wrap",
+                                    padding: "12px 18px 18px",
+                                    borderTop: "1px solid rgba(59,130,246,0.15)",
+                                }}
+                            >
+                                <button
+                                    type="button"
+                                    disabled={rotateBusy}
+                                    onClick={() => setRotateTarget(null)}
+                                    style={{
+                                        padding: "10px 16px",
+                                        borderRadius: 10,
+                                        border: "1px solid rgba(148,163,184,0.35)",
+                                        background: "rgba(15,23,42,0.8)",
+                                        color: "#e2e8f0",
+                                        fontWeight: 600,
+                                        fontSize: "0.875rem",
+                                        cursor: rotateBusy ? "not-allowed" : "pointer",
+                                    }}
+                                >
+                                    {t.adminPrivateClassCancel}
+                                </button>
+                                <button
+                                    type="button"
+                                    disabled={rotateBusy}
+                                    onClick={() => {
+                                        void confirmRotateAccessCode().catch(() => {
+                                            /* error already surfaced via setError */
+                                        })
+                                    }}
+                                    style={{
+                                        padding: "10px 16px",
+                                        borderRadius: 10,
+                                        border: "1px solid rgba(245,158,11,0.5)",
+                                        background: rotateBusy
+                                            ? "rgba(100,100,100,0.35)"
+                                            : "rgba(180,83,9,0.95)",
+                                        color: "#fff",
+                                        fontWeight: 800,
+                                        fontSize: "0.875rem",
+                                        cursor: rotateBusy ? "not-allowed" : "pointer",
+                                    }}
+                                >
+                                    {rotateBusy ? t.loading : t.adminAccessCodeChangeConfirm}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                ) : null}
+
+                {rotateResult ? (
+                    <div
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="admin-new-access-code-title"
+                        style={{
+                            position: "fixed",
+                            inset: 0,
+                            zIndex: 63,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            padding: 20,
+                            background: "rgba(0,0,0,0.72)",
+                        }}
+                        onClick={() => setRotateResult(null)}
+                    >
+                        <div
+                            onClick={(ev) => ev.stopPropagation()}
+                            style={{
+                                width: "100%",
+                                maxWidth: 420,
+                                borderRadius: 16,
+                                border: "1px solid rgba(52,211,153,0.35)",
+                                background: "linear-gradient(145deg, #111827 0%, #0B0F1A 100%)",
+                                boxShadow: "0 24px 48px rgba(0,0,0,0.5)",
+                                padding: "22px 22px 18px",
+                            }}
+                        >
+                            <h2
+                                id="admin-new-access-code-title"
+                                style={{
+                                    margin: "0 0 8px",
+                                    fontSize: "1.1rem",
+                                    fontWeight: 800,
+                                    color: "#f8fafc",
+                                }}
+                            >
+                                {t.adminAccessCodeNewTitle}
+                            </h2>
+                            <p
+                                style={{
+                                    margin: "0 0 16px",
+                                    color: "#94a3b8",
+                                    fontSize: "0.8125rem",
+                                    lineHeight: 1.5,
+                                }}
+                            >
+                                {t.adminAccessCodeRotateSuccess}
+                            </p>
+                            <code
+                                style={{
+                                    display: "block",
+                                    marginBottom: 16,
+                                    padding: "14px 16px",
+                                    borderRadius: 12,
+                                    border: "1px solid rgba(251,191,36,0.35)",
+                                    background: "rgba(15,23,42,0.95)",
+                                    color: "#fde68a",
+                                    fontFamily:
+                                        "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+                                    fontSize: "1.35rem",
+                                    fontWeight: 800,
+                                    letterSpacing: "0.18em",
+                                    textAlign: "center",
+                                }}
+                            >
+                                {rotateResult.code}
+                            </code>
+                            <div
+                                style={{
+                                    display: "flex",
+                                    gap: 10,
+                                    justifyContent: "flex-end",
+                                    flexWrap: "wrap",
+                                }}
+                            >
+                                <button
+                                    type="button"
+                                    onClick={() =>
+                                        void copyAccessCode(rotateResult.email, rotateResult.code)
+                                    }
+                                    style={{
+                                        padding: "10px 16px",
+                                        borderRadius: 10,
+                                        border: "1px solid rgba(52,211,153,0.45)",
+                                        background: "rgba(6,78,59,0.55)",
+                                        color: "#6ee7b7",
+                                        fontWeight: 800,
+                                        fontSize: "0.875rem",
+                                        cursor: "pointer",
+                                    }}
+                                >
+                                    {copiedEmail === rotateResult.email.trim().toLowerCase()
+                                        ? t.adminAccessCodeCopied
+                                        : t.adminAccessCodeCopy}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setRotateResult(null)}
+                                    style={{
+                                        padding: "10px 16px",
+                                        borderRadius: 10,
+                                        border: "1px solid rgba(148,163,184,0.35)",
+                                        background: "rgba(15,23,42,0.8)",
+                                        color: "#e2e8f0",
+                                        fontWeight: 600,
+                                        fontSize: "0.875rem",
+                                        cursor: "pointer",
+                                    }}
+                                >
+                                    {t.close}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                ) : null}
 
                 <div className="relative mb-4">
                     <Search
@@ -359,7 +705,7 @@ export default function AdminStudents() {
                         <p style={{ margin: 0, padding: "16px", color: "#9ca3af" }}>{t.noStudentsFound}</p>
                     ) : (
                         <div style={{ overflowX: "auto" }}>
-                            <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 960 }}>
+                            <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 1100 }}>
                                 <thead>
                                     <tr style={{ background: "rgba(15,23,42,0.7)" }}>
                                         {tableHeaders.map((h) => (
@@ -548,6 +894,119 @@ export default function AdminStudents() {
                                                             />
                                                         </span>
                                                     </label>
+                                                </td>
+                                                <td style={{ padding: "10px 14px", verticalAlign: "middle" }}>
+                                                    {(() => {
+                                                        const revealed = revealedCodes[key]
+                                                        const revealing = revealingEmail === key
+                                                        const copied = copiedEmail === key
+                                                        return (
+                                                            <div
+                                                                style={{
+                                                                    display: "flex",
+                                                                    flexDirection: "column",
+                                                                    alignItems: "flex-start",
+                                                                    gap: 8,
+                                                                    minWidth: 148,
+                                                                }}
+                                                            >
+                                                                <code
+                                                                    style={{
+                                                                        fontFamily:
+                                                                            "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+                                                                        fontSize: "0.8125rem",
+                                                                        letterSpacing: "0.08em",
+                                                                        color: revealed ? "#fde68a" : "#64748b",
+                                                                        fontWeight: 700,
+                                                                    }}
+                                                                >
+                                                                    {revealed ?? t.adminAccessCodeHidden}
+                                                                </code>
+                                                                <div
+                                                                    style={{
+                                                                        display: "flex",
+                                                                        flexWrap: "wrap",
+                                                                        gap: 6,
+                                                                    }}
+                                                                >
+                                                                    <button
+                                                                        type="button"
+                                                                        disabled={
+                                                                            busy ||
+                                                                            revealing ||
+                                                                            Boolean(revealingEmail) ||
+                                                                            rotateBusy
+                                                                        }
+                                                                        onClick={() => void revealAccessCode(r)}
+                                                                        style={{
+                                                                            padding: "6px 10px",
+                                                                            borderRadius: 8,
+                                                                            border: "1px solid rgba(59,130,246,0.4)",
+                                                                            background: "rgba(15,23,42,0.9)",
+                                                                            color: "#93c5fd",
+                                                                            fontWeight: 700,
+                                                                            fontSize: "0.7rem",
+                                                                            cursor:
+                                                                                busy || revealing
+                                                                                    ? "wait"
+                                                                                    : "pointer",
+                                                                        }}
+                                                                    >
+                                                                        {revealing
+                                                                            ? t.loading
+                                                                            : revealed
+                                                                              ? t.adminAccessCodeHide
+                                                                              : t.adminAccessCodeReveal}
+                                                                    </button>
+                                                                    <button
+                                                                        type="button"
+                                                                        disabled={!revealed || busy || rotateBusy}
+                                                                        onClick={() => {
+                                                                            if (!revealed) return
+                                                                            void copyAccessCode(r.email, revealed)
+                                                                        }}
+                                                                        style={{
+                                                                            padding: "6px 10px",
+                                                                            borderRadius: 8,
+                                                                            border: revealed
+                                                                                ? "1px solid rgba(52,211,153,0.4)"
+                                                                                : "1px solid rgba(100,116,139,0.35)",
+                                                                            background: "rgba(15,23,42,0.9)",
+                                                                            color: revealed ? "#6ee7b7" : "#64748b",
+                                                                            fontWeight: 700,
+                                                                            fontSize: "0.7rem",
+                                                                            cursor: revealed ? "pointer" : "not-allowed",
+                                                                            opacity: revealed ? 1 : 0.55,
+                                                                        }}
+                                                                    >
+                                                                        {copied
+                                                                            ? t.adminAccessCodeCopied
+                                                                            : t.adminAccessCodeCopy}
+                                                                    </button>
+                                                                    <button
+                                                                        type="button"
+                                                                        disabled={busy || rotateBusy || revealing}
+                                                                        onClick={() => setRotateTarget(r)}
+                                                                        style={{
+                                                                            padding: "6px 10px",
+                                                                            borderRadius: 8,
+                                                                            border: "1px solid rgba(245,158,11,0.45)",
+                                                                            background: "rgba(120,53,15,0.35)",
+                                                                            color: "#fcd34d",
+                                                                            fontWeight: 700,
+                                                                            fontSize: "0.7rem",
+                                                                            cursor:
+                                                                                busy || rotateBusy
+                                                                                    ? "wait"
+                                                                                    : "pointer",
+                                                                        }}
+                                                                    >
+                                                                        {t.adminAccessCodeChange}
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        )
+                                                    })()}
                                                 </td>
                                                 <td style={{ padding: "10px 14px", textAlign: "right" }}>
                                                     <div

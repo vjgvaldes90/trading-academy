@@ -86,7 +86,7 @@ export async function PATCH(req: Request, context: RouteCtx) {
             .update(patch)
             .eq("email", email)
             .select(
-                "id, email, first_name, last_name, phone, profile_completed, access_type, is_active, access_expires_at, access_code, created_at"
+                "id, email, first_name, last_name, phone, profile_completed, access_type, is_active, access_expires_at, created_at"
             )
             .single()
 
