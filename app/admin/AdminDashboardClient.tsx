@@ -12,6 +12,7 @@ import AdminSidebar, { type AdminDashboardView } from "@/components/admin/AdminS
 import AdminStudents from "@/components/admin/AdminStudents"
 import AdminSubscriptions from "@/components/admin/AdminSubscriptions"
 import AdminSupport from "@/components/admin/AdminSupport"
+import BackToDashboardButton from "@/components/dashboard/BackToDashboardButton"
 import dashboardTheme from "@/components/dashboard/dashboardTheme.module.css"
 import { useLanguage } from "@/context/LanguageProvider"
 import { getAdminSupportStatusCountsAction } from "@/app/actions/support"
@@ -94,6 +95,9 @@ export default function AdminDashboardClient({
                             : "max-w-6xl"
                     }`}
                 >
+                    {activeView !== "overview" ? (
+                        <BackToDashboardButton onBack={() => setActiveView("overview")} />
+                    ) : null}
                     {activeView === "overview" ? <AdminOverview setActiveView={setActiveView} /> : null}
                     {activeView === "classes" ? <AdminClasses /> : null}
                     {activeView === "sessions" ? <AdminSessions /> : null}
