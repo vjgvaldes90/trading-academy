@@ -2,7 +2,6 @@ import { NextResponse } from "next/server"
 import { createSupabaseServiceRoleClient } from "@/lib/access"
 import { requireAuthorizedAdminFromCookies } from "@/lib/adminAuth"
 import { mapSupabaseSessionRow } from "@/lib/mapSessionRow"
-import { isWithinAdminHostWindow } from "@/lib/sessions"
 
 export const runtime = "nodejs"
 
@@ -41,12 +40,9 @@ export async function POST(req: Request) {
 
         const session = mapSupabaseSessionRow(rec)
         if (!session) return NextResponse.json({ error: "Invalid session data" }, { status: 500 })
-        if (!isWithinAdminHostWindow(session, new Date())) {
-            return NextResponse.json(
-                { error: "Host access opens 15 minutes before session start", code: "too_early" },
-                { status: 403 }
-            )
-        }
+
+        // IT/Admin may enter any active live session for monitoring — no student join
+        // window and no 15-minute host gate. Authorization is cookie-only (above).
 
         const hostUrl =
             typeof rec.zoom_start_url === "string" && rec.zoom_start_url.trim()

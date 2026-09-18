@@ -102,6 +102,7 @@ export async function fetchSecureAdminStartUrl(
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
             session_id: sessionId,
+            // Sent for legacy compatibility only — server ignores this and uses admin_session.
             admin_email: normalizeEmail(adminEmail),
         }),
     })
@@ -121,6 +122,40 @@ export async function fetchSecureAdminStartUrl(
         }
     }
     const url = typeof data.zoom_start_url === "string" ? data.zoom_start_url.trim() : ""
+    if (!url) return { ok: false, message: t().secureJoinInvalidResponse }
+    return { ok: true, zoom_start_url: url }
+}
+
+/** IT/Admin private-class enter — server authorizes via admin_session cookie only. */
+export async function fetchSecureAdminPrivateClassHostUrl(
+    requestId: string
+): Promise<AdminStartResult> {
+    const res = await fetch(`/api/admin/private-class-requests/${encodeURIComponent(requestId)}/host-join`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+    })
+    const data = (await res.json().catch(() => ({}))) as {
+        zoom_start_url?: string
+        join_url?: string
+        error?: string
+        code?: string
+    }
+    if (!res.ok) {
+        return {
+            ok: false,
+            message:
+                typeof data.error === "string" && data.error.trim()
+                    ? data.error
+                    : t().secureAdminStartFailed,
+            code: typeof data.code === "string" ? data.code : undefined,
+        }
+    }
+    const url =
+        (typeof data.zoom_start_url === "string" && data.zoom_start_url.trim()) ||
+        (typeof data.join_url === "string" && data.join_url.trim()) ||
+        ""
     if (!url) return { ok: false, message: t().secureJoinInvalidResponse }
     return { ok: true, zoom_start_url: url }
 }

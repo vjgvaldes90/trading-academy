@@ -12,6 +12,7 @@ import StudentToast, {
 } from "@/components/dashboard/support/StudentToast"
 import DateTimeField from "@/components/shared/DateTimeField"
 import { useLanguage } from "@/context/LanguageProvider"
+import { fetchSecureAdminPrivateClassHostUrl } from "@/lib/secureJoinClient"
 import {
     isFreePrivateClass,
     type PrivateClassRequestRow,
@@ -41,6 +42,7 @@ export default function AdminPrivateClassRequests() {
     const [rejectError, setRejectError] = useState<string | null>(null)
     const [toast, setToast] = useState<{ message: string; tone: StudentToastTone } | null>(null)
     const [ensuringZoomId, setEnsuringZoomId] = useState<string | null>(null)
+    const [enteringSessionId, setEnteringSessionId] = useState<string | null>(null)
     const [rescheduleTarget, setRescheduleTarget] = useState<PrivateClassRequestRow | null>(null)
     const [rescheduleDate, setRescheduleDate] = useState("")
     const [rescheduleTime, setRescheduleTime] = useState("")
@@ -290,6 +292,23 @@ export default function AdminPrivateClassRequests() {
         }
     }
 
+    const enterPrivateClassSession = async (row: PrivateClassRequestRow) => {
+        if (enteringSessionId) return
+        setEnteringSessionId(row.id)
+        try {
+            const result = await fetchSecureAdminPrivateClassHostUrl(row.id)
+            if (!result.ok) {
+                setToast({ message: result.message, tone: "error" })
+                return
+            }
+            window.open(result.zoom_start_url, "_blank", "noopener,noreferrer")
+        } catch {
+            setToast({ message: t.secureAdminStartFailed, tone: "error" })
+        } finally {
+            setEnteringSessionId(null)
+        }
+    }
+
     const submitReschedule = async () => {
         if (!rescheduleTarget || rescheduleSubmitting) return
         setRescheduleError(null)
@@ -505,26 +524,48 @@ export default function AdminPrivateClassRequests() {
                                                 ? t.privateClassFreeBadge
                                                 : formatPrivateClassPriceCents(row.price_cents)}
                                         </p>
-                                        {typeof row.zoom_start_url === "string" &&
-                                        row.zoom_start_url.trim() ? (
-                                            <div className="flex flex-wrap items-center gap-3">
-                                                <span className="text-xs font-semibold uppercase tracking-wide text-emerald-400/90">
-                                                    {t.adminPrivateClassZoomAvailable}
-                                                </span>
-                                                <a
-                                                    href={row.zoom_start_url.trim()}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="inline-flex items-center justify-center rounded-lg border border-amber-400/40 bg-amber-500/15 px-3 py-2 text-xs font-bold text-amber-100 transition hover:bg-amber-500/25"
-                                                >
-                                                    {t.adminPrivateClassStartZoom}
-                                                </a>
-                                            </div>
-                                        ) : (
-                                            <p className="text-sm text-slate-500">
-                                                {t.privateClassZoomPreparing}
-                                            </p>
-                                        )}
+                                        {(() => {
+                                            const hasStart =
+                                                typeof row.zoom_start_url === "string" &&
+                                                Boolean(row.zoom_start_url.trim())
+                                            const hasJoin =
+                                                typeof row.zoom_join_url === "string" &&
+                                                Boolean(row.zoom_join_url.trim())
+                                            if (!hasStart && !hasJoin) {
+                                                return (
+                                                    <p className="text-sm text-slate-500">
+                                                        {t.privateClassZoomPreparing}
+                                                    </p>
+                                                )
+                                            }
+                                            return (
+                                                <div className="flex flex-wrap items-center gap-3">
+                                                    <span className="text-xs font-semibold uppercase tracking-wide text-emerald-400/90">
+                                                        {t.adminPrivateClassZoomAvailable}
+                                                    </span>
+                                                    {hasStart ? (
+                                                        <a
+                                                            href={row.zoom_start_url!.trim()}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="inline-flex items-center justify-center rounded-lg border border-amber-400/40 bg-amber-500/15 px-3 py-2 text-xs font-bold text-amber-100 transition hover:bg-amber-500/25"
+                                                        >
+                                                            {t.adminPrivateClassStartZoom}
+                                                        </a>
+                                                    ) : null}
+                                                    <button
+                                                        type="button"
+                                                        disabled={enteringSessionId !== null}
+                                                        onClick={() => void enterPrivateClassSession(row)}
+                                                        className="inline-flex items-center justify-center rounded-lg border border-sky-500/45 bg-blue-950/40 px-3 py-2 text-xs font-bold text-sky-200 transition hover:bg-blue-950/60 disabled:cursor-not-allowed disabled:opacity-60"
+                                                    >
+                                                        {enteringSessionId === row.id
+                                                            ? t.opening
+                                                            : t.adminEnterSession}
+                                                    </button>
+                                                </div>
+                                            )
+                                        })()}
                                         <button
                                             type="button"
                                             disabled={rescheduleSubmitting}

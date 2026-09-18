@@ -2,39 +2,27 @@
 
 import type { AdminSessionRow } from "@/components/admin/liveSessions/types"
 import { useLanguage } from "@/context/LanguageProvider"
-import { isWithinAdminHostWindow, type DbSession } from "@/lib/sessions"
-
-function adminRowToDbSession(r: AdminSessionRow): DbSession {
-    return {
-        id: r.id,
-        day: null,
-        date: r.date,
-        time: r.time,
-        link: null,
-    }
-}
 
 /**
- * Single live session row — host window controls.
+ * Single live session row — IT/Admin host enter (server-authorized).
  */
 export default function LiveSessionCard({
     row,
     highlighted,
-    now,
     onEditSession,
     onRequestCancelSession,
     onHostStart,
 }: {
     row: AdminSessionRow
     highlighted: boolean
-    now: Date
+    /** Kept for call-site compatibility; host enter is no longer gated by wall-clock window. */
+    now?: Date
     onEditSession: (row: AdminSessionRow) => void
     onRequestCancelSession: (row: AdminSessionRow) => void
     onHostStart: (sessionId: string) => void | Promise<void>
 }) {
     const { t } = useLanguage()
-    const hostAllowed =
-        (row.status ?? "active") === "active" && isWithinAdminHostWindow(adminRowToDbSession(row), now)
+    const hostAllowed = (row.status ?? "active") === "active"
 
     const title = row.title?.trim() || t.liveSessionDefault
     const isTheory = (row.session_type ?? "trading") === "theory"
