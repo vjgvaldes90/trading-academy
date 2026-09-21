@@ -26,7 +26,6 @@ function isSingleSessionExemptApiPath(pathname: string): boolean {
         "/api/webhooks/stripe",
         "/api/stripe/webhook",
         "/api/create-user",
-        "/api/send-code",
         "/api/auth/establish-from-supabase",
         "/api/magic-login",
     ]

@@ -1,19 +1,15 @@
 import { NextResponse } from "next/server"
-import { sendEmail } from "@/lib/sendEmail" // ajusta la ruta si es diferente
 
-export async function POST(req: Request) {
-  const { email, code, name } = await req.json()
+export const runtime = "nodejs"
 
-  console.log("📩 Enviando email a:", email)
-
-  const result = await sendEmail(email, code, name)
-
-  if (!result.ok) {
+/**
+ * Public email relay disabled (security).
+ * Legitimate welcome emails are sent server-side via sendEmail from
+ * pre-enroll / provisioning / Stripe handlers — not through this route.
+ */
+export async function POST() {
     return NextResponse.json(
-      { success: false, error: result.error },
-      { status: 500 }
+        { error: "This endpoint is no longer available" },
+        { status: 410 }
     )
-  }
-
-  return NextResponse.json({ success: true })
 }
