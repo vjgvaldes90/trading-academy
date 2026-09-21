@@ -76,11 +76,9 @@ export default function AdminSidebar({
     )
 
     const itemBase =
-        "flex min-h-[44px] items-center gap-3 px-3.5 py-2.5 rounded-xl cursor-pointer transition duration-200 text-sm font-semibold text-left w-full"
-    const itemActive =
-        "bg-blue-500/20 text-blue-200 ring-1 ring-blue-400/40 border border-blue-400/20"
-    const itemNormal =
-        "text-slate-300 border border-transparent hover:bg-white/[0.05] hover:text-slate-100"
+        "flex min-h-[42px] items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition duration-200 text-sm font-medium text-left w-full"
+    const itemActive = "bg-blue-600/25 text-white"
+    const itemNormal = "text-slate-400 hover:bg-white/[0.04] hover:text-slate-200"
 
     useEffect(() => {
         if (!mobileOpen) return
@@ -113,7 +111,10 @@ export default function AdminSidebar({
                     onClick={() => onSelect(item.view)}
                     className={[itemBase, isActive ? itemActive : itemNormal].join(" ")}
                 >
-                    <Icon size={18} className="shrink-0 opacity-80" />
+                    <Icon
+                        size={18}
+                        className={["shrink-0", isActive ? "text-blue-300" : "opacity-70"].join(" ")}
+                    />
                     <span className="min-w-0 flex-1 truncate text-left">{item.label}</span>
                     {showBadge ? (
                         <span className="inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-extrabold leading-none text-white">
@@ -125,18 +126,31 @@ export default function AdminSidebar({
         })
 
     const brandHeader = (
-        <div className="px-1 pt-1 pb-1">
+        <div className="px-1 pb-3 pt-2">
             <div className="flex items-center gap-3">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-amber-400/30 bg-gradient-to-br from-amber-500/25 to-amber-600/10 text-amber-200 shadow-[0_0_24px_rgba(245,158,11,0.15)]">
-                    <LayoutDashboard size={20} />
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-amber-400/35 bg-amber-500/15 text-amber-300">
+                    <BarChart3 size={20} aria-hidden />
                 </div>
                 <div className="min-w-0">
-                    <div className="truncate text-[13px] font-extrabold leading-tight tracking-tight text-slate-50">
+                    <div className="truncate text-[11px] font-extrabold uppercase tracking-[0.12em] text-white">
                         {t.smartOptionAcademy}
                     </div>
-                    <div className="mt-0.5 truncate text-[11px] font-medium text-blue-300/80">
-                        {t.adminLabel}
+                </div>
+            </div>
+        </div>
+    )
+
+    const brandFooter = (
+        <div className="mt-auto border-t border-white/[0.06] px-1 pt-4">
+            <div className="flex items-center gap-2.5">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-amber-400/25 bg-amber-500/10 text-amber-300">
+                    <BarChart3 size={14} aria-hidden />
+                </div>
+                <div className="min-w-0">
+                    <div className="truncate text-[10px] font-bold uppercase tracking-wide text-slate-300">
+                        {t.smartOptionAcademy}
                     </div>
+                    <div className="mt-0.5 truncate text-[10px] text-slate-500">{t.adminInternalPanel}</div>
                 </div>
             </div>
         </div>
@@ -144,7 +158,7 @@ export default function AdminSidebar({
 
     return (
         <>
-            <div className="fixed left-0 right-0 top-0 z-50 border-b border-white/10 bg-[#0B1120]/95 px-3 py-2.5 backdrop-blur lg:hidden">
+            <div className="fixed left-0 right-0 top-0 z-50 border-b border-white/10 bg-[#0B0F19]/95 px-3 py-2.5 backdrop-blur lg:hidden">
                 <div className="flex items-center gap-3">
                     <button
                         type="button"
@@ -157,8 +171,10 @@ export default function AdminSidebar({
                         <Menu size={20} aria-hidden />
                     </button>
                     <div className="min-w-0">
-                        <div className="truncate text-sm font-extrabold text-slate-50">{t.adminLabel}</div>
-                        <div className="truncate text-[11px] text-white/55">{t.tradingAcademy}</div>
+                        <div className="truncate text-sm font-extrabold uppercase tracking-wide text-slate-50">
+                            {t.smartOptionAcademy}
+                        </div>
+                        <div className="truncate text-[11px] text-white/55">{t.adminLabel}</div>
                     </div>
                 </div>
             </div>
@@ -187,7 +203,7 @@ export default function AdminSidebar({
                             animate={{ x: 0 }}
                             exit={{ x: "-100%" }}
                             transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-                            className="fixed left-0 top-0 z-[56] flex h-[100dvh] w-[min(18rem,88vw)] flex-col gap-4 border-r border-white/10 bg-gradient-to-b from-[#0E1526] via-[#0B1120] to-[#090e18] p-4 lg:hidden"
+                            className="fixed left-0 top-0 z-[56] flex h-[100dvh] w-[min(17.5rem,88vw)] flex-col gap-3 border-r border-white/[0.07] bg-[#0B0F19] p-4 lg:hidden"
                         >
                             <div className="flex items-start justify-between gap-2">
                                 <div id={titleId} className="min-w-0">
@@ -202,12 +218,10 @@ export default function AdminSidebar({
                                     <X size={18} aria-hidden />
                                 </button>
                             </div>
-                            <nav className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto">
+                            <nav className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto">
                                 {renderNav(selectView)}
                             </nav>
-                            <div className="rounded-xl border border-amber-400/15 bg-amber-500/[0.06] px-3 py-2.5 text-xs text-slate-400">
-                                {t.adminInternalPanel}
-                            </div>
+                            {brandFooter}
                         </motion.aside>
                     </>
                 ) : null}
@@ -216,17 +230,17 @@ export default function AdminSidebar({
             <aside
                 className={[
                     "hidden lg:flex",
-                    "fixed left-0 top-0 h-screen w-64",
-                    "bg-gradient-to-b from-[#0E1526] via-[#0B1120] to-[#090e18] border-r border-white/10",
-                    "flex-col p-4 gap-4",
+                    "fixed left-0 top-0 h-screen w-[15.5rem]",
+                    "bg-[#0B0F19] border-r border-white/[0.07]",
+                    "flex-col p-4 gap-3",
                     "z-40",
                 ].join(" ")}
             >
                 {brandHeader}
-                <nav className="flex flex-col gap-1.5">{renderNav(setActiveView)}</nav>
-                <div className="mt-auto rounded-xl border border-amber-400/15 bg-amber-500/[0.06] px-3 py-2.5 text-xs text-slate-400">
-                    {t.adminInternalPanel}
-                </div>
+                <nav className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto">
+                    {renderNav(setActiveView)}
+                </nav>
+                {brandFooter}
             </aside>
         </>
     )

@@ -67,24 +67,20 @@ export default function AdminDashboardClient({
     }, [refreshOpenCount])
 
     return (
-        <div className={`flex min-h-screen bg-[#0B1120] text-white ${dashboardTheme.shell}`}>
+        <div className={`flex min-h-screen bg-[#0B0F19] text-white ${dashboardTheme.shell}`}>
             <AdminSidebar
                 activeView={activeView}
                 setActiveView={setActiveView}
                 openSupportCount={openSupportCount}
             />
 
-            <main className="ml-0 flex-1 p-6 pt-[4.25rem] lg:ml-64 lg:p-8 lg:pt-8">
-                <header className="mb-5 flex items-center justify-between gap-4 border-b border-white/[0.07] pb-4 lg:mb-6">
-                    {activeView !== "sessions" && activeView !== "overview" ? (
-                        <h1 className="text-lg font-bold tracking-tight text-slate-100 lg:text-xl">
-                            {sectionTitles[activeView]}
-                        </h1>
-                    ) : (
-                        <div className="min-w-0 flex-1" />
-                    )}
-                    <AdminNotificationsBell />
-                </header>
+            <main className="ml-0 flex-1 p-5 pt-[4.25rem] lg:ml-[15.5rem] lg:p-8 lg:pt-8">
+                {/* Overview owns its own header chrome (greeting + date + admin + bell). */}
+                {activeView !== "overview" ? (
+                    <header className="mb-5 flex items-center justify-end gap-4 lg:mb-6">
+                        <AdminNotificationsBell />
+                    </header>
+                ) : null}
 
                 <div
                     key={activeView}
@@ -100,7 +96,14 @@ export default function AdminDashboardClient({
                     }`}
                 >
                     {activeView !== "overview" ? (
-                        <BackToDashboardButton onBack={() => setActiveView("overview")} />
+                        <>
+                            {activeView !== "sessions" ? (
+                                <h1 className="mb-4 text-lg font-bold tracking-tight text-slate-100 lg:text-xl">
+                                    {sectionTitles[activeView]}
+                                </h1>
+                            ) : null}
+                            <BackToDashboardButton onBack={() => setActiveView("overview")} />
+                        </>
                     ) : null}
                     {activeView === "overview" ? <AdminOverview setActiveView={setActiveView} /> : null}
                     {activeView === "classes" ? <AdminClasses /> : null}
