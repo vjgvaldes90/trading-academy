@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { createSupabaseServiceRoleClient } from "@/lib/access"
+import { getVerifiedStudentEmailFromCookies } from "@/lib/requireVerifiedSessionCookie"
 import { stripSensitiveSessionFields } from "@/lib/secureZoomJoin"
 import {
     evaluateAcademyAccess,
@@ -10,32 +11,25 @@ import {
 
 export const runtime = "nodejs"
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-
 /**
  * Student session list: metadata + availability only (no Zoom URLs).
- * Caller must pass `user_email` for access evaluation.
+ * Identity comes only from verified session cookies (query email is ignored).
  * Theory Classes are omitted unless evaluateTheoryAccess allows them.
  */
-export async function GET(req: Request) {
+export async function GET() {
     try {
-        const { searchParams } = new URL(req.url)
-        const userEmailRaw =
-            searchParams.get("user_email") ?? searchParams.get("userEmail") ?? searchParams.get("email")
-        const userEmail = typeof userEmailRaw === "string" ? userEmailRaw.trim().toLowerCase() : ""
-
+        const userEmail = await getVerifiedStudentEmailFromCookies()
         if (!userEmail) {
-            return NextResponse.json({ error: "user_email is required" }, { status: 401 })
-        }
-        if (!EMAIL_RE.test(userEmail)) {
-            return NextResponse.json({ error: "Invalid user_email" }, { status: 400 })
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
         }
 
         const supabase = createSupabaseServiceRoleClient()
 
         const { data: accessRow, error: accessErr } = await supabase
             .from("trading_students")
-            .select("access_code, access_type, is_active, access_expires_at, plan, program_theory_until, subscription_id, subscription_status")
+            .select(
+                "access_code, access_type, is_active, access_expires_at, plan, program_theory_until, subscription_id, subscription_status"
+            )
             .eq("email", userEmail)
             .maybeSingle()
 

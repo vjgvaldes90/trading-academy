@@ -1,22 +1,14 @@
 import { NextResponse } from "next/server"
 import { createSupabaseServiceRoleClient } from "@/lib/access"
+import { getVerifiedStudentEmailFromCookies } from "@/lib/requireVerifiedSessionCookie"
 
 export const runtime = "nodejs"
 
-function normalizeEmail(raw: string | null): string | null {
-    const s = raw?.trim().toLowerCase() ?? ""
-    return s.length > 0 ? s : null
-}
-
-export async function GET(req: Request) {
+export async function GET() {
     try {
-        const { searchParams } = new URL(req.url)
-        const userEmail = normalizeEmail(
-            searchParams.get("user_email") ?? searchParams.get("userEmail") ?? searchParams.get("email")
-        )
-
+        const userEmail = await getVerifiedStudentEmailFromCookies()
         if (!userEmail) {
-            return NextResponse.json({ error: "user_email query required" }, { status: 400 })
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
         }
 
         const supabase = createSupabaseServiceRoleClient()
@@ -30,7 +22,10 @@ export async function GET(req: Request) {
 
         if (error) {
             console.error("[api/notifications] GET", error)
-            return NextResponse.json({ error: "Failed to load notifications", details: error.message }, { status: 500 })
+            return NextResponse.json(
+                { error: "Failed to load notifications", details: error.message },
+                { status: 500 }
+            )
         }
 
         return NextResponse.json(Array.isArray(data) ? data : [])

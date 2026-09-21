@@ -35,8 +35,8 @@ export default function StudentNotificationsSection() {
         setError(null)
         try {
             const res = await fetch(
-                `/api/notifications?user_email=${encodeURIComponent(userEmail)}`,
-                { cache: "no-store" }
+                `/api/notifications`,
+                { cache: "no-store", credentials: "include" }
             )
             const payload = (await res.json().catch(() => [])) as unknown
             if (!res.ok) {

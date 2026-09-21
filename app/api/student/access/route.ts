@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { createSupabaseServiceRoleClient } from "@/lib/access"
+import { getVerifiedStudentEmailFromCookies } from "@/lib/requireVerifiedSessionCookie"
 import {
     academyAccessDeniedMessageEs,
     evaluateAcademyAccess,
@@ -9,24 +10,15 @@ import { resolveSubscriptionPlan } from "@/lib/subscriptionPlans"
 
 export const runtime = "nodejs"
 
-function normalizeEmail(raw: string | null): string | null {
-    const s = raw?.trim().toLowerCase() ?? ""
-    return s.length > 0 ? s : null
-}
-
 /**
- * GET ?user_email=… — whether this email may use the academy (dashboard / live join gate).
- * Same trust model as other student calendar APIs (caller supplies email).
+ * GET — whether the authenticated student may use the academy (dashboard / live join gate).
+ * Identity comes only from verified session cookies (query email is ignored).
  */
-export async function GET(req: Request) {
+export async function GET() {
     try {
-        const { searchParams } = new URL(req.url)
-        const userEmail = normalizeEmail(
-            searchParams.get("user_email") ?? searchParams.get("userEmail") ?? searchParams.get("email")
-        )
-
+        const userEmail = await getVerifiedStudentEmailFromCookies()
         if (!userEmail) {
-            return NextResponse.json({ ok: false, error: "user_email query required" }, { status: 400 })
+            return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 })
         }
 
         const supabase = createSupabaseServiceRoleClient()
@@ -40,19 +32,15 @@ export async function GET(req: Request) {
             .maybeSingle()
 
         if (error) {
-            console.error("[api/student/access] GET", error)
+            console.error("[api/student/access] GET query failed")
             return NextResponse.json(
                 { ok: false, reason: "not_found", message: academyAccessDeniedMessageEs("not_found") },
                 { status: 500 }
             )
         }
 
-        console.log("EMAIL:", userEmail)
-        console.log("ROW:", row)
-
         const ev = evaluateAcademyAccess(row as TradingStudentAccessRow | null)
 
-        console.log("RESULT:", ev)
         if (!ev.ok) {
             return NextResponse.json({
                 ok: false,
