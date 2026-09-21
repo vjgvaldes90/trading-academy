@@ -12,6 +12,7 @@ import AdminSidebar, { type AdminDashboardView } from "@/components/admin/AdminS
 import AdminStudents from "@/components/admin/AdminStudents"
 import AdminSubscriptions from "@/components/admin/AdminSubscriptions"
 import AdminSupport from "@/components/admin/AdminSupport"
+import AdminTheoryPlanning from "@/components/admin/AdminTheoryPlanning"
 import BackToDashboardButton from "@/components/dashboard/BackToDashboardButton"
 import dashboardTheme from "@/components/dashboard/dashboardTheme.module.css"
 import { useLanguage } from "@/context/LanguageProvider"
@@ -32,6 +33,7 @@ export default function AdminDashboardClient({
             overview: t.adminOverview,
             classes: t.adminRecordedClasses,
             sessions: t.adminLiveSessions,
+            theoryPlanning: t.adminTheoryPlanning,
             privateClasses: t.adminPrivateClassRequests,
             students: t.adminStudents,
             subscriptions: t.adminSubscriptions,
@@ -88,6 +90,7 @@ export default function AdminDashboardClient({
                     key={activeView}
                     className={`${dashboardTheme.viewEnter} ${
                         activeView === "sessions" ||
+                        activeView === "theoryPlanning" ||
                         activeView === "privateClasses" ||
                         activeView === "support" ||
                         activeView === "announcements"
@@ -101,6 +104,7 @@ export default function AdminDashboardClient({
                     {activeView === "overview" ? <AdminOverview setActiveView={setActiveView} /> : null}
                     {activeView === "classes" ? <AdminClasses /> : null}
                     {activeView === "sessions" ? <AdminSessions /> : null}
+                    {activeView === "theoryPlanning" ? <AdminTheoryPlanning /> : null}
                     {activeView === "privateClasses" ? <AdminPrivateClassRequests /> : null}
                     {activeView === "students" ? <AdminStudents /> : null}
                     {activeView === "subscriptions" ? <AdminSubscriptions /> : null}

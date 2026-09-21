@@ -339,6 +339,7 @@ export const es: TranslationKeys = {
     adminOverview: "Resumen",
     adminRecordedClasses: "Clases grabadas",
     adminLiveSessions: "Sesiones en vivo",
+    adminTheoryPlanning: "Planificación de teoría",
     adminPrivateClassRequests: "Clases privadas",
     adminStudents: "Estudiantes",
     adminSubscriptions: "Suscripciones",
@@ -1102,6 +1103,133 @@ export const es: TranslationKeys = {
     adminAnnouncementsToastCreateError: "Error al crear el anuncio.",
     adminAnnouncementsToastUpdateError: "Error al actualizar el anuncio.",
     adminAnnouncementsToastDeleteError: "Error al eliminar el anuncio.",
+
+    // Admin Theory Planning
+    adminTheoryPlanningSubtitle:
+        "Planifica grupos de teoría Full Program por slot. Vincular una sesión en vivo no crea ni programa clases automáticamente.",
+    adminTheoryPlanningFilterAll: "Todos",
+    adminTheoryPlanningFilterStatus: "Estado",
+    adminTheoryPlanningFilterSlot: "Slot de teoría",
+    adminTheoryPlanningSlot1: "Slot 1",
+    adminTheoryPlanningSlot2: "Slot 2",
+    adminTheoryPlanningStatusDraft: "Borrador",
+    adminTheoryPlanningStatusScheduled: "Programado",
+    adminTheoryPlanningStatusCompleted: "Completado",
+    adminTheoryPlanningStatusCancelled: "Cancelado",
+    adminTheoryPlanningLoading: "Cargando grupos de planificación de teoría…",
+    adminTheoryPlanningLoadError: "No se pudieron cargar los grupos de planificación de teoría.",
+    adminTheoryPlanningEmpty: "No hay grupos que coincidan con este filtro.",
+    adminTheoryPlanningRetry: "Reintentar",
+    adminTheoryPlanningRefresh: "Actualizar",
+    adminTheoryPlanningCreate: "Crear grupo",
+    adminTheoryPlanningCreateTitle: "Crear grupo de planificación de teoría",
+    adminTheoryPlanningCreateDescription:
+        "Los grupos nuevos empiezan en borrador. Elige el slot de teoría para la elegibilidad.",
+    adminTheoryPlanningCreateSubmit: "Crear grupo en borrador",
+    adminTheoryPlanningCreateSuccess: "Grupo en borrador creado.",
+    adminTheoryPlanningCreateError: "No se pudo crear el grupo.",
+    adminTheoryPlanningDateTimePairRequired:
+        "La fecha y la hora tentativas deben indicarse juntas, o dejar ambas vacías.",
+    adminTheoryPlanningConfirmedDateTimePairRequired:
+        "La fecha y la hora confirmadas deben indicarse juntas, o dejar ambas vacías.",
+    adminTheoryPlanningFieldTitle: "Título",
+    adminTheoryPlanningFieldTitlePlaceholder: "Título opcional del grupo…",
+    adminTheoryPlanningFieldNotes: "Notas del admin",
+    adminTheoryPlanningFieldNotesPlaceholder: "Notas internas…",
+    adminTheoryPlanningFieldSlot: "Slot de teoría",
+    adminTheoryPlanningFieldTentativeDate: "Fecha tentativa",
+    adminTheoryPlanningFieldTentativeTime: "Hora tentativa",
+    adminTheoryPlanningFieldConfirmedDate: "Fecha confirmada",
+    adminTheoryPlanningFieldConfirmedTime: "Hora confirmada",
+    adminTheoryPlanningFieldStatus: "Estado",
+    adminTheoryPlanningColTitle: "Título",
+    adminTheoryPlanningColStatus: "Estado",
+    adminTheoryPlanningColSlot: "Slot",
+    adminTheoryPlanningColMembers: "Miembros",
+    adminTheoryPlanningColTentative: "Tentativa",
+    adminTheoryPlanningColSession: "Sesión",
+    adminTheoryPlanningColCreated: "Creado",
+    adminTheoryPlanningUntitled: "Grupo sin título",
+    adminTheoryPlanningSelectGroup: "Abrir",
+    adminTheoryPlanningSelected: "Seleccionado",
+    adminTheoryPlanningDetailTitle: "Detalle del grupo",
+    adminTheoryPlanningDetailClose: "Cerrar detalle",
+    adminTheoryPlanningSave: "Guardar cambios",
+    adminTheoryPlanningSaving: "Guardando…",
+    adminTheoryPlanningSaveSuccess: "Grupo actualizado.",
+    adminTheoryPlanningSaveError: "No se pudo actualizar el grupo.",
+    adminTheoryPlanningReadOnly:
+        "Este grupo está completado o cancelado. La edición y los cambios de miembros están deshabilitados.",
+    adminTheoryPlanningMinMembersHint:
+        "Se requieren al menos {count} miembros antes de marcar el grupo como programado.",
+    adminTheoryPlanningMinMembersBlocked:
+        "Aún no se puede marcar como programado — se necesitan al menos {count} miembros (ahora {current}).",
+    adminTheoryPlanningMembersTitle: "Miembros",
+    adminTheoryPlanningMembersEmpty: "Este grupo todavía no tiene miembros.",
+    adminTheoryPlanningMemberRemove: "Quitar",
+    adminTheoryPlanningMemberRemoveTitle: "¿Quitar a este estudiante del grupo?",
+    adminTheoryPlanningMemberRemoveDescription:
+        "El estudiante saldrá de este grupo de planificación. La cuota de teoría no cambia.",
+    adminTheoryPlanningMemberRemoveConfirm: "Quitar miembro",
+    adminTheoryPlanningMemberRemoveSuccess: "Miembro eliminado.",
+    adminTheoryPlanningMemberRemoveError: "No se pudo eliminar el miembro.",
+    adminTheoryPlanningMemberRemoveBlockedScheduled:
+        "No se puede quitar un miembro de un grupo programado si quedarían menos de {count} miembros. Cambia el estado primero si necesitas reducir el grupo.",
+    adminTheoryPlanningAddMemberTitle: "Agregar estudiantes elegibles",
+    adminTheoryPlanningEligibleSearch: "Buscar por nombre o correo…",
+    adminTheoryPlanningEligibleLoading: "Cargando estudiantes elegibles…",
+    adminTheoryPlanningEligibleLoadError: "No se pudieron cargar los estudiantes elegibles.",
+    adminTheoryPlanningEligibleEmpty:
+        "No hay estudiantes elegibles para este slot. Los estudiantes Full Program necesitan un período de cuota de teoría válido y cuota disponible para este slot.",
+    adminTheoryPlanningEligibleNoneMatch: "Ningún estudiante elegible coincide con esta búsqueda.",
+    adminTheoryPlanningAddMember: "Agregar",
+    adminTheoryPlanningAddMemberSuccess: "Estudiante agregado al grupo.",
+    adminTheoryPlanningAddMemberAlready: "El estudiante ya es miembro de este grupo.",
+    adminTheoryPlanningAddMemberError: "No se pudo agregar al estudiante.",
+    adminTheoryPlanningErrorAlreadyInGroup:
+        "Este estudiante ya está en otro grupo activo de planificación para este slot de teoría.",
+    adminTheoryPlanningErrorNotFullProgram: "El estudiante no está en Full Program.",
+    adminTheoryPlanningErrorPeriodNotConfigured:
+        "Este estudiante no tiene un período de cuota de teoría configurado.",
+    adminTheoryPlanningErrorSlotMismatch:
+        "Este estudiante no es elegible para el slot de teoría seleccionado.",
+    adminTheoryPlanningErrorQuotaExhausted:
+        "La cuota de clases de teoría ya está agotada para este estudiante.",
+    adminTheoryPlanningErrorGroupNotActive:
+        "Solo se pueden agregar miembros a grupos en borrador o programados.",
+    adminTheoryPlanningErrorInsufficientMembers:
+        "Se requieren al menos 5 miembros para marcar este grupo como programado.",
+    adminTheoryPlanningErrorInvalidTransition:
+        "Ese cambio de estado no está permitido para el estado actual del grupo.",
+    adminTheoryPlanningErrorSessionNotFound: "No se encontró la sesión en vivo seleccionada.",
+    adminTheoryPlanningErrorSessionNotTheory: "Solo se pueden vincular sesiones en vivo de teoría.",
+    adminTheoryPlanningErrorSessionLinked:
+        "Esa sesión en vivo ya está vinculada a otro grupo de planificación.",
+    adminTheoryPlanningErrorConflict:
+        "El grupo cambió al mismo tiempo. Actualiza e intenta de nuevo.",
+    adminTheoryPlanningErrorValidation:
+        "Solicitud no válida. Revisa los campos e intenta de nuevo.",
+    adminTheoryPlanningErrorLookupFailed:
+        "No se pudieron consultar los datos del estudiante o del grupo.",
+    adminTheoryPlanningErrorInvalidArgs:
+        "Se enviaron argumentos no válidos. Actualiza e intenta de nuevo.",
+    adminTheoryPlanningErrorNotFound: "No se encontró el grupo, miembro o sesión solicitados.",
+    adminTheoryPlanningErrorScheduledMinMembers:
+        "No se puede quitar un miembro de un grupo programado si quedarían menos de {count} miembros.",
+    adminTheoryPlanningSessionTitle: "Sesión de teoría vinculada",
+    adminTheoryPlanningSessionNone: "Sin sesión vinculada",
+    adminTheoryPlanningSessionLoading: "Cargando sesiones de teoría…",
+    adminTheoryPlanningSessionLoadError: "No se pudieron cargar las sesiones en vivo.",
+    adminTheoryPlanningSessionPlaceholder: "Selecciona una sesión de teoría…",
+    adminTheoryPlanningSessionLink: "Vincular sesión",
+    adminTheoryPlanningSessionUnlink: "Desvincular sesión",
+    adminTheoryPlanningSessionLinkSuccess: "Sesión de teoría vinculada.",
+    adminTheoryPlanningSessionUnlinkSuccess: "Sesión desvinculada.",
+    adminTheoryPlanningSessionEmpty: "No hay sesiones de teoría activas para vincular.",
+    adminTheoryPlanningSessionUnavailable:
+        "La sesión vinculada no está en la lista de sesiones de teoría activas (puede estar inactiva o no disponible).",
+    adminTheoryPlanningSessionUnavailableOption: "Sesión vinculada (no disponible)",
+    adminTheoryPlanningNoDate: "—",
 
     // Student Announcements
     announcementsTitle: "Anuncios",

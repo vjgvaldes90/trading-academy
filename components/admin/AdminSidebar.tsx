@@ -7,6 +7,7 @@ import { type ComponentType, useEffect, useId, useMemo, useState } from "react"
 import {
     BarChart3,
     Calendar,
+    ClipboardList,
     CreditCard,
     LayoutDashboard,
     LifeBuoy,
@@ -23,6 +24,7 @@ export type AdminDashboardView =
     | "overview"
     | "classes"
     | "sessions"
+    | "theoryPlanning"
     | "privateClasses"
     | "students"
     | "subscriptions"
@@ -41,6 +43,7 @@ const NAV_ITEMS: NavItem[] = [
     { labelKey: "adminOverview", view: "overview", icon: LayoutDashboard },
     { labelKey: "adminRecordedClasses", view: "classes", icon: Video },
     { labelKey: "adminLiveSessions", view: "sessions", icon: Calendar },
+    { labelKey: "adminTheoryPlanning", view: "theoryPlanning", icon: ClipboardList },
     { labelKey: "adminPrivateClassRequests", view: "privateClasses", icon: UserRound },
     { labelKey: "adminStudents", view: "students", icon: Users },
     { labelKey: "adminSubscriptions", view: "subscriptions", icon: CreditCard },

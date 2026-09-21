@@ -3,7 +3,10 @@ import { createSupabaseServiceRoleClient } from "@/lib/access"
 import { requireAuthorizedAdminFromCookies } from "@/lib/adminAuth"
 import {
     THEORY_PLANNING_GROUP_SELECT,
+    THEORY_PLANNING_MIN_MEMBERS_FOR_SCHEDULED,
+    countGroupMembers,
     theoryPlanningGroupIdSchema,
+    type TheoryPlanningGroupRow,
 } from "@/lib/theoryPlanning"
 import { z } from "zod"
 
@@ -46,6 +49,28 @@ export async function DELETE(_req: Request, context: RouteContext) {
         }
         if (!group) {
             return NextResponse.json({ error: "Group not found", code: "not_found" }, { status: 404 })
+        }
+
+        const groupRow = group as TheoryPlanningGroupRow
+
+        // Integrity guard: scheduled groups must keep at least MIN members.
+        // Check-then-delete is not fully atomic under concurrent DELETEs (no migration/RPC).
+        if (groupRow.status === "scheduled") {
+            const counted = await countGroupMembers(supabase, groupId)
+            if (!counted.ok) {
+                return NextResponse.json({ error: "Failed to count members" }, { status: 500 })
+            }
+            if (counted.count - 1 < THEORY_PLANNING_MIN_MEMBERS_FOR_SCHEDULED) {
+                return NextResponse.json(
+                    {
+                        error: `Cannot remove a member from a scheduled group with fewer than ${THEORY_PLANNING_MIN_MEMBERS_FOR_SCHEDULED} members remaining`,
+                        code: "scheduled_min_members",
+                        member_count: counted.count,
+                        required: THEORY_PLANNING_MIN_MEMBERS_FOR_SCHEDULED,
+                    },
+                    { status: 409 }
+                )
+            }
         }
 
         const { data: deleted, error: delErr } = await supabase
