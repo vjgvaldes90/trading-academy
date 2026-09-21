@@ -23,7 +23,6 @@ function isSingleSessionExemptApiPath(pathname: string): boolean {
         "/api/pre-enroll",
         "/api/get-session",
         "/api/logout",
-        "/api/test-email",
         "/api/webhook",
         "/api/webhooks/stripe",
         "/api/stripe/webhook",
