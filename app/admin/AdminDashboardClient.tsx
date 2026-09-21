@@ -75,8 +75,8 @@ export default function AdminDashboardClient({
             />
 
             <main className="ml-0 flex-1 p-6 pt-[4.25rem] lg:ml-64 lg:p-8 lg:pt-8">
-                <header className="mb-6 flex items-center justify-between gap-4 border-b border-white/10 pb-4">
-                    {activeView !== "sessions" ? (
+                <header className="mb-5 flex items-center justify-between gap-4 border-b border-white/[0.07] pb-4 lg:mb-6">
+                    {activeView !== "sessions" && activeView !== "overview" ? (
                         <h1 className="text-lg font-bold tracking-tight text-slate-100 lg:text-xl">
                             {sectionTitles[activeView]}
                         </h1>

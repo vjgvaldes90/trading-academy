@@ -78,8 +78,9 @@ export default function AdminSidebar({
     const itemBase =
         "flex min-h-[44px] items-center gap-3 px-3.5 py-2.5 rounded-xl cursor-pointer transition duration-200 text-sm font-semibold text-left w-full"
     const itemActive =
-        "bg-blue-600/20 text-blue-300 ring-1 ring-blue-500/30 shadow-[inset_0_0_0_1px_rgba(59,130,246,0.12)]"
-    const itemNormal = "text-slate-300 hover:bg-white/[0.06] hover:text-slate-100"
+        "bg-blue-500/20 text-blue-200 ring-1 ring-blue-400/40 border border-blue-400/20"
+    const itemNormal =
+        "text-slate-300 border border-transparent hover:bg-white/[0.05] hover:text-slate-100"
 
     useEffect(() => {
         if (!mobileOpen) return
@@ -124,15 +125,19 @@ export default function AdminSidebar({
         })
 
     const brandHeader = (
-        <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-amber-400/25 bg-amber-500/15 text-amber-300 shadow-[0_0_20px_rgba(245,158,11,0.12)]">
-                <LayoutDashboard size={18} />
-            </div>
-            <div className="min-w-0">
-                <div className="truncate text-[15px] font-extrabold tracking-tight text-slate-50">
-                    {t.adminLabel}
+        <div className="px-1 pt-1 pb-1">
+            <div className="flex items-center gap-3">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-amber-400/30 bg-gradient-to-br from-amber-500/25 to-amber-600/10 text-amber-200 shadow-[0_0_24px_rgba(245,158,11,0.15)]">
+                    <LayoutDashboard size={20} />
                 </div>
-                <div className="mt-0.5 truncate text-xs text-white/55">{t.tradingAcademy}</div>
+                <div className="min-w-0">
+                    <div className="truncate text-[13px] font-extrabold leading-tight tracking-tight text-slate-50">
+                        {t.smartOptionAcademy}
+                    </div>
+                    <div className="mt-0.5 truncate text-[11px] font-medium text-blue-300/80">
+                        {t.adminLabel}
+                    </div>
+                </div>
             </div>
         </div>
     )
