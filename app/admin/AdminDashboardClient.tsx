@@ -89,6 +89,7 @@ export default function AdminDashboardClient({
                 <div
                     key={activeView}
                     className={`${dashboardTheme.viewEnter} ${
+                        activeView === "overview" ||
                         activeView === "sessions" ||
                         activeView === "theoryPlanning" ||
                         activeView === "privateClasses" ||

@@ -76,9 +76,10 @@ export default function AdminSidebar({
     )
 
     const itemBase =
-        "flex min-h-[44px] items-center gap-3 px-4 py-3 rounded-lg cursor-pointer transition text-sm font-semibold text-left w-full"
-    const itemActive = "bg-blue-600/20 text-blue-400 ring-1 ring-blue-500/25"
-    const itemNormal = "text-slate-200 hover:bg-white/10"
+        "flex min-h-[44px] items-center gap-3 px-3.5 py-2.5 rounded-xl cursor-pointer transition duration-200 text-sm font-semibold text-left w-full"
+    const itemActive =
+        "bg-blue-600/20 text-blue-300 ring-1 ring-blue-500/30 shadow-[inset_0_0_0_1px_rgba(59,130,246,0.12)]"
+    const itemNormal = "text-slate-300 hover:bg-white/[0.06] hover:text-slate-100"
 
     useEffect(() => {
         if (!mobileOpen) return
@@ -123,15 +124,15 @@ export default function AdminSidebar({
         })
 
     const brandHeader = (
-        <div className="flex items-center gap-3 px-2 pt-1 pb-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-amber-500/15 text-amber-300">
+        <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-amber-400/25 bg-amber-500/15 text-amber-300 shadow-[0_0_20px_rgba(245,158,11,0.12)]">
                 <LayoutDashboard size={18} />
             </div>
             <div className="min-w-0">
                 <div className="truncate text-[15px] font-extrabold tracking-tight text-slate-50">
                     {t.adminLabel}
                 </div>
-                <div className="mt-0.5 truncate text-xs text-white/60">{t.tradingAcademy}</div>
+                <div className="mt-0.5 truncate text-xs text-white/55">{t.tradingAcademy}</div>
             </div>
         </div>
     )
@@ -181,7 +182,7 @@ export default function AdminSidebar({
                             animate={{ x: 0 }}
                             exit={{ x: "-100%" }}
                             transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-                            className="fixed left-0 top-0 z-[56] flex h-[100dvh] w-[min(18rem,88vw)] flex-col gap-4 border-r border-white/10 bg-gradient-to-b from-[#0B1120] to-[#0A0F1C] p-4 lg:hidden"
+                            className="fixed left-0 top-0 z-[56] flex h-[100dvh] w-[min(18rem,88vw)] flex-col gap-4 border-r border-white/10 bg-gradient-to-b from-[#0E1526] via-[#0B1120] to-[#090e18] p-4 lg:hidden"
                         >
                             <div className="flex items-start justify-between gap-2">
                                 <div id={titleId} className="min-w-0">
@@ -199,7 +200,7 @@ export default function AdminSidebar({
                             <nav className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto">
                                 {renderNav(selectView)}
                             </nav>
-                            <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-slate-400">
+                            <div className="rounded-xl border border-amber-400/15 bg-amber-500/[0.06] px-3 py-2.5 text-xs text-slate-400">
                                 {t.adminInternalPanel}
                             </div>
                         </motion.aside>
@@ -211,14 +212,14 @@ export default function AdminSidebar({
                 className={[
                     "hidden lg:flex",
                     "fixed left-0 top-0 h-screen w-64",
-                    "bg-gradient-to-b from-[#0B1120] to-[#0A0F1C] border-r border-white/10",
+                    "bg-gradient-to-b from-[#0E1526] via-[#0B1120] to-[#090e18] border-r border-white/10",
                     "flex-col p-4 gap-4",
                     "z-40",
                 ].join(" ")}
             >
                 {brandHeader}
-                <nav className="flex flex-col gap-1">{renderNav(setActiveView)}</nav>
-                <div className="mt-auto rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-slate-400">
+                <nav className="flex flex-col gap-1.5">{renderNav(setActiveView)}</nav>
+                <div className="mt-auto rounded-xl border border-amber-400/15 bg-amber-500/[0.06] px-3 py-2.5 text-xs text-slate-400">
                     {t.adminInternalPanel}
                 </div>
             </aside>
