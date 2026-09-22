@@ -16,6 +16,8 @@ function supabaseServiceRoleKeyForEdge(): string | null {
 /** API routes that must not require a matching single-session cookie (login, webhooks, checkout, admin). */
 function isSingleSessionExemptApiPath(pathname: string): boolean {
     if (pathname.startsWith("/api/admin")) return true
+    // Admin support APIs authenticate via admin_session in the route handler.
+    if (pathname.startsWith("/api/support/admin")) return true
 
     const exactOrPrefix: string[] = [
         "/api/validate-code",
