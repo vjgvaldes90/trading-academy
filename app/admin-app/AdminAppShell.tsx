@@ -70,9 +70,10 @@ export default function AdminAppShell({ adminEmail }: { adminEmail: string }) {
         {
             id: "it-tools",
             title: t.adminAppSectionItTools,
-            description: t.adminAppComingSoon,
+            description: t.adminAppItToolsSubtitle,
             Icon: Wrench,
             accent: "amber",
+            href: "/admin-app/it-tools",
         },
     ]
 
