@@ -54,7 +54,7 @@ export default function AdminAppEnrollmentsClient() {
         setLoading(true)
         setError(null)
         try {
-            const res = await fetch("/api/admin/notifications?type=new_student", {
+            const res = await fetch("/api/admin/notifications", {
                 cache: "no-store",
                 credentials: "include",
             })
@@ -67,7 +67,17 @@ export default function AdminAppEnrollmentsClient() {
                 )
             }
             const list = Array.isArray(payload.notifications) ? payload.notifications : []
-            setItems(list.filter((n) => n.type === "new_student"))
+            const enrollments = list
+                .filter((n) => n.type === "new_student")
+                .sort((a, b) => {
+                    const ta = Date.parse(a.created_at)
+                    const tb = Date.parse(b.created_at)
+                    if (Number.isNaN(ta) && Number.isNaN(tb)) return 0
+                    if (Number.isNaN(ta)) return 1
+                    if (Number.isNaN(tb)) return -1
+                    return tb - ta
+                })
+            setItems(enrollments)
         } catch (e) {
             setError(e instanceof Error ? e.message : t.adminAppEnrollmentsLoadError)
             setItems([])
