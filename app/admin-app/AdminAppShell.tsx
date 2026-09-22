@@ -46,9 +46,10 @@ export default function AdminAppShell({ adminEmail }: { adminEmail: string }) {
         {
             id: "private-classes",
             title: t.adminPrivateClassRequests,
-            description: t.adminAppComingSoon,
+            description: t.adminPrivateClassSubtitle,
             Icon: BookOpen,
             accent: "blue",
+            href: "/admin-app/private-classes",
         },
         {
             id: "sessions",

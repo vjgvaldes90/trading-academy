@@ -380,6 +380,13 @@ export const es: TranslationKeys = {
     adminAppSupportStatusUpdating: "Actualizando estado…",
     adminAppSupportStatusUpdated: "Estado actualizado.",
 
+    // Admin App — Private classes module
+    adminAppPrivateClassesBackHome: "Volver al inicio",
+    adminAppPrivateClassesBackList: "Volver a solicitudes",
+    adminAppPrivateClassesConflict: "Esta solicitud ya fue actualizada. Actualiza e inténtalo de nuevo.",
+    adminAppPrivateClassesCancelAction: "Cancelar",
+    adminAppPrivateClassesRejectNotes: "Notas opcionales",
+
     // Common admin
     close: "Cerrar",
     goBack: "Volver",

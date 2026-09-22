@@ -378,6 +378,13 @@ export const en = {
     adminAppSupportStatusUpdating: "Updating status…",
     adminAppSupportStatusUpdated: "Status updated.",
 
+    // Admin App — Private classes module
+    adminAppPrivateClassesBackHome: "Back to home",
+    adminAppPrivateClassesBackList: "Back to requests",
+    adminAppPrivateClassesConflict: "This request was already updated. Refresh and try again.",
+    adminAppPrivateClassesCancelAction: "Cancel",
+    adminAppPrivateClassesRejectNotes: "Optional notes",
+
     // Common admin
     close: "Close",
     goBack: "Go back",
