@@ -53,6 +53,11 @@ async function guardAdminPages(request: NextRequest): Promise<NextResponse> {
     if (!email || !isAuthorizedAdminEmail(email)) {
         const login = new URL("/admin-login", request.url)
         login.searchParams.set("error", "session_expired")
+        const path = request.nextUrl.pathname
+        // Preserve intent only for the Admin App shell (allowlisted in login client).
+        if (path === "/admin-app" || path.startsWith("/admin-app/")) {
+            login.searchParams.set("next", "/admin-app")
+        }
         return NextResponse.redirect(login)
     }
     return NextResponse.next()
@@ -115,6 +120,8 @@ export const config = {
     matcher: [
         "/admin",
         "/admin/:path*",
+        "/admin-app",
+        "/admin-app/:path*",
         "/dashboard/:path*",
         "/complete-profile/:path*",
         "/sessions/:path*",

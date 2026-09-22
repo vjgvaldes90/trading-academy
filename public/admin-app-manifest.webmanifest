@@ -1,0 +1,32 @@
+{
+  "name": "Smart Option Academy Admin",
+  "short_name": "SOA Admin",
+  "description": "Private administrator console for Smart Option Academy.",
+  "start_url": "/admin-app",
+  "scope": "/admin-app",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0B0F19",
+  "theme_color": "#0B0F19",
+  "lang": "es",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "any",
+      "type": "image/x-icon",
+      "purpose": "any"
+    },
+    {
+      "src": "/admin-app-apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/logo.PNG",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

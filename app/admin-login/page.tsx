@@ -1,4 +1,5 @@
 import AdminLoginClient from "@/app/admin-login/AdminLoginClient"
+import { resolveAdminPostLoginRedirect } from "@/lib/sanitizeRedirect"
 
 type Props = {
     searchParams?: Promise<Record<string, string | string[] | undefined>>
@@ -12,8 +13,14 @@ function resolveQueryErrorCode(value: string | string[] | undefined): string | n
     return "access_denied"
 }
 
+function resolveNextParam(value: string | string[] | undefined): "/admin" | "/admin-app" | null {
+    const raw = Array.isArray(value) ? value[0] : value
+    return resolveAdminPostLoginRedirect(typeof raw === "string" ? raw : null)
+}
+
 export default async function AdminLoginPage({ searchParams }: Props) {
     const resolvedSearchParams = searchParams ? await searchParams : {}
     const queryErrorCode = resolveQueryErrorCode(resolvedSearchParams.error)
-    return <AdminLoginClient queryErrorCode={queryErrorCode} />
+    const nextPath = resolveNextParam(resolvedSearchParams.next)
+    return <AdminLoginClient queryErrorCode={queryErrorCode} nextPath={nextPath} />
 }

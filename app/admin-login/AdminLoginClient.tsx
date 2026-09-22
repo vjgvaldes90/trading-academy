@@ -1,14 +1,17 @@
 "use client"
 
 import { useLanguage } from "@/context/LanguageProvider"
+import { resolveAdminPostLoginRedirect } from "@/lib/sanitizeRedirect"
 import Link from "next/link"
 import { FormEvent, useMemo, useState } from "react"
 
 type Props = {
     queryErrorCode: string | null
+    /** Allowlisted post-login path from ?next= (null → default /admin). */
+    nextPath: "/admin" | "/admin-app" | null
 }
 
-export default function AdminLoginClient({ queryErrorCode }: Props) {
+export default function AdminLoginClient({ queryErrorCode, nextPath }: Props) {
     const { t } = useLanguage()
     const [email, setEmail] = useState("")
     const [password, setPassword] = useState("")
@@ -43,10 +46,12 @@ export default function AdminLoginClient({ queryErrorCode }: Props) {
             if (!res.ok || payload.ok !== true) {
                 throw new Error(t.adminLoginInvalidCredentials)
             }
-            const target =
-                typeof payload.redirect === "string" && payload.redirect.startsWith("/")
-                    ? payload.redirect
-                    : "/admin"
+            // Prefer allowlisted ?next= (e.g. /admin-app). Otherwise API default /admin.
+            // Never follow arbitrary payload.redirect strings (open-redirect safe).
+            const fromApi = resolveAdminPostLoginRedirect(
+                typeof payload.redirect === "string" ? payload.redirect : null
+            )
+            const target = nextPath ?? fromApi ?? "/admin"
             window.location.assign(target)
         } catch (e) {
             setError(e instanceof Error ? e.message : t.adminLoginFailed)

@@ -1,12 +1,16 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
+import { usePathname } from "next/navigation"
 import { useLanguage, type Language } from "@/context/LanguageProvider"
 
 export default function LanguageSwitcher() {
     const { language, setLanguage, t } = useLanguage()
+    const pathname = usePathname()
     const [open, setOpen] = useState(false)
     const containerRef = useRef<HTMLDivElement>(null)
+
+    const isAdminApp = pathname === "/admin-app" || pathname.startsWith("/admin-app/")
 
     const options: { code: Language; label: string; flag: string }[] = [
         { code: "en", label: t.langEnglish, flag: "🇺🇸" },
@@ -31,7 +35,11 @@ export default function LanguageSwitcher() {
     return (
         <div
             ref={containerRef}
-            className="fixed z-[60] right-4 sm:right-6 bottom-[calc(7.5rem+env(safe-area-inset-bottom,0px))] sm:bottom-[calc(5.5rem+env(safe-area-inset-bottom,0px))]"
+            className={
+                isAdminApp
+                    ? "fixed z-[60] right-4 top-[max(0.75rem,env(safe-area-inset-top,0px))]"
+                    : "fixed z-[60] right-4 sm:right-6 bottom-[calc(7.5rem+env(safe-area-inset-bottom,0px))] sm:bottom-[calc(5.5rem+env(safe-area-inset-bottom,0px))]"
+            }
         >
             <button
                 type="button"
@@ -47,7 +55,11 @@ export default function LanguageSwitcher() {
 
             {open && (
                 <div
-                    className="absolute bottom-full right-0 mb-2 min-w-[10.5rem] overflow-hidden rounded-xl border border-blue-400/20 bg-[#0B1220]/98 py-1 shadow-[0_16px_40px_rgba(2,6,23,0.65)] backdrop-blur"
+                    className={
+                        isAdminApp
+                            ? "absolute right-0 top-full mt-2 min-w-[10.5rem] overflow-hidden rounded-xl border border-blue-400/20 bg-[#0B1220]/98 py-1 shadow-[0_16px_40px_rgba(2,6,23,0.65)] backdrop-blur"
+                            : "absolute bottom-full right-0 mb-2 min-w-[10.5rem] overflow-hidden rounded-xl border border-blue-400/20 bg-[#0B1220]/98 py-1 shadow-[0_16px_40px_rgba(2,6,23,0.65)] backdrop-blur"
+                    }
                     role="listbox"
                 >
                     {options.map((option) => {
