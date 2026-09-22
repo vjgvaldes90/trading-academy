@@ -344,6 +344,16 @@ export const en = {
     adminAnalytics: "Analytics",
     adminSettings: "Settings",
 
+    // Admin App (mobile PWA shell — Phase 1)
+    adminAppName: "Smart Option Academy Admin",
+    adminAppTagline: "Private admin console",
+    adminAppSubtitle: "Mobile console for academy operations. Modules open in a later phase.",
+    adminAppComingSoon: "Coming soon",
+    adminAppNavHome: "Home",
+    adminAppNavWebPanel: "Web panel",
+    adminAppSectionEnrollments: "New enrollments",
+    adminAppSectionItTools: "IT tools",
+
     // Common admin
     close: "Close",
     goBack: "Go back",

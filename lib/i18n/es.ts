@@ -346,6 +346,16 @@ export const es: TranslationKeys = {
     adminAnalytics: "Analítica",
     adminSettings: "Configuración",
 
+    // Admin App (mobile PWA shell — Phase 1)
+    adminAppName: "Smart Option Academy Admin",
+    adminAppTagline: "Consola administrativa privada",
+    adminAppSubtitle: "Consola móvil para operaciones de la academia. Los módulos se abrirán en una fase posterior.",
+    adminAppComingSoon: "Próximamente",
+    adminAppNavHome: "Inicio",
+    adminAppNavWebPanel: "Panel web",
+    adminAppSectionEnrollments: "Nuevas inscripciones",
+    adminAppSectionItTools: "Herramientas IT",
+
     // Common admin
     close: "Cerrar",
     goBack: "Volver",
