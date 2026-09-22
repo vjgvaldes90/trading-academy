@@ -369,6 +369,17 @@ export const es: TranslationKeys = {
     adminAppEnrollmentsMarkAsRead: "Marcar como leída",
     adminAppEnrollmentsUnknownStudent: "Datos del estudiante no disponibles",
 
+    // Admin App — Support module
+    adminAppSupportTitle: "Soporte",
+    adminAppSupportSubtitle: "Revisa y responde tickets de soporte de estudiantes.",
+    adminAppSupportBackHome: "Volver al inicio",
+    adminAppSupportBackList: "Volver a tickets",
+    adminAppSupportFilterAll: "Todos",
+    adminAppSupportLoadMore: "Cargar más",
+    adminAppSupportReplyEmpty: "Escribe un mensaje antes de enviar.",
+    adminAppSupportStatusUpdating: "Actualizando estado…",
+    adminAppSupportStatusUpdated: "Estado actualizado.",
+
     // Common admin
     close: "Cerrar",
     goBack: "Volver",

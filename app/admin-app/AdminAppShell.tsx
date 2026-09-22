@@ -38,9 +38,10 @@ export default function AdminAppShell({ adminEmail }: { adminEmail: string }) {
         {
             id: "support",
             title: t.adminSupport,
-            description: t.adminAppComingSoon,
+            description: t.adminAppSupportSubtitle,
             Icon: LifeBuoy,
             accent: "blue",
+            href: "/admin-app/support",
         },
         {
             id: "private-classes",

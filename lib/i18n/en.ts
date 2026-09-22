@@ -367,6 +367,17 @@ export const en = {
     adminAppEnrollmentsMarkAsRead: "Mark as read",
     adminAppEnrollmentsUnknownStudent: "Student details unavailable",
 
+    // Admin App — Support module
+    adminAppSupportTitle: "Support",
+    adminAppSupportSubtitle: "Review and reply to student support tickets.",
+    adminAppSupportBackHome: "Back to home",
+    adminAppSupportBackList: "Back to tickets",
+    adminAppSupportFilterAll: "All",
+    adminAppSupportLoadMore: "Load more",
+    adminAppSupportReplyEmpty: "Write a message before sending.",
+    adminAppSupportStatusUpdating: "Updating status…",
+    adminAppSupportStatusUpdated: "Status updated.",
+
     // Common admin
     close: "Close",
     goBack: "Go back",
