@@ -92,6 +92,18 @@ export default function AdminAppTradingSessionsClient() {
     }, [load])
 
     useEffect(() => {
+        try {
+            const flash = sessionStorage.getItem("adminAppTradingSessionsFlash")
+            if (flash === "cancelled") {
+                sessionStorage.removeItem("adminAppTradingSessionsFlash")
+                setSuccessMessage(t.adminAppTradingSessionsCancelSuccess)
+            }
+        } catch {
+            // ignore storage failures
+        }
+    }, [t.adminAppTradingSessionsCancelSuccess])
+
+    useEffect(() => {
         const interval = window.setInterval(() => setNow(new Date()), 30_000)
         return () => window.clearInterval(interval)
     }, [])

@@ -403,7 +403,9 @@ export const es: TranslationKeys = {
     adminAppTradingSessionsEditConfirmDescription:
         "Se actualizarán la hora y el tipo. Zoom se actualiza en el servidor si cambia la hora.",
     adminAppTradingSessionsEditConfirm: "Guardar cambios",
+    adminAppTradingSessionsModify: "Modificar sesión",
     adminAppTradingSessionsCancelAction: "Cancelar",
+    adminAppTradingSessionsCancelSuccess: "Sesión cancelada.",
     adminAppTradingSessionsStartsSoon: "Empieza pronto",
     adminAppTradingSessionsLive: "En vivo",
     adminAppTradingSessionsPast: "Pasada",

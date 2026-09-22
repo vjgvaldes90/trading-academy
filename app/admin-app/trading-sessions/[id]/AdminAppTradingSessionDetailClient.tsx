@@ -5,6 +5,7 @@ import { useLanguage } from "@/context/LanguageProvider"
 import { getMinutesUntilSessionStart, type DbSession } from "@/lib/sessions"
 import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { FormEvent, useCallback, useEffect, useState } from "react"
 
 /** Admin list DTO fields used by Admin App (extends shared row shape). */
@@ -52,16 +53,19 @@ export default function AdminAppTradingSessionDetailClient({
     sessionId: string
 }) {
     const { t } = useLanguage()
+    const router = useRouter()
     const [item, setItem] = useState<AdminAppSessionRow | null>(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
     const [successMessage, setSuccessMessage] = useState<string | null>(null)
     const [editOpen, setEditOpen] = useState(false)
     const [confirmOpen, setConfirmOpen] = useState(false)
+    const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false)
     const [editTime, setEditTime] = useState("")
     const [editType, setEditType] = useState<"trading" | "theory">("trading")
-    const [editBusy, setEditBusy] = useState(false)
+    const [actionBusy, setActionBusy] = useState(false)
     const [editError, setEditError] = useState<string | null>(null)
+    const [cancelError, setCancelError] = useState<string | null>(null)
 
     const load = useCallback(async () => {
         setLoading(true)
@@ -103,24 +107,39 @@ export default function AdminAppTradingSessionDetailClient({
     }, [load])
 
     const openEdit = () => {
-        if (!item || editBusy) return
+        if (!item || actionBusy) return
         setEditTime(toTimeInputValue(item.time))
         setEditType(item.session_type === "theory" ? "theory" : "trading")
         setEditError(null)
         setConfirmOpen(false)
+        setCancelConfirmOpen(false)
         setEditOpen(true)
     }
 
     const closeEdit = () => {
-        if (editBusy) return
+        if (actionBusy) return
         setEditOpen(false)
         setConfirmOpen(false)
         setEditError(null)
     }
 
+    const openCancelConfirm = () => {
+        if (!item || actionBusy) return
+        setCancelError(null)
+        setEditOpen(false)
+        setConfirmOpen(false)
+        setCancelConfirmOpen(true)
+    }
+
+    const closeCancelConfirm = () => {
+        if (actionBusy) return
+        setCancelConfirmOpen(false)
+        setCancelError(null)
+    }
+
     const requestSave = (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault()
-        if (editBusy) return
+        if (actionBusy) return
         setEditError(null)
         if (!editTime.trim()) {
             setEditError(t.createSessionTimeRequired)
@@ -130,13 +149,13 @@ export default function AdminAppTradingSessionDetailClient({
     }
 
     const submitEdit = async () => {
-        if (!item || editBusy) return
+        if (!item || actionBusy) return
         if (!editTime.trim()) {
             setEditError(t.createSessionTimeRequired)
             setConfirmOpen(false)
             return
         }
-        setEditBusy(true)
+        setActionBusy(true)
         setEditError(null)
         setError(null)
         setSuccessMessage(null)
@@ -171,7 +190,48 @@ export default function AdminAppTradingSessionDetailClient({
             setEditError(e instanceof Error ? e.message : t.saveError)
             setConfirmOpen(false)
         } finally {
-            setEditBusy(false)
+            setActionBusy(false)
+        }
+    }
+
+    const submitCancel = async () => {
+        if (!item || actionBusy) return
+        setActionBusy(true)
+        setCancelError(null)
+        setError(null)
+        try {
+            const res = await fetch(`/api/admin/sessions/${encodeURIComponent(sessionId)}`, {
+                method: "DELETE",
+                credentials: "include",
+                cache: "no-store",
+            })
+            const payload = (await res.json().catch(() => ({}))) as ListErrorPayload
+            if (!res.ok) {
+                const base =
+                    typeof payload.error === "string" && payload.error.trim()
+                        ? payload.error
+                        : t.failedToCancelSession
+                const detail =
+                    typeof payload.details === "string" && payload.details.trim()
+                        ? `${base}: ${payload.details}`
+                        : base
+                throw new Error(detail)
+            }
+            // Soft-cancel removes the row from GET (status=active only), same as desktop.
+            setCancelConfirmOpen(false)
+            try {
+                sessionStorage.setItem(
+                    "adminAppTradingSessionsFlash",
+                    "cancelled"
+                )
+            } catch {
+                // ignore storage failures (private mode, etc.)
+            }
+            router.replace("/admin-app/trading-sessions")
+        } catch (e) {
+            setCancelError(e instanceof Error ? e.message : t.failedToCancelSession)
+        } finally {
+            setActionBusy(false)
         }
     }
 
@@ -181,6 +241,9 @@ export default function AdminAppTradingSessionDetailClient({
         ? getMinutesUntilSessionStart(toDbSession(item), new Date())
         : null
     const isUpcoming = minutesUntil != null && minutesUntil >= 0
+    const sessionSummary = item
+        ? `${item.date ?? "—"} · ${formatTimeDisplay(item.time)}`
+        : ""
 
     return (
         <div className="relative mx-auto flex min-h-[100dvh] w-full max-w-lg flex-col px-4 pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))] pt-[max(1rem,env(safe-area-inset-top))] sm:px-5">
@@ -305,24 +368,37 @@ export default function AdminAppTradingSessionDetailClient({
                                 </div>
                             ) : null}
                         </dl>
+                    </section>
 
-                        <p className="mt-4 text-[11px] leading-relaxed text-slate-500">
+                    <section className="space-y-2 rounded-2xl border border-white/[0.08] bg-[#111827]/95 p-4">
+                        <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                            {t.actions}
+                        </h2>
+                        <button
+                            type="button"
+                            disabled={actionBusy}
+                            onClick={openEdit}
+                            className="inline-flex w-full items-center justify-center rounded-xl bg-blue-600 px-4 py-3 text-sm font-bold text-white transition active:bg-blue-500 disabled:opacity-50"
+                        >
+                            {t.adminAppTradingSessionsModify}
+                        </button>
+                        <button
+                            type="button"
+                            disabled={actionBusy}
+                            onClick={openCancelConfirm}
+                            className="inline-flex w-full items-center justify-center rounded-xl border border-red-400/40 bg-red-500/15 px-4 py-3 text-sm font-bold text-red-100 transition active:bg-red-500/25 disabled:opacity-50"
+                        >
+                            {t.cancelSession}
+                        </button>
+                    </section>
+
+                    <section className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
+                        <p className="text-[11px] leading-relaxed text-slate-500">
                             {t.adminAppTradingSessionsCapacityUnavailable}
                         </p>
                         <p className="mt-2 text-[11px] leading-relaxed text-slate-500">
                             {t.adminAppTradingSessionsParticipantLinkUnavailable}
                         </p>
-                    </section>
-
-                    <section className="rounded-2xl border border-white/[0.08] bg-[#111827]/95 p-4">
-                        <button
-                            type="button"
-                            disabled={editBusy}
-                            onClick={openEdit}
-                            className="inline-flex w-full items-center justify-center rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white transition active:bg-blue-500 disabled:opacity-50"
-                        >
-                            {t.edit}
-                        </button>
                     </section>
                 </div>
             ) : null}
@@ -339,7 +415,7 @@ export default function AdminAppTradingSessionDetailClient({
                             id="edit-trading-session-title"
                             className="text-base font-bold text-white"
                         >
-                            {t.editSessionTitle}
+                            {t.adminAppTradingSessionsModify}
                         </h2>
                         <p className="mt-2 text-xs text-slate-500">
                             {t.editSessionDateReadonly}{" "}
@@ -353,7 +429,7 @@ export default function AdminAppTradingSessionDetailClient({
                                 {t.sessionTypeLabel}
                                 <select
                                     value={editType}
-                                    disabled={editBusy}
+                                    disabled={actionBusy}
                                     onChange={(e) =>
                                         setEditType(
                                             e.target.value === "theory" ? "theory" : "trading"
@@ -371,7 +447,7 @@ export default function AdminAppTradingSessionDetailClient({
                                     type="time"
                                     required
                                     value={editTime}
-                                    disabled={editBusy}
+                                    disabled={actionBusy}
                                     onChange={(e) => setEditTime(e.target.value)}
                                     className="mt-1.5 w-full rounded-xl border border-white/10 bg-[#0B0F19] px-3 py-2.5 text-sm text-slate-100 outline-none focus:border-blue-400/40 disabled:opacity-50"
                                 />
@@ -381,14 +457,14 @@ export default function AdminAppTradingSessionDetailClient({
                             ) : null}
                             <button
                                 type="submit"
-                                disabled={editBusy}
+                                disabled={actionBusy}
                                 className="inline-flex w-full items-center justify-center rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white transition active:bg-blue-500 disabled:opacity-50"
                             >
-                                {editBusy ? t.saving : t.saveChanges}
+                                {actionBusy ? t.saving : t.saveChanges}
                             </button>
                             <button
                                 type="button"
-                                disabled={editBusy}
+                                disabled={actionBusy}
                                 onClick={closeEdit}
                                 className="inline-flex w-full items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm font-semibold text-slate-300 transition active:bg-white/[0.06] disabled:opacity-50"
                             >
@@ -419,18 +495,65 @@ export default function AdminAppTradingSessionDetailClient({
                         <div className="mt-4 flex flex-col gap-2">
                             <button
                                 type="button"
-                                disabled={editBusy}
+                                disabled={actionBusy}
                                 onClick={() => void submitEdit()}
                                 className="inline-flex w-full items-center justify-center rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white transition active:bg-blue-500 disabled:opacity-50"
                             >
-                                {editBusy
+                                {actionBusy
                                     ? t.saving
                                     : t.adminAppTradingSessionsEditConfirm}
                             </button>
                             <button
                                 type="button"
-                                disabled={editBusy}
+                                disabled={actionBusy}
                                 onClick={() => setConfirmOpen(false)}
+                                className="inline-flex w-full items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm font-semibold text-slate-300 transition active:bg-white/[0.06] disabled:opacity-50"
+                            >
+                                {t.adminAppTradingSessionsCancelAction}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            ) : null}
+
+            {cancelConfirmOpen ? (
+                <div
+                    className="fixed inset-0 z-[60] flex items-end justify-center bg-black/70 p-4 sm:items-center"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="cancel-trading-session-title"
+                >
+                    <div className="w-full max-w-sm rounded-2xl border border-red-400/30 bg-[#111827] p-5 shadow-xl">
+                        <h2
+                            id="cancel-trading-session-title"
+                            className="text-base font-bold text-white"
+                        >
+                            {t.cancelSessionTitle}
+                        </h2>
+                        <p className="mt-2 text-sm leading-relaxed text-slate-400">
+                            {t.cancelSessionDescription}
+                        </p>
+                        {sessionSummary ? (
+                            <p className="mt-3 text-xs font-semibold text-slate-300">
+                                {sessionSummary}
+                            </p>
+                        ) : null}
+                        {cancelError ? (
+                            <p className="mt-3 text-xs text-red-300">{cancelError}</p>
+                        ) : null}
+                        <div className="mt-4 flex flex-col gap-2">
+                            <button
+                                type="button"
+                                disabled={actionBusy}
+                                onClick={() => void submitCancel()}
+                                className="inline-flex w-full items-center justify-center rounded-xl bg-red-600 px-4 py-2.5 text-sm font-bold text-white transition active:bg-red-500 disabled:opacity-50"
+                            >
+                                {actionBusy ? t.cancelling : t.cancelSessionConfirm}
+                            </button>
+                            <button
+                                type="button"
+                                disabled={actionBusy}
+                                onClick={closeCancelConfirm}
                                 className="inline-flex w-full items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm font-semibold text-slate-300 transition active:bg-white/[0.06] disabled:opacity-50"
                             >
                                 {t.adminAppTradingSessionsCancelAction}

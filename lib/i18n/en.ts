@@ -401,7 +401,9 @@ export const en = {
     adminAppTradingSessionsEditConfirmDescription:
         "The session time and type will update. Zoom is updated by the server when time changes.",
     adminAppTradingSessionsEditConfirm: "Save changes",
+    adminAppTradingSessionsModify: "Modify session",
     adminAppTradingSessionsCancelAction: "Cancel",
+    adminAppTradingSessionsCancelSuccess: "Session cancelled.",
     adminAppTradingSessionsStartsSoon: "Starting soon",
     adminAppTradingSessionsLive: "Live",
     adminAppTradingSessionsPast: "Past",
