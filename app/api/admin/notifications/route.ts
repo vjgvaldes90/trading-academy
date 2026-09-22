@@ -37,24 +37,40 @@ function mapRow(row: Record<string, unknown>): AdminNotification | null {
     }
 }
 
-export async function GET() {
+export async function GET(req: Request) {
     try {
         const auth = await requireAuthorizedAdminFromCookies()
         if (!auth.ok) return auth.response
 
+        const typeRaw = new URL(req.url).searchParams.get("type")
+        let typeFilter: AdminNotificationType | null = null
+        if (typeof typeRaw === "string" && typeRaw.trim() !== "") {
+            const trimmed = typeRaw.trim()
+            if (!isAdminNotificationType(trimmed)) {
+                return NextResponse.json({ error: "Invalid type" }, { status: 400 })
+            }
+            typeFilter = trimmed
+        }
+
         const supabase = createSupabaseServiceRoleClient()
 
-        const [listRes, unreadRes] = await Promise.all([
-            supabase
-                .from("admin_notifications")
-                .select("id, type, title, description, is_read, created_at, metadata")
-                .order("created_at", { ascending: false })
-                .limit(LIST_LIMIT),
-            supabase
-                .from("admin_notifications")
-                .select("id", { count: "exact", head: true })
-                .eq("is_read", false),
-        ])
+        let listQuery = supabase
+            .from("admin_notifications")
+            .select("id, type, title, description, is_read, created_at, metadata")
+            .order("created_at", { ascending: false })
+            .limit(LIST_LIMIT)
+
+        let unreadQuery = supabase
+            .from("admin_notifications")
+            .select("id", { count: "exact", head: true })
+            .eq("is_read", false)
+
+        if (typeFilter) {
+            listQuery = listQuery.eq("type", typeFilter)
+            unreadQuery = unreadQuery.eq("type", typeFilter)
+        }
+
+        const [listRes, unreadRes] = await Promise.all([listQuery, unreadQuery])
 
         if (listRes.error) {
             console.error("[api/admin/notifications] GET list", listRes.error)

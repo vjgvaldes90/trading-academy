@@ -354,6 +354,19 @@ export const en = {
     adminAppSectionEnrollments: "New enrollments",
     adminAppSectionItTools: "IT tools",
 
+    // Admin App — New enrollments module
+    adminAppEnrollmentsTitle: "New enrollments",
+    adminAppEnrollmentsSubtitle: "Students recently registered in Trading Academy.",
+    adminAppEnrollmentsBack: "Back to home",
+    adminAppEnrollmentsLoading: "Loading enrollments…",
+    adminAppEnrollmentsLoadError: "Could not load enrollments.",
+    adminAppEnrollmentsRetry: "Retry",
+    adminAppEnrollmentsEmpty: "No new enrollments yet.",
+    adminAppEnrollmentsUnread: "Unread",
+    adminAppEnrollmentsRead: "Read",
+    adminAppEnrollmentsMarkAsRead: "Mark as read",
+    adminAppEnrollmentsUnknownStudent: "Student details unavailable",
+
     // Common admin
     close: "Close",
     goBack: "Go back",

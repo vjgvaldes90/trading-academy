@@ -20,6 +20,7 @@ type ModuleCard = {
     description: string
     Icon: LucideIcon
     accent: "blue" | "amber"
+    href?: string
 }
 
 export default function AdminAppShell({ adminEmail }: { adminEmail: string }) {
@@ -29,9 +30,10 @@ export default function AdminAppShell({ adminEmail }: { adminEmail: string }) {
         {
             id: "enrollments",
             title: t.adminAppSectionEnrollments,
-            description: t.adminAppComingSoon,
+            description: t.adminAppEnrollmentsSubtitle,
             Icon: UserPlus,
             accent: "amber",
+            href: "/admin-app/enrollments",
         },
         {
             id: "support",
@@ -100,33 +102,49 @@ export default function AdminAppShell({ adminEmail }: { adminEmail: string }) {
             </section>
 
             <section className="relative z-10 grid grid-cols-1 gap-3">
-                {modules.map(({ id, title, description, Icon, accent }) => (
-                    <div
-                        key={id}
-                        className={[
-                            "flex items-center gap-3 rounded-2xl border bg-[#111827]/95 p-4",
-                            accent === "amber" ? "border-amber-400/25" : "border-white/[0.08]",
-                        ].join(" ")}
-                    >
-                        <span
-                            className={[
-                                "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border",
-                                accent === "amber"
-                                    ? "border-amber-400/30 bg-amber-500/15 text-amber-300"
-                                    : "border-blue-400/25 bg-blue-500/15 text-blue-300",
-                            ].join(" ")}
-                        >
-                            <Icon className="h-5 w-5" aria-hidden />
-                        </span>
-                        <div className="min-w-0 flex-1">
-                            <p className="truncate text-sm font-semibold text-white">{title}</p>
-                            <p className="mt-0.5 text-xs text-slate-500">{description}</p>
+                {modules.map(({ id, title, description, Icon, accent, href }) => {
+                    const className = [
+                        "flex w-full items-center gap-3 rounded-2xl border bg-[#111827]/95 p-4 text-left transition",
+                        accent === "amber" ? "border-amber-400/25" : "border-white/[0.08]",
+                        href ? "active:bg-white/[0.04]" : "",
+                    ].join(" ")
+
+                    const body = (
+                        <>
+                            <span
+                                className={[
+                                    "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border",
+                                    accent === "amber"
+                                        ? "border-amber-400/30 bg-amber-500/15 text-amber-300"
+                                        : "border-blue-400/25 bg-blue-500/15 text-blue-300",
+                                ].join(" ")}
+                            >
+                                <Icon className="h-5 w-5" aria-hidden />
+                            </span>
+                            <div className="min-w-0 flex-1">
+                                <p className="truncate text-sm font-semibold text-white">{title}</p>
+                                <p className="mt-0.5 text-xs text-slate-500">{description}</p>
+                            </div>
+                            <span className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/10 text-slate-600">
+                                <ChevronRight className="h-4 w-4" aria-hidden />
+                            </span>
+                        </>
+                    )
+
+                    if (href) {
+                        return (
+                            <Link key={id} href={href} className={className}>
+                                {body}
+                            </Link>
+                        )
+                    }
+
+                    return (
+                        <div key={id} className={className}>
+                            {body}
                         </div>
-                        <span className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/10 text-slate-600">
-                            <ChevronRight className="h-4 w-4" aria-hidden />
-                        </span>
-                    </div>
-                ))}
+                    )
+                })}
             </section>
 
             <nav
@@ -135,9 +153,12 @@ export default function AdminAppShell({ adminEmail }: { adminEmail: string }) {
                 aria-label={t.adminAppNavHome}
             >
                 <div className="mx-auto flex max-w-lg items-stretch gap-1 px-3 py-2">
-                    <span className="flex flex-1 flex-col items-center justify-center gap-1 rounded-xl bg-blue-600/20 px-2 py-2.5 text-blue-200">
+                    <Link
+                        href="/admin-app"
+                        className="flex flex-1 flex-col items-center justify-center gap-1 rounded-xl bg-blue-600/20 px-2 py-2.5 text-blue-200"
+                    >
                         <span className="text-[11px] font-semibold">{t.adminAppNavHome}</span>
-                    </span>
+                    </Link>
                     <Link
                         href="/admin"
                         className="flex flex-1 flex-col items-center justify-center gap-1 rounded-xl px-2 py-2.5 text-slate-400 transition active:bg-white/[0.04]"
