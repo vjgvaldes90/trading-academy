@@ -415,6 +415,32 @@ export const en = {
     adminAppTradingSessionsCreatedBy: "Created by",
     adminAppTradingSessionsLastEditedBy: "Last edited by",
 
+    // Admin App — Students module
+    adminAppStudentsBackHome: "Back to home",
+    adminAppStudentsBackList: "Back to students",
+    adminAppStudentsSubtitle: "Search students and manage access from your phone.",
+    adminAppStudentsEmpty: "No students match this search.",
+    adminAppStudentsRetry: "Retry",
+    adminAppStudentsLoading: "Loading students…",
+    adminAppStudentsCreateInvalid: "First name, last name, and a valid email are required.",
+    adminAppStudentsCreate: "New student",
+    adminAppStudentsCreateSuccess: "Student created. Welcome email sent if provisioning succeeded.",
+    adminAppStudentsSaveAccess: "Save access changes",
+    adminAppStudentsSaveConfirmTitle: "Apply access changes?",
+    adminAppStudentsSaveConfirmDescription:
+        "This updates the student’s access type and/or active status immediately.",
+    adminAppStudentsSaveConfirm: "Apply changes",
+    adminAppStudentsSaveSuccess: "Student access updated.",
+    adminAppStudentsCancelAction: "Cancel",
+    adminAppStudentsRotateWarn:
+        "Rotating the access code invalidates the student’s current login session immediately.",
+    adminAppStudentsCopyNeedReveal: "Reveal the code before copying.",
+    adminAppStudentsPhone: "Phone",
+    adminAppStudentsExpires: "Access expires",
+    adminAppStudentsSubscriptionStatus: "Subscription status",
+    adminAppStudentsNoExpiry: "No expiry",
+    adminAppStudentsSearchHint: "Search by name or email",
+
     // Common admin
     close: "Close",
     goBack: "Go back",

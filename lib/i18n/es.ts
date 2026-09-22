@@ -417,6 +417,32 @@ export const es: TranslationKeys = {
     adminAppTradingSessionsCreatedBy: "Creada por",
     adminAppTradingSessionsLastEditedBy: "Última edición por",
 
+    // Admin App — Students module
+    adminAppStudentsBackHome: "Volver al inicio",
+    adminAppStudentsBackList: "Volver a estudiantes",
+    adminAppStudentsSubtitle: "Busca estudiantes y gestiona el acceso desde el teléfono.",
+    adminAppStudentsEmpty: "Ningún estudiante coincide con esta búsqueda.",
+    adminAppStudentsRetry: "Reintentar",
+    adminAppStudentsLoading: "Cargando estudiantes…",
+    adminAppStudentsCreateInvalid: "Nombre, apellido y un email válido son obligatorios.",
+    adminAppStudentsCreate: "Nuevo estudiante",
+    adminAppStudentsCreateSuccess: "Estudiante creado. Se envió el email de bienvenida si el alta tuvo éxito.",
+    adminAppStudentsSaveAccess: "Guardar cambios de acceso",
+    adminAppStudentsSaveConfirmTitle: "¿Aplicar cambios de acceso?",
+    adminAppStudentsSaveConfirmDescription:
+        "Esto actualiza de inmediato el tipo de acceso y/o el estado activo del estudiante.",
+    adminAppStudentsSaveConfirm: "Aplicar cambios",
+    adminAppStudentsSaveSuccess: "Acceso del estudiante actualizado.",
+    adminAppStudentsCancelAction: "Cancelar",
+    adminAppStudentsRotateWarn:
+        "Rotar el access code invalida de inmediato la sesión activa del estudiante.",
+    adminAppStudentsCopyNeedReveal: "Revela el código antes de copiarlo.",
+    adminAppStudentsPhone: "Teléfono",
+    adminAppStudentsExpires: "Acceso vence",
+    adminAppStudentsSubscriptionStatus: "Estado de suscripción",
+    adminAppStudentsNoExpiry: "Sin vencimiento",
+    adminAppStudentsSearchHint: "Buscar por nombre o email",
+
     // Common admin
     close: "Cerrar",
     goBack: "Volver",
