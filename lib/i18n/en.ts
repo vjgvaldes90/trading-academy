@@ -385,6 +385,34 @@ export const en = {
     adminAppPrivateClassesCancelAction: "Cancel",
     adminAppPrivateClassesRejectNotes: "Optional notes",
 
+    // Admin App — Trading sessions module
+    adminAppTradingSessionsBackHome: "Back to home",
+    adminAppTradingSessionsBackList: "Back to sessions",
+    adminAppTradingSessionsSubtitle: "Schedule and edit upcoming live sessions from your phone.",
+    adminAppTradingSessionsFilterAll: "All upcoming",
+    adminAppTradingSessionsFilterTrading: "Trading",
+    adminAppTradingSessionsFilterTheory: "Theory",
+    adminAppTradingSessionsEmpty: "No upcoming sessions match this filter.",
+    adminAppTradingSessionsRetry: "Retry",
+    adminAppTradingSessionsCreate: "New session",
+    adminAppTradingSessionsCreateSuccess: "Session created.",
+    adminAppTradingSessionsEditSuccess: "Session updated.",
+    adminAppTradingSessionsEditConfirmTitle: "Save changes to this session?",
+    adminAppTradingSessionsEditConfirmDescription:
+        "The session time and type will update. Zoom is updated by the server when time changes.",
+    adminAppTradingSessionsEditConfirm: "Save changes",
+    adminAppTradingSessionsCancelAction: "Cancel",
+    adminAppTradingSessionsStartsSoon: "Starting soon",
+    adminAppTradingSessionsLive: "Live",
+    adminAppTradingSessionsPast: "Past",
+    adminAppTradingSessionsNoTitle: "Untitled session",
+    adminAppTradingSessionsCapacityUnavailable:
+        "Seat capacity and bookings are not part of the current live-session model.",
+    adminAppTradingSessionsParticipantLinkUnavailable:
+        "Participant Zoom link is not included in the admin list response.",
+    adminAppTradingSessionsCreatedBy: "Created by",
+    adminAppTradingSessionsLastEditedBy: "Last edited by",
+
     // Common admin
     close: "Close",
     goBack: "Go back",

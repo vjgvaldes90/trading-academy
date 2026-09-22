@@ -387,6 +387,34 @@ export const es: TranslationKeys = {
     adminAppPrivateClassesCancelAction: "Cancelar",
     adminAppPrivateClassesRejectNotes: "Notas opcionales",
 
+    // Admin App — Trading sessions module
+    adminAppTradingSessionsBackHome: "Volver al inicio",
+    adminAppTradingSessionsBackList: "Volver a sesiones",
+    adminAppTradingSessionsSubtitle: "Programa y edita sesiones en vivo próximas desde el teléfono.",
+    adminAppTradingSessionsFilterAll: "Próximas",
+    adminAppTradingSessionsFilterTrading: "Trading",
+    adminAppTradingSessionsFilterTheory: "Teoría",
+    adminAppTradingSessionsEmpty: "No hay sesiones próximas con este filtro.",
+    adminAppTradingSessionsRetry: "Reintentar",
+    adminAppTradingSessionsCreate: "Nueva sesión",
+    adminAppTradingSessionsCreateSuccess: "Sesión creada.",
+    adminAppTradingSessionsEditSuccess: "Sesión actualizada.",
+    adminAppTradingSessionsEditConfirmTitle: "¿Guardar cambios en esta sesión?",
+    adminAppTradingSessionsEditConfirmDescription:
+        "Se actualizarán la hora y el tipo. Zoom se actualiza en el servidor si cambia la hora.",
+    adminAppTradingSessionsEditConfirm: "Guardar cambios",
+    adminAppTradingSessionsCancelAction: "Cancelar",
+    adminAppTradingSessionsStartsSoon: "Empieza pronto",
+    adminAppTradingSessionsLive: "En vivo",
+    adminAppTradingSessionsPast: "Pasada",
+    adminAppTradingSessionsNoTitle: "Sesión sin título",
+    adminAppTradingSessionsCapacityUnavailable:
+        "La capacidad de asientos y las reservas no forman parte del modelo actual de sesiones en vivo.",
+    adminAppTradingSessionsParticipantLinkUnavailable:
+        "El enlace de participante de Zoom no viene en la respuesta del listado admin.",
+    adminAppTradingSessionsCreatedBy: "Creada por",
+    adminAppTradingSessionsLastEditedBy: "Última edición por",
+
     // Common admin
     close: "Cerrar",
     goBack: "Volver",

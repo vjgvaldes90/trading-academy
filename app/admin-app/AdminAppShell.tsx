@@ -54,9 +54,10 @@ export default function AdminAppShell({ adminEmail }: { adminEmail: string }) {
         {
             id: "sessions",
             title: t.adminLiveSessions,
-            description: t.adminAppComingSoon,
+            description: t.adminSessionsSubtitle,
             Icon: Calendar,
             accent: "blue",
+            href: "/admin-app/trading-sessions",
         },
         {
             id: "students",
