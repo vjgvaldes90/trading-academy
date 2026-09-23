@@ -352,7 +352,6 @@ export const en = {
     adminAppNavHome: "Home",
     adminAppNavWebPanel: "Web panel",
     adminAppSectionEnrollments: "New enrollments",
-    adminAppSectionItTools: "IT tools",
 
     // Admin App — New enrollments module
     adminAppEnrollmentsTitle: "New enrollments",
@@ -440,25 +439,6 @@ export const en = {
     adminAppStudentsSubscriptionStatus: "Subscription status",
     adminAppStudentsNoExpiry: "No expiry",
     adminAppStudentsSearchHint: "Search by name or email",
-
-    // Admin App — IT tools module
-    adminAppItToolsBackHome: "Back to home",
-    adminAppItToolsSubtitle: "IT monitoring hub: join as participant and open admin modules.",
-    adminAppItToolsQuickLinks: "Quick links",
-    adminAppItToolsSessionsTitle: "Live sessions — Enter as IT",
-    adminAppItToolsPrivateTitle: "Private classes — Enter as IT",
-    adminAppItToolsLoading: "Loading…",
-    adminAppItToolsRetry: "Retry",
-    adminAppItToolsEmptySessions: "No upcoming active sessions.",
-    adminAppItToolsEmptyPrivate: "No confirmed private classes with Zoom ready.",
-    adminAppItToolsNotItAccount:
-        "Enter as IT is only available for the dedicated IT admin account. You can still use the quick links below.",
-    adminAppItToolsForbidden:
-        "IT access only. This account cannot request a participant join URL.",
-    adminAppItToolsJoining: "Opening Zoom…",
-    adminAppItToolsEnterAsIt: "Enter as IT",
-    adminAppItToolsHostNotAvailable: "Host enter is not available in IT Tools. Use Trading Sessions or Private Classes on desktop if needed.",
-    adminAppItToolsLoadError: "Could not load IT monitoring data.",
 
     // Admin App — Push notification settings (Phase 1)
     adminAppPushTitle: "Push notifications",

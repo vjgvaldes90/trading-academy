@@ -10,7 +10,6 @@ import {
     LifeBuoy,
     UserPlus,
     Users,
-    Wrench,
     type LucideIcon,
 } from "lucide-react"
 import Link from "next/link"
@@ -67,14 +66,6 @@ export default function AdminAppShell({ adminEmail }: { adminEmail: string }) {
             Icon: Users,
             accent: "blue",
             href: "/admin-app/students",
-        },
-        {
-            id: "it-tools",
-            title: t.adminAppSectionItTools,
-            description: t.adminAppItToolsSubtitle,
-            Icon: Wrench,
-            accent: "amber",
-            href: "/admin-app/it-tools",
         },
         {
             id: "settings",

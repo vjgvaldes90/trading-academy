@@ -354,7 +354,6 @@ export const es: TranslationKeys = {
     adminAppNavHome: "Inicio",
     adminAppNavWebPanel: "Panel web",
     adminAppSectionEnrollments: "Nuevas inscripciones",
-    adminAppSectionItTools: "Herramientas IT",
 
     // Admin App — New enrollments module
     adminAppEnrollmentsTitle: "Nuevas inscripciones",
@@ -442,25 +441,6 @@ export const es: TranslationKeys = {
     adminAppStudentsSubscriptionStatus: "Estado de suscripción",
     adminAppStudentsNoExpiry: "Sin vencimiento",
     adminAppStudentsSearchHint: "Buscar por nombre o email",
-
-    // Admin App — IT tools module
-    adminAppItToolsBackHome: "Volver al inicio",
-    adminAppItToolsSubtitle: "Hub de monitoreo IT: entrar como participante y abrir módulos admin.",
-    adminAppItToolsQuickLinks: "Accesos rápidos",
-    adminAppItToolsSessionsTitle: "Sesiones en vivo — Entrar como IT",
-    adminAppItToolsPrivateTitle: "Clases privadas — Entrar como IT",
-    adminAppItToolsLoading: "Cargando…",
-    adminAppItToolsRetry: "Reintentar",
-    adminAppItToolsEmptySessions: "No hay sesiones activas próximas.",
-    adminAppItToolsEmptyPrivate: "No hay clases privadas confirmadas con Zoom listo.",
-    adminAppItToolsNotItAccount:
-        "Entrar como IT solo está disponible para la cuenta IT dedicada. Aún puedes usar los accesos rápidos.",
-    adminAppItToolsForbidden:
-        "Solo acceso IT. Esta cuenta no puede solicitar la URL de participante.",
-    adminAppItToolsJoining: "Abriendo Zoom…",
-    adminAppItToolsEnterAsIt: "Entrar como IT",
-    adminAppItToolsHostNotAvailable: "Entrar como anfitrión no está disponible en IT Tools. Usa Sesiones o Clases privadas en desktop si lo necesitas.",
-    adminAppItToolsLoadError: "No se pudieron cargar los datos de monitoreo IT.",
 
     // Admin App — Push notification settings (Phase 1)
     adminAppPushTitle: "Notificaciones push",
