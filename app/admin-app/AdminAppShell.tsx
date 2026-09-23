@@ -2,6 +2,7 @@
 
 import { useLanguage } from "@/context/LanguageProvider"
 import {
+    Bell,
     BookOpen,
     Calendar,
     ChevronRight,
@@ -74,6 +75,14 @@ export default function AdminAppShell({ adminEmail }: { adminEmail: string }) {
             Icon: Wrench,
             accent: "amber",
             href: "/admin-app/it-tools",
+        },
+        {
+            id: "settings",
+            title: t.adminAppPushTitle,
+            description: t.adminAppPushSubtitle,
+            Icon: Bell,
+            accent: "blue",
+            href: "/admin-app/settings",
         },
     ]
 

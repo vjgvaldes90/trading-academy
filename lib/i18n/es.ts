@@ -462,6 +462,45 @@ export const es: TranslationKeys = {
     adminAppItToolsHostNotAvailable: "Entrar como anfitrión no está disponible en IT Tools. Usa Sesiones o Clases privadas en desktop si lo necesitas.",
     adminAppItToolsLoadError: "No se pudieron cargar los datos de monitoreo IT.",
 
+    // Admin App — Push notification settings (Phase 1)
+    adminAppPushTitle: "Notificaciones push",
+    adminAppPushSubtitle: "Activa alertas en este dispositivo para la Admin App.",
+    adminAppPushBackHome: "Volver al inicio",
+    adminAppPushStatusLabel: "Estado",
+    adminAppPushStatusLoading: "Comprobando suscripción…",
+    adminAppPushStatusUnsupported:
+        "Este navegador no admite Web Push ni Service Workers.",
+    adminAppPushStatusServerUnconfigured:
+        "Las notificaciones push aún no están configuradas en el servidor.",
+    adminAppPushStatusNeedsHomescreen:
+        "Instala primero la Admin App en la pantalla de inicio (obligatorio en iPhone).",
+    adminAppPushStatusPermissionDenied: "Se denegó el permiso de notificaciones.",
+    adminAppPushStatusOff: "No activado en este dispositivo",
+    adminAppPushStatusOn: "Activado en este dispositivo",
+    adminAppPushStatusError: "No se pudo comprobar el estado de las notificaciones.",
+    adminAppPushUnsupportedHint:
+        "Usa Safari en iPhone (iOS 16.4+) con la app en la pantalla de inicio, o un navegador de escritorio con Push API.",
+    adminAppPushServerUnconfiguredHint:
+        "Pide a IT que configure VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY y VAPID_SUBJECT, y vuelva a desplegar.",
+    adminAppPushIphoneTitle: "Configuración en iPhone",
+    adminAppPushIphoneStep1: "Abre esta Admin App en Safari (no en un navegador dentro de otra app).",
+    adminAppPushIphoneStep2: "Toca Compartir → Añadir a pantalla de inicio.",
+    adminAppPushIphoneStep3: "Abre la app desde el icono de la pantalla de inicio (modo standalone).",
+    adminAppPushIphoneStep4: "Vuelve aquí y toca Activar notificaciones.",
+    adminAppPushEnable: "Activar notificaciones",
+    adminAppPushDisable: "Desactivar notificaciones",
+    adminAppPushWorking: "Trabajando…",
+    adminAppPushRefresh: "Actualizar estado",
+    adminAppPushEnabledSuccess: "Notificaciones activadas en este dispositivo.",
+    adminAppPushDisabledSuccess: "Notificaciones desactivadas en este dispositivo.",
+    adminAppPushPermissionDenied:
+        "No se concedió el permiso. Puedes cambiarlo en Ajustes de iOS → Notificaciones.",
+    adminAppPushSaveFailed: "No se pudo guardar la suscripción en el servidor.",
+    adminAppPushEnableFailed: "No se pudieron activar las notificaciones.",
+    adminAppPushDisableFailed: "No se pudieron desactivar las notificaciones.",
+    adminAppPushPhase1Note:
+        "La Fase 1 solo registra este dispositivo. El envío automático de push aún no está activo.",
+
     // Common admin
     close: "Cerrar",
     goBack: "Volver",

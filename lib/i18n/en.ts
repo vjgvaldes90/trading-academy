@@ -460,6 +460,45 @@ export const en = {
     adminAppItToolsHostNotAvailable: "Host enter is not available in IT Tools. Use Trading Sessions or Private Classes on desktop if needed.",
     adminAppItToolsLoadError: "Could not load IT monitoring data.",
 
+    // Admin App — Push notification settings (Phase 1)
+    adminAppPushTitle: "Push notifications",
+    adminAppPushSubtitle: "Enable alerts on this device for the Admin App.",
+    adminAppPushBackHome: "Back to home",
+    adminAppPushStatusLabel: "Status",
+    adminAppPushStatusLoading: "Checking subscription…",
+    adminAppPushStatusUnsupported:
+        "This browser does not support Web Push or Service Workers.",
+    adminAppPushStatusServerUnconfigured:
+        "Push is not configured on the server yet.",
+    adminAppPushStatusNeedsHomescreen:
+        "Install the Admin App to your Home Screen first (required on iPhone).",
+    adminAppPushStatusPermissionDenied: "Notification permission was denied.",
+    adminAppPushStatusOff: "Not enabled on this device",
+    adminAppPushStatusOn: "Enabled on this device",
+    adminAppPushStatusError: "Could not check notification status.",
+    adminAppPushUnsupportedHint:
+        "Use Safari on iPhone (iOS 16.4+) with the app installed to Home Screen, or a desktop browser that supports the Push API.",
+    adminAppPushServerUnconfiguredHint:
+        "Ask IT to set VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, and VAPID_SUBJECT, then redeploy.",
+    adminAppPushIphoneTitle: "iPhone setup",
+    adminAppPushIphoneStep1: "Open this Admin App in Safari (not an in-app browser).",
+    adminAppPushIphoneStep2: "Tap Share → Add to Home Screen.",
+    adminAppPushIphoneStep3: "Open the app from the Home Screen icon (standalone mode).",
+    adminAppPushIphoneStep4: "Return here and tap Enable notifications.",
+    adminAppPushEnable: "Enable notifications",
+    adminAppPushDisable: "Disable notifications",
+    adminAppPushWorking: "Working…",
+    adminAppPushRefresh: "Refresh status",
+    adminAppPushEnabledSuccess: "Notifications enabled on this device.",
+    adminAppPushDisabledSuccess: "Notifications disabled on this device.",
+    adminAppPushPermissionDenied:
+        "Permission was not granted. You can change it in iOS Settings → Notifications.",
+    adminAppPushSaveFailed: "Could not save the subscription on the server.",
+    adminAppPushEnableFailed: "Could not enable notifications.",
+    adminAppPushDisableFailed: "Could not disable notifications.",
+    adminAppPushPhase1Note:
+        "Phase 1 only registers this device. Automatic push delivery is not enabled yet.",
+
     // Common admin
     close: "Close",
     goBack: "Go back",
