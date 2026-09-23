@@ -42,6 +42,13 @@ export const NEW_PRIVATE_CLASS_REQUEST_PUSH: AdminPushPayload = {
     url: "/admin-app/private-classes",
 }
 
+/** Minimal payload for new student support tickets — no PII. */
+export const NEW_SUPPORT_TICKET_PUSH: AdminPushPayload = {
+    title: "Smart Option Academy",
+    body: "New Support Ticket",
+    url: "/admin-app/support",
+}
+
 function configureWebPush(): boolean {
     const config = getAdminPushVapidConfig()
     if (!config) return false
@@ -157,6 +164,13 @@ export async function sendNewPrivateClassRequestPush(
     supabase: SupabaseClient
 ): Promise<AdminPushSendResult> {
     return sendAdminWebPush(supabase, NEW_PRIVATE_CLASS_REQUEST_PUSH)
+}
+
+/** Fan-out new support-ticket push to all subscribed admin devices. */
+export async function sendNewSupportTicketPush(
+    supabase: SupabaseClient
+): Promise<AdminPushSendResult> {
+    return sendAdminWebPush(supabase, NEW_SUPPORT_TICKET_PUSH)
 }
 
 /** Test push limited to one admin's devices. */

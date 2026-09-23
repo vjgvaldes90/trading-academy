@@ -24,7 +24,7 @@ import {
     type SupportTicketPriority,
     type SupportTicketStatus,
     type SupportTicketWithMessages,
-} from "@/lib/support"
+} from "@/lib/support/types"
 import { X } from "lucide-react"
 import { useCallback, useEffect, useState } from "react"
 

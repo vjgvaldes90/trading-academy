@@ -26,7 +26,7 @@ import {
     type SupportTicketPriority,
     type SupportTicketStatus,
     type SupportTicketStatusCounts,
-} from "@/lib/support"
+} from "@/lib/support/types"
 import { useCallback, useEffect, useMemo, useState } from "react"
 
 type AdminSupportProps = {

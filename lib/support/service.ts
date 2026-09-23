@@ -14,9 +14,11 @@ import type {
 } from "@/lib/support/types"
 
 export class SupportService {
+    private readonly supabase: SupabaseClient
     private readonly repo: SupportRepository
 
     constructor(supabase: SupabaseClient) {
+        this.supabase = supabase
         this.repo = new SupportRepository(supabase)
     }
 
@@ -34,12 +36,28 @@ export class SupportService {
             })
             await this.repo.touchLastMessageAt(ticket.id, message.created_at)
             const refreshed = await this.repo.findTicketById(ticket.id)
+            const data: SupportTicketWithMessages = {
+                ...(refreshed ?? ticket),
+                messages: [message],
+            }
+
+            // Best-effort push: dynamic import keeps web-push out of client bundles
+            // that may transitively resolve this module via the support barrel.
+            try {
+                const { notifySupportTicketCreated } = await import(
+                    "@/lib/adminSupportNotifications"
+                )
+                await notifySupportTicketCreated(this.supabase, { ticketId: data.id })
+            } catch {
+                console.error(
+                    "[SupportService.createTicket] push notify failed (non-blocking)",
+                    { ticketId: data.id }
+                )
+            }
+
             return {
                 ok: true,
-                data: {
-                    ...(refreshed ?? ticket),
-                    messages: [message],
-                },
+                data,
             }
         } catch (e) {
             console.error("[SupportService.createTicket]", e)

@@ -89,3 +89,25 @@ No email, student message, prices, or Zoom data in the payload. No `admin_notifi
 - One notify call per successful INSERT (keyed by `request.id` in logs).
 - A second legitimate request from the same student is a new UUID → a new push (intentional).
 - Exactly-once across process crashes/retries is **not** guaranteed without a persistent push ledger (intentionally out of scope).
+
+## Phase 2c — support ticket delivery (push-only)
+
+### Event source
+
+After `SupportService.createTicket()` successfully inserts `support_tickets` + the initial `support_messages` row, `notifySupportTicketCreated` in `lib/adminSupportNotifications.ts` sends a best-effort push.
+
+Covers both student entry points (`createSupportTicketAction` and `POST /api/support/tickets`). Does **not** run for replies, status/priority updates, or admin-only ticket mutations.
+
+### Payload
+
+- Title: `Smart Option Academy`
+- Body: `New Support Ticket`
+- URL: `/admin-app/support` (existing Service Worker deep-link)
+
+No email, name, subject, or message body in the payload. No `admin_notifications` row.
+
+### Idempotency
+
+- One notify call per successful create (keyed by `ticket.id` in logs).
+- A second legitimate ticket from the same student is a new UUID → a new push (intentional).
+- Exactly-once across process crashes/retries is **not** guaranteed without a persistent push ledger (intentionally out of scope).
