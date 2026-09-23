@@ -355,14 +355,13 @@ export const en = {
 
     // Admin App — New enrollments module
     adminAppEnrollmentsTitle: "New enrollments",
-    adminAppEnrollmentsSubtitle: "Students recently registered in Trading Academy.",
+    adminAppEnrollmentsSubtitle: "Unread new enrollments waiting for review.",
     adminAppEnrollmentsBack: "Back to home",
     adminAppEnrollmentsLoading: "Loading enrollments…",
     adminAppEnrollmentsLoadError: "Could not load enrollments.",
     adminAppEnrollmentsRetry: "Retry",
-    adminAppEnrollmentsEmpty: "No new enrollments yet.",
+    adminAppEnrollmentsEmpty: "No pending enrollments to review.",
     adminAppEnrollmentsUnread: "Unread",
-    adminAppEnrollmentsRead: "Read",
     adminAppEnrollmentsMarkAsRead: "Mark as read",
     adminAppEnrollmentsUnknownStudent: "Student details unavailable",
 

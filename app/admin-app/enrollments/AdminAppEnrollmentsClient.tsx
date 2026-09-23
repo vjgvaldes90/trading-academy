@@ -68,7 +68,7 @@ export default function AdminAppEnrollmentsClient() {
             }
             const list = Array.isArray(payload.notifications) ? payload.notifications : []
             const enrollments = list
-                .filter((n) => n.type === "new_student")
+                .filter((n) => n.type === "new_student" && n.is_read === false)
                 .sort((a, b) => {
                     const ta = Date.parse(a.created_at)
                     const tb = Date.parse(b.created_at)
@@ -109,9 +109,7 @@ export default function AdminAppEnrollmentsClient() {
                         : t.adminMarkAsReadFailed
                 )
             }
-            setItems((prev) =>
-                prev.map((n) => (n.id === id ? { ...n, is_read: true } : n))
-            )
+            setItems((prev) => prev.filter((n) => n.id !== id))
         } catch (e) {
             setError(e instanceof Error ? e.message : t.adminMarkAsReadFailed)
         } finally {
@@ -180,7 +178,6 @@ export default function AdminAppEnrollmentsClient() {
                             </li>
                         ) : null}
                         {items.map((n) => {
-                            const unread = !n.is_read
                             const label = resolveStudentLabel(
                                 n,
                                 t.adminAppEnrollmentsUnknownStudent
@@ -189,12 +186,7 @@ export default function AdminAppEnrollmentsClient() {
                             return (
                                 <li
                                     key={n.id}
-                                    className={[
-                                        "rounded-2xl border bg-[#111827]/95 p-4",
-                                        unread
-                                            ? "border-amber-400/30"
-                                            : "border-white/[0.08]",
-                                    ].join(" ")}
+                                    className="rounded-2xl border border-amber-400/30 bg-[#111827]/95 p-4"
                                 >
                                     <div className="flex items-start justify-between gap-3">
                                         <div className="min-w-0 flex-1">
@@ -207,29 +199,18 @@ export default function AdminAppEnrollmentsClient() {
                                                 </p>
                                             ) : null}
                                         </div>
-                                        <span
-                                            className={[
-                                                "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide",
-                                                unread
-                                                    ? "bg-amber-500/20 text-amber-200"
-                                                    : "bg-white/[0.06] text-slate-500",
-                                            ].join(" ")}
-                                        >
-                                            {unread
-                                                ? t.adminAppEnrollmentsUnread
-                                                : t.adminAppEnrollmentsRead}
+                                        <span className="shrink-0 rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-200">
+                                            {t.adminAppEnrollmentsUnread}
                                         </span>
                                     </div>
-                                    {unread ? (
-                                        <button
-                                            type="button"
-                                            disabled={markingId === n.id}
-                                            onClick={() => void markAsRead(n.id)}
-                                            className="mt-3 inline-flex items-center rounded-lg border border-blue-400/30 bg-blue-500/10 px-3 py-2 text-xs font-semibold text-blue-200 transition active:bg-blue-500/20 disabled:opacity-50"
-                                        >
-                                            {t.adminAppEnrollmentsMarkAsRead}
-                                        </button>
-                                    ) : null}
+                                    <button
+                                        type="button"
+                                        disabled={markingId === n.id}
+                                        onClick={() => void markAsRead(n.id)}
+                                        className="mt-3 inline-flex items-center rounded-lg border border-blue-400/30 bg-blue-500/10 px-3 py-2 text-xs font-semibold text-blue-200 transition active:bg-blue-500/20 disabled:opacity-50"
+                                    >
+                                        {t.adminAppEnrollmentsMarkAsRead}
+                                    </button>
                                 </li>
                             )
                         })}

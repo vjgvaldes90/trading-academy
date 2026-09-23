@@ -357,14 +357,13 @@ export const es: TranslationKeys = {
 
     // Admin App — New enrollments module
     adminAppEnrollmentsTitle: "Nuevas inscripciones",
-    adminAppEnrollmentsSubtitle: "Estudiantes registrados recientemente en Trading Academy.",
+    adminAppEnrollmentsSubtitle: "Nuevas inscripciones sin leer pendientes de revisar.",
     adminAppEnrollmentsBack: "Volver al inicio",
     adminAppEnrollmentsLoading: "Cargando inscripciones…",
     adminAppEnrollmentsLoadError: "No se pudieron cargar las inscripciones.",
     adminAppEnrollmentsRetry: "Reintentar",
-    adminAppEnrollmentsEmpty: "Aún no hay nuevas inscripciones.",
+    adminAppEnrollmentsEmpty: "No hay inscripciones pendientes de revisar.",
     adminAppEnrollmentsUnread: "No leída",
-    adminAppEnrollmentsRead: "Leída",
     adminAppEnrollmentsMarkAsRead: "Marcar como leída",
     adminAppEnrollmentsUnknownStudent: "Datos del estudiante no disponibles",
 
