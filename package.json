@@ -2,18 +2,18 @@
   "name": "trading-academy",
   "version": "0.1.0",
   "private": true,
-    "scripts": {
-        "dev": "next dev",
-        "dev:full": "concurrently -n APP,STRIPE -c cyan,magenta \"npm run dev\" \"stripe listen --forward-to localhost:3000/api/stripe/webhook\"",
-        "build": "next build",
-        "start": "next start",
-        "lint": "eslint",
-        "typecheck": "tsc --noEmit",
-        "generate:zoom-guide-pdf": "node scripts/generate-zoom-guide-pdf.cjs",
-        "verify:private-class-completion": "npx --yes tsx scripts/verify-private-class-completion.ts",
-        "verify:pre-enrolled-checkout": "npx --yes tsx scripts/verify-pre-enrolled-checkout.ts",
-        "verify:theory-quota": "npx --yes tsx scripts/verify-theory-quota.ts"
-    },
+  "scripts": {
+    "dev": "next dev",
+    "dev:full": "concurrently -n APP,STRIPE -c cyan,magenta \"npm run dev\" \"stripe listen --forward-to localhost:3000/api/stripe/webhook\"",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "generate:zoom-guide-pdf": "node scripts/generate-zoom-guide-pdf.cjs",
+    "verify:private-class-completion": "npx --yes tsx scripts/verify-private-class-completion.ts",
+    "verify:pre-enrolled-checkout": "npx --yes tsx scripts/verify-pre-enrolled-checkout.ts",
+    "verify:theory-quota": "npx --yes tsx scripts/verify-theory-quota.ts"
+  },
   "dependencies": {
     "@supabase/ssr": "^0.10.2",
     "@supabase/supabase-js": "^2.99.2",
@@ -25,6 +25,7 @@
     "react-dom": "19.2.3",
     "resend": "^6.9.4",
     "stripe": "^20.4.1",
+    "web-push": "^3.6.7",
     "zod": "^3.25.76"
   },
   "devDependencies": {
@@ -32,6 +33,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/web-push": "^3.6.4",
     "concurrently": "^9.2.1",
     "eslint": "^9",
     "eslint-config-next": "16.1.7",

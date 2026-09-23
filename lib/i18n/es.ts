@@ -498,8 +498,14 @@ export const es: TranslationKeys = {
     adminAppPushSaveFailed: "No se pudo guardar la suscripción en el servidor.",
     adminAppPushEnableFailed: "No se pudieron activar las notificaciones.",
     adminAppPushDisableFailed: "No se pudieron desactivar las notificaciones.",
+    adminAppPushTestSend: "Enviar notificación de prueba",
+    adminAppPushTestSuccess:
+        "El proveedor aceptó el push de prueba. Revisa este dispositivo — aquí no se confirma la entrega.",
+    adminAppPushTestFailed: "No se pudo enviar la notificación de prueba.",
     adminAppPushPhase1Note:
         "La Fase 1 solo registra este dispositivo. El envío automático de push aún no está activo.",
+    adminAppPushPhase2Note:
+        "Las altas de estudiantes nuevos pueden avisar en este dispositivo con la Admin App en segundo plano o cerrada (según reglas de iOS/Web Push).",
 
     // Common admin
     close: "Cerrar",

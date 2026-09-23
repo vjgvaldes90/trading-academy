@@ -1,7 +1,7 @@
 "use client"
 
 import { useLanguage } from "@/context/LanguageProvider"
-import { ArrowLeft, Bell, BellOff, Smartphone } from "lucide-react"
+import { ArrowLeft, Bell, BellOff, BellRing, Smartphone } from "lucide-react"
 import Link from "next/link"
 import { useCallback, useEffect, useState } from "react"
 
@@ -205,6 +205,38 @@ export default function AdminAppPushSettingsClient() {
         }
     }
 
+    const sendTestNotification = async () => {
+        setBusy(true)
+        setMessage(null)
+        try {
+            const res = await fetch("/api/admin/push/test", {
+                method: "POST",
+                credentials: "include",
+            })
+            const data = (await res.json().catch(() => ({}))) as {
+                ok?: boolean
+                error?: string
+                note?: string
+                accepted?: number
+            }
+
+            if (!res.ok || data.ok !== true) {
+                setMessage(
+                    typeof data.error === "string" && data.error.trim()
+                        ? data.error
+                        : t.adminAppPushTestFailed
+                )
+                return
+            }
+
+            setMessage(t.adminAppPushTestSuccess)
+        } catch {
+            setMessage(t.adminAppPushTestFailed)
+        } finally {
+            setBusy(false)
+        }
+    }
+
     const disableNotifications = async () => {
         setBusy(true)
         setMessage(null)
@@ -324,15 +356,26 @@ export default function AdminAppPushSettingsClient() {
 
                 <div className="flex flex-col gap-2">
                     {status === "subscribed" ? (
-                        <button
-                            type="button"
-                            disabled={busy}
-                            onClick={() => void disableNotifications()}
-                            className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-semibold text-slate-200 transition active:bg-white/[0.08] disabled:opacity-50"
-                        >
-                            <BellOff className="h-4 w-4" aria-hidden />
-                            {busy ? t.adminAppPushWorking : t.adminAppPushDisable}
-                        </button>
+                        <>
+                            <button
+                                type="button"
+                                disabled={busy}
+                                onClick={() => void sendTestNotification()}
+                                className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-blue-400/30 bg-blue-500/15 px-4 py-3 text-sm font-semibold text-blue-100 transition active:bg-blue-500/25 disabled:opacity-50"
+                            >
+                                <BellRing className="h-4 w-4" aria-hidden />
+                                {busy ? t.adminAppPushWorking : t.adminAppPushTestSend}
+                            </button>
+                            <button
+                                type="button"
+                                disabled={busy}
+                                onClick={() => void disableNotifications()}
+                                className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-semibold text-slate-200 transition active:bg-white/[0.08] disabled:opacity-50"
+                            >
+                                <BellOff className="h-4 w-4" aria-hidden />
+                                {busy ? t.adminAppPushWorking : t.adminAppPushDisable}
+                            </button>
+                        </>
                     ) : null}
 
                     {status === "not_subscribed" ||
@@ -361,7 +404,7 @@ export default function AdminAppPushSettingsClient() {
                     ) : null}
                 </div>
 
-                <p className="text-xs leading-relaxed text-slate-500">{t.adminAppPushPhase1Note}</p>
+                <p className="text-xs leading-relaxed text-slate-500">{t.adminAppPushPhase2Note}</p>
             </section>
         </div>
     )

@@ -496,8 +496,14 @@ export const en = {
     adminAppPushSaveFailed: "Could not save the subscription on the server.",
     adminAppPushEnableFailed: "Could not enable notifications.",
     adminAppPushDisableFailed: "Could not disable notifications.",
+    adminAppPushTestSend: "Send test notification",
+    adminAppPushTestSuccess:
+        "Test push accepted by the provider. Check this device — delivery is not guaranteed to be confirmed here.",
+    adminAppPushTestFailed: "Could not send the test notification.",
     adminAppPushPhase1Note:
         "Phase 1 only registers this device. Automatic push delivery is not enabled yet.",
+    adminAppPushPhase2Note:
+        "New student enrollments can notify this device while the Admin App is in the background or closed (subject to iOS/Web Push rules).",
 
     // Common admin
     close: "Close",
