@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { requireAuthorizedAdminFromCookies } from "@/lib/adminAuth"
 import { provisionAcademyStudent } from "@/lib/provisionAcademyStudent"
+import { parseCheckoutPlan } from "@/lib/subscriptionPlans"
 
 export const runtime = "nodejs"
 
@@ -75,6 +76,16 @@ export async function POST(req: Request) {
         )
     }
 
+    // Plan only applies to Free students. Default trading_only when omitted.
+    let plan: "trading_only" | "full_program" | undefined
+    if (accessType === "free") {
+        const parsed = parseCheckoutPlan(b.plan)
+        if (!parsed.ok) {
+            return NextResponse.json({ success: false, error: parsed.error }, { status: 400 })
+        }
+        plan = parsed.plan
+    }
+
     try {
         const result = await provisionAcademyStudent({
             firstName,
@@ -82,6 +93,7 @@ export async function POST(req: Request) {
             email,
             phone: trimString(b.phone),
             accessType: accessType as (typeof ACCESS_TYPES)[number],
+            plan,
         })
         return NextResponse.json(result)
     } catch (error) {

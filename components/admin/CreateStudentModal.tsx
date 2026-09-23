@@ -3,8 +3,10 @@
 import type { CSSProperties, FormEvent } from "react"
 import { useEffect, useState } from "react"
 import { useLanguage } from "@/context/LanguageProvider"
+import type { SubscriptionPlanId } from "@/lib/subscriptionPlans"
 
 const ACCESS_TYPE_OPTIONS = ["free", "paid", "vip", "discount"] as const
+const FREE_PLAN_OPTIONS = ["trading_only", "full_program"] as const
 
 export type CreateStudentAccessType = (typeof ACCESS_TYPE_OPTIONS)[number]
 
@@ -14,6 +16,8 @@ export type CreateStudentFormValues = {
     email: string
     phone: string
     accessType: CreateStudentAccessType
+    /** Only meaningful when accessType === "free". */
+    plan: SubscriptionPlanId
 }
 
 type CreateStudentModalProps = {
@@ -56,6 +60,7 @@ export default function CreateStudentModal({ open, onClose, onSubmit }: CreateSt
     const [email, setEmail] = useState("")
     const [phone, setPhone] = useState("")
     const [accessType, setAccessType] = useState<CreateStudentAccessType>("free")
+    const [plan, setPlan] = useState<SubscriptionPlanId>("trading_only")
 
     useEffect(() => {
         if (!open) return
@@ -64,6 +69,7 @@ export default function CreateStudentModal({ open, onClose, onSubmit }: CreateSt
         setEmail("")
         setPhone("")
         setAccessType("free")
+        setPlan("trading_only")
     }, [open])
 
     if (!open) return null
@@ -83,6 +89,7 @@ export default function CreateStudentModal({ open, onClose, onSubmit }: CreateSt
             email: trimmedEmail.toLowerCase(),
             phone: phone.trim(),
             accessType,
+            plan: accessType === "free" ? plan : "trading_only",
         })
     }
 
@@ -203,14 +210,18 @@ export default function CreateStudentModal({ open, onClose, onSubmit }: CreateSt
                             style={inputStyle}
                         />
                     </div>
-                    <div style={{ marginBottom: 18 }}>
+                    <div style={{ marginBottom: accessType === "free" ? 16 : 18 }}>
                         <label htmlFor="create-student-access-type" style={labelStyle}>
                             {t.accessTypeFieldLabel}
                         </label>
                         <select
                             id="create-student-access-type"
                             value={accessType}
-                            onChange={(e) => setAccessType(e.target.value as CreateStudentAccessType)}
+                            onChange={(e) => {
+                                const next = e.target.value as CreateStudentAccessType
+                                setAccessType(next)
+                                if (next !== "free") setPlan("trading_only")
+                            }}
                             style={inputStyle}
                         >
                             {ACCESS_TYPE_OPTIONS.map((opt) => (
@@ -220,6 +231,40 @@ export default function CreateStudentModal({ open, onClose, onSubmit }: CreateSt
                             ))}
                         </select>
                     </div>
+
+                    {accessType === "free" ? (
+                        <div style={{ marginBottom: 18 }}>
+                            <label htmlFor="create-student-plan" style={labelStyle}>
+                                {t.createStudentProgramLabel}
+                            </label>
+                            <select
+                                id="create-student-plan"
+                                value={plan}
+                                onChange={(e) => setPlan(e.target.value as SubscriptionPlanId)}
+                                style={inputStyle}
+                            >
+                                {FREE_PLAN_OPTIONS.map((opt) => (
+                                    <option key={opt} value={opt}>
+                                        {opt === "full_program"
+                                            ? t.createStudentProgramFullProgram
+                                            : t.createStudentProgramTradingOnly}
+                                    </option>
+                                ))}
+                            </select>
+                            {plan === "full_program" ? (
+                                <p
+                                    style={{
+                                        margin: "8px 0 0",
+                                        fontSize: "0.75rem",
+                                        lineHeight: 1.45,
+                                        color: "#94a3b8",
+                                    }}
+                                >
+                                    {t.createStudentProgramFullProgramHint}
+                                </p>
+                            ) : null}
+                        </div>
+                    ) : null}
 
                     <button
                         type="submit"

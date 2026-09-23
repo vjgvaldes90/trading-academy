@@ -149,6 +149,7 @@ export default function AdminStudents() {
                     email: values.email,
                     phone: values.phone,
                     accessType: values.accessType,
+                    ...(values.accessType === "free" ? { plan: values.plan } : {}),
                 }),
             })
             console.log("HTTP Status:", res.status)

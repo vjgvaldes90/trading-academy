@@ -1,6 +1,8 @@
 /**
- * Full Program live Theory quota: max 2 distinct sessions in the first $450 billing period.
- * Entitlement remains evaluateTheoryAccess / program_theory_until (unchanged).
+ * Full Program live Theory quota:
+ * - Paid: max 2 distinct sessions in the first $450 billing period (Stripe / program_theory_until).
+ * - Free + full_program: max 2 distinct sessions lifetime (fixed complimentary period; no Stripe).
+ * Entitlement remains evaluateTheoryAccess (unchanged for paid / pre_enrolled).
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js"
@@ -10,11 +12,37 @@ import {
     getSubscriptionItemPeriodStartUnix,
     unixSecondsToIso,
 } from "@/lib/stripeFullProgramSchedule"
-import type { TradingStudentAccessRow } from "@/lib/studentAcademyAccess"
+import {
+    normalizeAccessType,
+    type TradingStudentAccessRow,
+} from "@/lib/studentAcademyAccess"
+import { planIncludesTheory } from "@/lib/subscriptionPlans"
+
+/**
+ * Immutable lifetime window for Free + Full Program Theory quota.
+ * Not a Stripe billing period — used only so claim_theory_consumption can enforce max 2.
+ */
+export const FREE_FULL_PROGRAM_THEORY_PERIOD_START_ISO = "2000-01-01T00:00:00.000Z"
+export const FREE_FULL_PROGRAM_THEORY_PERIOD_END_ISO = "9999-12-31T23:59:59.000Z"
 
 export type TheoryBillingPeriod = {
     start: Date
     end: Date
+}
+
+export function freeFullProgramTheoryPeriod(): TheoryBillingPeriod {
+    return {
+        start: new Date(FREE_FULL_PROGRAM_THEORY_PERIOD_START_ISO),
+        end: new Date(FREE_FULL_PROGRAM_THEORY_PERIOD_END_ISO),
+    }
+}
+
+/** Admin-created Free student with Full Program theory entitlement. */
+export function isFreeFullProgramStudent(
+    row: Pick<TradingStudentAccessRow, "access_type" | "plan"> | null | undefined
+): boolean {
+    if (!row) return false
+    return normalizeAccessType(row.access_type) === "free" && planIncludesTheory(row.plan)
 }
 
 export type TheoryQuotaClaimResult =
@@ -193,7 +221,9 @@ async function persistTheoryQuotaPeriodIfEmpty(args: {
 }
 
 /**
- * Resolve the immutable first Full Program $450 billing window for Theory quota.
+ * Resolve Theory quota period:
+ * - Free + full_program → lifetime complimentary window (no Stripe).
+ * - Others → immutable first Full Program $450 billing window.
  */
 export async function resolveTheoryBillingPeriod(
     student: StudentQuotaRow,
@@ -204,6 +234,19 @@ export async function resolveTheoryBillingPeriod(
         student.theory_quota_period_end
     )
     if (persisted) return persisted
+
+    // Complimentary Free + Full Program: ensure lifetime period exists (no Stripe / program_theory_until).
+    if (isFreeFullProgramStudent(student)) {
+        const studentId = typeof student.id === "string" ? student.id.trim() : ""
+        if (!studentId || !supabase) {
+            return freeFullProgramTheoryPeriod()
+        }
+        return persistTheoryQuotaPeriodIfEmpty({
+            supabase,
+            studentId,
+            period: freeFullProgramTheoryPeriod(),
+        })
+    }
 
     const untilRaw =
         typeof student.program_theory_until === "string" ? student.program_theory_until.trim() : ""
@@ -258,7 +301,7 @@ export async function resolveTheoryBillingPeriod(
 }
 
 /**
- * Preview or claim a distinct theory session for this student in the first $450 period.
+ * Preview or claim a distinct theory session for this student in their Theory quota period.
  * `consume=false` never inserts; only reports already / available / exceeded.
  */
 export async function assertOrClaimTheoryConsumption(args: {

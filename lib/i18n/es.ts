@@ -654,6 +654,11 @@ export const es: TranslationKeys = {
     lastNameLabel: "Apellido",
     phoneLabel: "Teléfono",
     accessTypeFieldLabel: "Tipo de acceso",
+    createStudentProgramLabel: "Programa",
+    createStudentProgramTradingOnly: "Solo Trading",
+    createStudentProgramFullProgram: "Programa Completo",
+    createStudentProgramFullProgramHint:
+        "Incluye acceso a trading y exactamente 2 clases teóricas en total (no renovables).",
     createStudent: "Crear estudiante",
 
     // Admin subscriptions

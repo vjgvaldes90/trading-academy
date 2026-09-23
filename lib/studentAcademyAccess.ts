@@ -133,12 +133,15 @@ export function evaluateAcademyAccess(
 }
 
 /**
- * Theory entitlement: academy OK + (pre-launch pre_enrolled full_program OR paid theory window).
- * Enforced by GET /api/lessons and live Theory Classes (list + join).
+ * Theory entitlement: academy OK + (pre-launch pre_enrolled full_program OR
+ * Free + full_program OR paid theory window).
+ * Enforced by live Theory Classes (list + join). Recorded lessons use academy access only.
  *
  * Before official launch (America/New_York): pre_enrolled + full_program may attend theory
  * without program_theory_until (classes may start before Sep 24 payment).
- * After launch: existing canAccessTheory (plan + future program_theory_until) applies.
+ * Free + full_program: theory entitlement without Stripe / program_theory_until
+ * (lifetime max 2 sessions enforced at join via theory quota ledger).
+ * After launch: paid path uses canAccessTheory (plan + future program_theory_until).
  */
 export function evaluateTheoryAccess(
     row: TradingStudentAccessRow | null | undefined,
@@ -155,6 +158,11 @@ export function evaluateTheoryAccess(
         !isOfficialLaunchStarted(now) &&
         planIncludesTheory(row?.plan)
     ) {
+        return { ok: true }
+    }
+
+    // Complimentary Free + Full Program (no Stripe window required).
+    if (type === "free" && planIncludesTheory(row?.plan)) {
         return { ok: true }
     }
 

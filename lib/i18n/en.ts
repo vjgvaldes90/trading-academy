@@ -652,6 +652,11 @@ export const en = {
     lastNameLabel: "Last Name",
     phoneLabel: "Phone",
     accessTypeFieldLabel: "Access Type",
+    createStudentProgramLabel: "Program",
+    createStudentProgramTradingOnly: "Trading Only",
+    createStudentProgramFullProgram: "Full Program",
+    createStudentProgramFullProgramHint:
+        "Includes trading access plus exactly 2 theory classes total (not renewable).",
     createStudent: "Create Student",
 
     // Admin subscriptions

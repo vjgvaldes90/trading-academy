@@ -4,6 +4,11 @@ import {
     tradingStudentExistsByEmail,
 } from "@/lib/adminNotifications"
 import { sendEmail } from "@/lib/sendEmail"
+import {
+    FREE_FULL_PROGRAM_THEORY_PERIOD_END_ISO,
+    FREE_FULL_PROGRAM_THEORY_PERIOD_START_ISO,
+} from "@/lib/theoryClassQuota"
+import type { SubscriptionPlanId } from "@/lib/subscriptionPlans"
 
 export type ProvisionStudentInput = {
     firstName: string
@@ -11,6 +16,11 @@ export type ProvisionStudentInput = {
     email: string
     phone?: string
     accessType: "free" | "paid" | "vip" | "discount"
+    /**
+     * Only applied when accessType === "free".
+     * Defaults to trading_only when omitted.
+     */
+    plan?: SubscriptionPlanId
 }
 
 export type ProvisionStudentResult = {
@@ -58,12 +68,20 @@ export async function provisionAcademyStudent(
 
     if (accessType === "free") {
         row.access_expires_at = null
+        const plan: SubscriptionPlanId =
+            input.plan === "full_program" ? "full_program" : "trading_only"
+        row.plan = plan
+        if (plan === "full_program") {
+            // Lifetime Theory quota window for claim_theory_consumption (max 2 total).
+            row.theory_quota_period_start = FREE_FULL_PROGRAM_THEORY_PERIOD_START_ISO
+            row.theory_quota_period_end = FREE_FULL_PROGRAM_THEORY_PERIOD_END_ISO
+        }
     }
 
     const { data: savedRow, error: dbErr } = await supabase
         .from("trading_students")
         .upsert(row, { onConflict: "email" })
-        .select("id, email, access_code, access_expires_at, access_type")
+        .select("id, email, access_code, access_expires_at, access_type, plan")
         .single()
 
     if (dbErr) {
