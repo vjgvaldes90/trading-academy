@@ -3,12 +3,13 @@
 import AdminNotificationsBell from "@/components/admin/AdminNotificationsBell"
 import type { AdminDashboardView } from "@/components/admin/AdminSidebar"
 import type { AdminRevenueMetrics } from "@/lib/adminRevenue"
-import { formatUsdFromCents } from "@/lib/adminRevenue"
+import { formatAdminRevenueRangeLabel, formatUsdFromCents } from "@/lib/adminRevenue"
 import type { ExecutiveMetrics } from "@/lib/executiveDashboard"
 import { useLanguage } from "@/context/LanguageProvider"
 import {
     BookOpen,
     CalendarPlus,
+    CalendarRange,
     ChevronDown,
     ChevronRight,
     CreditCard,
@@ -27,18 +28,6 @@ type DashboardPayload = {
     studentGrowth?: unknown
     revenue?: AdminRevenueMetrics | null
     error?: string
-}
-
-function formatMomLabel(percent: number | null): { text: string; tone: "up" | "down" | "flat" | "na" } {
-    if (percent === null || !Number.isFinite(percent)) {
-        return { text: "—", tone: "na" }
-    }
-    const rounded = Math.round(percent * 10) / 10
-    const abs = Math.abs(rounded)
-    const formatted = Number.isInteger(abs) ? String(abs) : abs.toFixed(1)
-    if (rounded > 0) return { text: `↑ ${formatted}%`, tone: "up" }
-    if (rounded < 0) return { text: `↓ ${formatted}%`, tone: "down" }
-    return { text: `→ ${formatted}%`, tone: "flat" }
 }
 
 const panel =
@@ -139,10 +128,52 @@ export default function AdminOverview({
         ] as const
     }, [metrics, t])
 
-    const mom = useMemo(
-        () => formatMomLabel(revenue?.vsPreviousMonthPercent ?? null),
-        [revenue?.vsPreviousMonthPercent]
-    )
+    const locale = language === "es" ? "es-ES" : "en-US"
+
+    const revenueCards = useMemo(() => {
+        if (!revenue) return null
+        return [
+            {
+                key: "weekly",
+                title: t.adminRevenueWeekly,
+                cents: revenue.weekly.cents,
+                rangeLabel: formatAdminRevenueRangeLabel(
+                    revenue.weekly.startUnix,
+                    revenue.weekly.endUnix,
+                    locale,
+                    revenue.timeZone
+                ),
+                accent: "amber" as const,
+                Icon: CalendarRange,
+            },
+            {
+                key: "monthly",
+                title: t.adminRevenueMonthly,
+                cents: revenue.monthly.cents,
+                rangeLabel: formatAdminRevenueRangeLabel(
+                    revenue.monthly.startUnix,
+                    revenue.monthly.endUnix,
+                    locale,
+                    revenue.timeZone
+                ),
+                accent: "blue" as const,
+                Icon: CreditCard,
+            },
+            {
+                key: "annual",
+                title: t.adminRevenueAnnual,
+                cents: revenue.annual.cents,
+                rangeLabel: formatAdminRevenueRangeLabel(
+                    revenue.annual.startUnix,
+                    revenue.annual.endUnix,
+                    locale,
+                    revenue.timeZone
+                ),
+                accent: "emerald" as const,
+                Icon: TrendingUp,
+            },
+        ]
+    }, [revenue, t, locale])
 
     const quickActions = useMemo(
         () => [
@@ -261,14 +292,19 @@ export default function AdminOverview({
             {/* 2/3 + 1/3 body — existing data mapped into reference slots */}
             <section className="grid grid-cols-1 items-start gap-4 lg:grid-cols-12 lg:gap-5">
                 <div className="flex flex-col gap-4 lg:col-span-8">
-                    {/* Maps to “Próximas sesiones” slot — revenue is the existing primary dataset */}
-                    <div className={`${panel} flex min-h-[260px] flex-col p-5 sm:min-h-[280px] sm:p-6`}>
-                        <div className="flex flex-wrap items-center justify-between gap-3">
+                    {/* Revenue — three period cards (Stripe Balance Transactions, launch floor) */}
+                    <div className="space-y-3">
+                        <div className="flex flex-wrap items-center justify-between gap-3 px-0.5">
                             <div className="flex items-center gap-2.5">
                                 <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-blue-400/25 bg-blue-500/15 text-blue-300">
                                     <CreditCard className="h-4 w-4" aria-hidden />
                                 </span>
-                                <h3 className="text-base font-semibold text-white">{t.adminRevenue}</h3>
+                                <div className="min-w-0">
+                                    <h3 className="text-base font-semibold text-white">{t.adminRevenue}</h3>
+                                    <p className="mt-0.5 text-[11px] text-slate-500">
+                                        {t.adminRevenueTrackingNote}
+                                    </p>
+                                </div>
                             </div>
                             <button
                                 type="button"
@@ -280,56 +316,58 @@ export default function AdminOverview({
                         </div>
 
                         {loading ? (
-                            <div className="flex flex-1 items-center justify-center py-10">
-                                <p className="text-3xl font-bold text-white">…</p>
-                            </div>
-                        ) : revenue ? (
-                            <div className="mt-6 flex flex-1 flex-col">
-                                <div className="flex flex-wrap items-end justify-between gap-3">
-                                    <div>
-                                        <p className="text-xs text-slate-500">{t.adminRevenueThisMonth}</p>
-                                        <p className="mt-1 text-3xl font-bold tabular-nums text-white">
-                                            {formatUsdFromCents(revenue.thisMonthCents)}
-                                        </p>
+                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                                {[0, 1, 2].map((i) => (
+                                    <div key={i} className={`${panel} flex min-h-[140px] items-center justify-center p-5`}>
+                                        <p className="text-2xl font-bold text-white">…</p>
                                     </div>
-                                    <p
-                                        className={[
-                                            "text-sm font-semibold tabular-nums",
-                                            mom.tone === "up"
-                                                ? "text-emerald-400"
-                                                : mom.tone === "down"
-                                                  ? "text-rose-400"
-                                                  : "text-slate-500",
-                                        ].join(" ")}
-                                    >
-                                        {mom.text}{" "}
-                                        <span className="font-medium text-slate-500">
-                                            {t.adminRevenueVsPreviousMonth}
-                                        </span>
-                                    </p>
-                                </div>
-                                <div className="mt-auto grid grid-cols-2 gap-3 border-t border-white/[0.06] pt-5 sm:grid-cols-4">
-                                    {(
-                                        [
-                                            [t.adminRevenueToday, revenue.todayCents],
-                                            [t.adminRevenueThisWeek, revenue.thisWeekCents],
-                                            [t.adminRevenueThisMonth, revenue.thisMonthCents],
-                                            [t.adminRevenueAllTime, revenue.allTimeCents],
-                                        ] as const
-                                    ).map(([label, cents]) => (
-                                        <div key={label}>
-                                            <p className="text-[11px] uppercase tracking-wide text-slate-500">
-                                                {label}
-                                            </p>
-                                            <p className="mt-1 text-sm font-semibold tabular-nums text-slate-200">
-                                                {formatUsdFromCents(cents)}
+                                ))}
+                            </div>
+                        ) : revenueCards ? (
+                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                                {revenueCards.map((card) => {
+                                    const Icon = card.Icon
+                                    const accentBorder =
+                                        card.accent === "amber"
+                                            ? "border-amber-400/30"
+                                            : card.accent === "emerald"
+                                              ? "border-emerald-400/25"
+                                              : "border-blue-400/25"
+                                    const accentIcon =
+                                        card.accent === "amber"
+                                            ? "border-amber-400/30 bg-amber-500/15 text-amber-300"
+                                            : card.accent === "emerald"
+                                              ? "border-emerald-400/25 bg-emerald-500/15 text-emerald-300"
+                                              : "border-blue-400/25 bg-blue-500/15 text-blue-300"
+                                    return (
+                                        <div
+                                            key={card.key}
+                                            className={`${panel} flex flex-col p-5 ${accentBorder}`}
+                                        >
+                                            <div className="flex items-start gap-3">
+                                                <span
+                                                    className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border ${accentIcon}`}
+                                                >
+                                                    <Icon className="h-4 w-4" aria-hidden />
+                                                </span>
+                                                <div className="min-w-0">
+                                                    <p className="text-sm font-semibold text-white">
+                                                        {card.title}
+                                                    </p>
+                                                    <p className="mt-1 text-[11px] leading-snug text-slate-500">
+                                                        {card.rangeLabel}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <p className="mt-5 text-2xl font-bold tabular-nums tracking-tight text-white sm:text-[1.65rem]">
+                                                {formatUsdFromCents(card.cents)}
                                             </p>
                                         </div>
-                                    ))}
-                                </div>
+                                    )
+                                })}
                             </div>
                         ) : (
-                            <div className="flex flex-1 flex-col items-center justify-center gap-3 py-10 text-center">
+                            <div className={`${panel} flex flex-col items-center justify-center gap-3 py-10 text-center`}>
                                 <span className="inline-flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03] text-slate-500">
                                     <CreditCard className="h-7 w-7" aria-hidden />
                                 </span>

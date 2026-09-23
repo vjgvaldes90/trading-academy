@@ -1,9 +1,11 @@
 /**
  * Admin revenue metrics from Stripe Balance Transactions (read-only).
  * Net of refunds; America/New_York calendar boundaries.
+ * Tracking start: academy official launch (2026-09-24 00:00 ET) — logical filter only.
  */
 
 import type Stripe from "stripe"
+import { getOfficialLaunchInstant } from "@/lib/academyLaunch"
 import { ET_TIME_ZONE, getEtYmd, zonedWallTimeToUtc } from "@/lib/etCalendar"
 import { createStripeClient, getStripeSecretKey } from "@/lib/stripe-server"
 
@@ -13,17 +15,23 @@ export { getEtYmd, zonedWallTimeToUtc }
 /** Charge/payment inflow + refund outflow (signed amounts). Excludes fees/transfers. */
 const REVENUE_BALANCE_TYPES = ["charge", "payment", "refund", "payment_refund"] as const
 
+export type AdminRevenuePeriod = {
+    /** Cents (USD). Net of refunds in [startUnix, endUnix]. */
+    cents: number
+    /** Inclusive start (unix seconds), after clamping to tracking start. */
+    startUnix: number
+    /** Inclusive end used for the sum (typically "now"). */
+    endUnix: number
+}
+
 export type AdminRevenueMetrics = {
-    /** Cents (USD). Net of refunds. */
-    todayCents: number
-    thisWeekCents: number
-    thisMonthCents: number
-    previousMonthCents: number
-    allTimeCents: number
-    /** null when previous month is 0 (avoid Infinity/NaN). */
-    vsPreviousMonthPercent: number | null
+    weekly: AdminRevenuePeriod
+    monthly: AdminRevenuePeriod
+    annual: AdminRevenuePeriod
     currency: "usd"
     timeZone: typeof ADMIN_REVENUE_TIME_ZONE
+    /** Academy revenue tracking floor (unix seconds). */
+    trackingStartUnix: number
 }
 
 /** Monday 00:00:00 ET of the week containing `now`. */
@@ -38,38 +46,35 @@ export function getEtWeekStartUnix(now: Date, timeZone: string = ADMIN_REVENUE_T
     return Math.floor(startCandidate.getTime() / 1000)
 }
 
-export type EtPeriodBounds = {
-    todayStartUnix: number
+export type AdminRevenuePeriodBounds = {
+    trackingStartUnix: number
     weekStartUnix: number
     monthStartUnix: number
-    previousMonthStartUnix: number
-    previousMonthEndUnix: number
+    yearStartUnix: number
     nowUnix: number
 }
 
-export function getEtPeriodBounds(now: Date = new Date()): EtPeriodBounds {
+/**
+ * Calendar period starts in ET, each clamped to the revenue tracking floor
+ * (2026-09-24 00:00 America/New_York).
+ */
+export function getAdminRevenuePeriodBounds(now: Date = new Date()): AdminRevenuePeriodBounds {
     const tz = ADMIN_REVENUE_TIME_ZONE
-    const { year, month, day } = getEtYmd(now, tz)
-    const todayStart = zonedWallTimeToUtc(year, month, day, 0, 0, 0, tz)
-    const monthStart = zonedWallTimeToUtc(year, month, 1, 0, 0, 0, tz)
-    const previousMonthStart =
-        month === 1
-            ? zonedWallTimeToUtc(year - 1, 12, 1, 0, 0, 0, tz)
-            : zonedWallTimeToUtc(year, month - 1, 1, 0, 0, 0, tz)
+    const { year, month } = getEtYmd(now, tz)
+    const trackingStartUnix = Math.floor(getOfficialLaunchInstant(tz).getTime() / 1000)
+    const nowUnix = Math.floor(now.getTime() / 1000)
+
+    const weekCalendarStart = getEtWeekStartUnix(now, tz)
+    const monthCalendarStart = Math.floor(zonedWallTimeToUtc(year, month, 1, 0, 0, 0, tz).getTime() / 1000)
+    const yearCalendarStart = Math.floor(zonedWallTimeToUtc(year, 1, 1, 0, 0, 0, tz).getTime() / 1000)
 
     return {
-        todayStartUnix: Math.floor(todayStart.getTime() / 1000),
-        weekStartUnix: getEtWeekStartUnix(now, tz),
-        monthStartUnix: Math.floor(monthStart.getTime() / 1000),
-        previousMonthStartUnix: Math.floor(previousMonthStart.getTime() / 1000),
-        previousMonthEndUnix: Math.floor(monthStart.getTime() / 1000),
-        nowUnix: Math.floor(now.getTime() / 1000),
+        trackingStartUnix,
+        weekStartUnix: Math.max(weekCalendarStart, trackingStartUnix),
+        monthStartUnix: Math.max(monthCalendarStart, trackingStartUnix),
+        yearStartUnix: Math.max(yearCalendarStart, trackingStartUnix),
+        nowUnix,
     }
-}
-
-export function computeMomPercent(currentMonthCents: number, previousMonthCents: number): number | null {
-    if (previousMonthCents === 0) return null
-    return ((currentMonthCents - previousMonthCents) / previousMonthCents) * 100
 }
 
 function isUsdRevenueTxn(txn: Stripe.BalanceTransaction): boolean {
@@ -77,54 +82,68 @@ function isUsdRevenueTxn(txn: Stripe.BalanceTransaction): boolean {
     return (REVENUE_BALANCE_TYPES as readonly string[]).includes(txn.type)
 }
 
+function inInclusiveRange(created: number, startUnix: number, endUnix: number): boolean {
+    return created >= startUnix && created <= endUnix
+}
+
 /**
- * One paginated walk per revenue type; buckets in memory (efficient for academy volume).
+ * One paginated walk per revenue type from the tracking floor; buckets in memory.
+ * Uses Balance Transaction `created` (successful money movement), not student/session dates.
+ * Each txn id appears once per type list — no double-count across charge vs payment for the same type walk.
  */
 export async function fetchAdminRevenueMetrics(
     stripe: Stripe,
     now: Date = new Date()
 ): Promise<AdminRevenueMetrics> {
-    const bounds = getEtPeriodBounds(now)
-    let todayCents = 0
-    let thisWeekCents = 0
-    let thisMonthCents = 0
-    let previousMonthCents = 0
-    let allTimeCents = 0
+    const bounds = getAdminRevenuePeriodBounds(now)
+    let weeklyCents = 0
+    let monthlyCents = 0
+    let annualCents = 0
 
     for (const type of REVENUE_BALANCE_TYPES) {
         for await (const txn of stripe.balanceTransactions.list({
             type,
             limit: 100,
+            created: { gte: bounds.trackingStartUnix },
         })) {
             if (!isUsdRevenueTxn(txn)) continue
             const amount = txn.amount
             const created = txn.created
-            allTimeCents += amount
 
-            if (created >= bounds.todayStartUnix && created <= bounds.nowUnix) {
-                todayCents += amount
+            // Floor already applied via list filter; keep explicit guard.
+            if (created < bounds.trackingStartUnix || created > bounds.nowUnix) continue
+
+            if (inInclusiveRange(created, bounds.weekStartUnix, bounds.nowUnix)) {
+                weeklyCents += amount
             }
-            if (created >= bounds.weekStartUnix && created <= bounds.nowUnix) {
-                thisWeekCents += amount
+            if (inInclusiveRange(created, bounds.monthStartUnix, bounds.nowUnix)) {
+                monthlyCents += amount
             }
-            if (created >= bounds.monthStartUnix && created <= bounds.nowUnix) {
-                thisMonthCents += amount
-            }
-            if (created >= bounds.previousMonthStartUnix && created < bounds.previousMonthEndUnix) {
-                previousMonthCents += amount
+            if (inInclusiveRange(created, bounds.yearStartUnix, bounds.nowUnix)) {
+                annualCents += amount
             }
         }
     }
 
     return {
-        todayCents,
-        thisWeekCents,
-        thisMonthCents,
-        previousMonthCents,
-        allTimeCents,
-        vsPreviousMonthPercent: computeMomPercent(thisMonthCents, previousMonthCents),
+        weekly: {
+            cents: weeklyCents,
+            startUnix: bounds.weekStartUnix,
+            endUnix: bounds.nowUnix,
+        },
+        monthly: {
+            cents: monthlyCents,
+            startUnix: bounds.monthStartUnix,
+            endUnix: bounds.nowUnix,
+        },
+        annual: {
+            cents: annualCents,
+            startUnix: bounds.yearStartUnix,
+            endUnix: bounds.nowUnix,
+        },
         currency: "usd",
         timeZone: ADMIN_REVENUE_TIME_ZONE,
+        trackingStartUnix: bounds.trackingStartUnix,
     }
 }
 
@@ -140,4 +159,25 @@ export function formatUsdFromCents(cents: number): string {
         style: "currency",
         currency: "USD",
     }).format(cents / 100)
+}
+
+/** Format an inclusive ET date range for revenue card subtitles. */
+export function formatAdminRevenueRangeLabel(
+    startUnix: number,
+    endUnix: number,
+    locale: string,
+    timeZone: string = ADMIN_REVENUE_TIME_ZONE
+): string {
+    const start = new Date(startUnix * 1000)
+    const end = new Date(endUnix * 1000)
+    const opts: Intl.DateTimeFormatOptions = {
+        timeZone,
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+    }
+    const startLabel = new Intl.DateTimeFormat(locale, opts).format(start)
+    const endLabel = new Intl.DateTimeFormat(locale, opts).format(end)
+    if (startLabel === endLabel) return `${startLabel} (ET)`
+    return `${startLabel} – ${endLabel} (ET)`
 }
