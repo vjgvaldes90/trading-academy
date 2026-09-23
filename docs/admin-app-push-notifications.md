@@ -67,3 +67,25 @@ Call sites (unchanged business logic) include Stripe webhook fulfillment, pre-en
 - Does **not** create `admin_notifications` rows
 - Success means the push provider accepted the request, not confirmed device display
 - Settings UI: **Send test notification** when status is enabled
+
+## Phase 2b — private class request delivery (push-only)
+
+### Event source
+
+After a successful student `INSERT` in `POST /api/private-class-requests` (`status: pending`), `notifyPrivateClassRequestCreated` in `lib/adminPrivateClassNotifications.ts` sends a best-effort push.
+
+Does **not** run for admin free-create, approve/reject/reschedule, checkout, or Stripe payment webhooks.
+
+### Payload
+
+- Title: `Smart Option Academy`
+- Body: `New private class request received.`
+- URL: `/admin-app/private-classes` (existing Service Worker deep-link)
+
+No email, student message, prices, or Zoom data in the payload. No `admin_notifications` row.
+
+### Idempotency
+
+- One notify call per successful INSERT (keyed by `request.id` in logs).
+- A second legitimate request from the same student is a new UUID → a new push (intentional).
+- Exactly-once across process crashes/retries is **not** guaranteed without a persistent push ledger (intentionally out of scope).

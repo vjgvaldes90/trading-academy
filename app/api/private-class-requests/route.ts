@@ -13,6 +13,7 @@ import {
     type PrivateClassRequestRow,
 } from "@/lib/privateClassRequests"
 import { getVerifiedStudentEmailFromCookies } from "@/lib/requireVerifiedSessionCookie"
+import { notifyPrivateClassRequestCreated } from "@/lib/adminPrivateClassNotifications"
 
 export const runtime = "nodejs"
 
@@ -151,8 +152,16 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: "Failed to create request" }, { status: 500 })
         }
 
+        const createdRow = created as PrivateClassRequestRow
+        // Best-effort push: never block or fail the 201 response.
+        try {
+            await notifyPrivateClassRequestCreated(supabase, { requestId: createdRow.id })
+        } catch {
+            console.error("[api/private-class-requests] POST push notify failed (non-blocking)")
+        }
+
         return NextResponse.json(
-            { request: publicPrivateClassRequest(created as PrivateClassRequestRow) },
+            { request: publicPrivateClassRequest(createdRow) },
             { status: 201 }
         )
     } catch (e) {

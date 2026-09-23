@@ -35,6 +35,13 @@ export const ADMIN_TEST_PUSH: AdminPushPayload = {
     url: "/admin-app/settings",
 }
 
+/** Minimal payload for new student private-class requests — no PII. */
+export const NEW_PRIVATE_CLASS_REQUEST_PUSH: AdminPushPayload = {
+    title: "Smart Option Academy",
+    body: "New private class request received.",
+    url: "/admin-app/private-classes",
+}
+
 function configureWebPush(): boolean {
     const config = getAdminPushVapidConfig()
     if (!config) return false
@@ -143,6 +150,13 @@ export async function sendNewStudentEnrollmentPush(
     supabase: SupabaseClient
 ): Promise<AdminPushSendResult> {
     return sendAdminWebPush(supabase, NEW_STUDENT_ENROLLMENT_PUSH)
+}
+
+/** Fan-out new private-class request push to all subscribed admin devices. */
+export async function sendNewPrivateClassRequestPush(
+    supabase: SupabaseClient
+): Promise<AdminPushSendResult> {
+    return sendAdminWebPush(supabase, NEW_PRIVATE_CLASS_REQUEST_PUSH)
 }
 
 /** Test push limited to one admin's devices. */
