@@ -56,9 +56,9 @@ Call sites (unchanged business logic) include Stripe webhook fulfillment, pre-en
 
 ### Duplicate push prevention
 
-1. Existing call-site `!existed` / insert-only paths (primary)
+1. Existing call-site `!existed` / insert-only paths (primary — no notify on existing students)
 2. Stripe webhook event claim (unchanged)
-3. Narrow lookback: if more than one `new_student` notification for the same email exists in 24h after insert, skip push
+3. Push claim: only the oldest `new_student` row for that email in a 24h window may send (`created_at`, then `id`). Concurrent inserts share one winner; a second insert for the same email does not send again.
 
 ### Test push
 

@@ -139,8 +139,10 @@ export async function sendAdminWebPush(
 }
 
 /** Fan-out new-enrollment push to all subscribed admin devices. */
-export async function sendNewStudentEnrollmentPush(supabase: SupabaseClient): Promise<void> {
-    await sendAdminWebPush(supabase, NEW_STUDENT_ENROLLMENT_PUSH)
+export async function sendNewStudentEnrollmentPush(
+    supabase: SupabaseClient
+): Promise<AdminPushSendResult> {
+    return sendAdminWebPush(supabase, NEW_STUDENT_ENROLLMENT_PUSH)
 }
 
 /** Test push limited to one admin's devices. */

@@ -28,69 +28,105 @@ export type CreateAdminNotificationInput = {
     metadata?: Record<string, unknown>
 }
 
+type CreateAdminNotificationResult =
+    | { ok: true; id: string; created_at: string }
+    | { ok: false }
+
 /**
  * Insert an admin dashboard notification. Failures are logged and do not throw,
  * so student/payment flows are never blocked by notification issues.
- * Returns true only when the insert succeeded.
  */
 export async function createAdminNotification(
     supabase: SupabaseClient,
     input: CreateAdminNotificationInput
-): Promise<boolean> {
+): Promise<CreateAdminNotificationResult> {
     try {
-        const { error } = await supabase.from("admin_notifications").insert({
-            type: input.type,
-            title: input.title.trim(),
-            description: (input.description ?? "").trim(),
-            is_read: false,
-            metadata: input.metadata ?? {},
-        })
+        const { data, error } = await supabase
+            .from("admin_notifications")
+            .insert({
+                type: input.type,
+                title: input.title.trim(),
+                description: (input.description ?? "").trim(),
+                is_read: false,
+                metadata: input.metadata ?? {},
+            })
+            .select("id, created_at")
+            .single()
+
         if (error) {
             console.error("[admin-notifications] insert failed", error)
-            return false
+            return { ok: false }
         }
-        return true
+
+        const id = typeof data?.id === "string" ? data.id : ""
+        const created_at = typeof data?.created_at === "string" ? data.created_at : ""
+        if (!id) {
+            console.error("[admin-notifications] insert missing id")
+            return { ok: false }
+        }
+
+        return { ok: true, id, created_at: created_at || new Date().toISOString() }
     } catch (e) {
         console.error("[admin-notifications] insert exception", e)
-        return false
+        return { ok: false }
     }
 }
 
 const NEW_STUDENT_PUSH_DEDUPE_LOOKBACK_MS = 24 * 60 * 60 * 1000
 
 /**
- * Skip push when another new_student in-app notification for the same email
- * already exists in the lookback window (count > 1 after this insert).
- * Call-site `!existed` checks remain the primary idempotency guard.
+ * Idempotent push claim for a new_student notification.
+ *
+ * Only the oldest new_student row for this email in the lookback window may send.
+ * - The just-inserted row is never penalized for counting itself.
+ * - Concurrent inserts: all see the same winner (min created_at, then min id); only one sends.
+ * - Retries that insert a second notification: the original remains the winner; no second push.
+ *
+ * Call-site `!existed` remains the primary guard against notifying on existing students.
  */
-async function shouldSendNewStudentPush(
-    supabase: SupabaseClient,
+async function claimNewStudentPushSend(args: {
+    supabase: SupabaseClient
     email: string
-): Promise<boolean> {
+    notificationId: string
+}): Promise<"send" | "skip" | "send_on_error"> {
     try {
         const since = new Date(Date.now() - NEW_STUDENT_PUSH_DEDUPE_LOOKBACK_MS).toISOString()
-        const { count, error } = await supabase
+        const { data, error } = await args.supabase
             .from("admin_notifications")
-            .select("id", { count: "exact", head: true })
+            .select("id, created_at")
             .eq("type", "new_student")
-            .contains("metadata", { email })
+            .contains("metadata", { email: args.email })
             .gte("created_at", since)
+            .order("created_at", { ascending: true })
+            .order("id", { ascending: true })
+            .limit(1)
 
         if (error) {
-            console.error("[admin-notifications] push dedupe check failed", error.message)
-            // Prefer sending once over silently dropping on a check failure.
-            return true
+            console.error("[admin-push] push claim query failed", error.message)
+            // Prefer one send over silently dropping on a check failure.
+            return "send_on_error"
         }
 
-        if (typeof count === "number" && count > 1) {
-            console.log("[admin-push] skip duplicate new_student push")
-            return false
+        const winner = Array.isArray(data) && data.length > 0 ? data[0] : null
+        const winnerId = winner && typeof winner.id === "string" ? winner.id : null
+
+        if (!winnerId) {
+            // Our row should be visible; if not, still attempt send once.
+            console.error("[admin-push] push claim found no winner row; attempting send")
+            return "send_on_error"
         }
 
-        return true
+        if (winnerId !== args.notificationId) {
+            console.log("[admin-push] skip duplicate new_student push", {
+                reason: "not_window_winner",
+            })
+            return "skip"
+        }
+
+        return "send"
     } catch {
-        console.error("[admin-notifications] push dedupe check exception")
-        return true
+        console.error("[admin-push] push claim exception")
+        return "send_on_error"
     }
 }
 
@@ -112,12 +148,23 @@ export async function notifyNewStudentCreated(
     })
 
     // Push only after a successful in-app notification insert. Best-effort: never throw.
-    if (!inserted) return
+    if (!inserted.ok) return
 
     try {
-        const sendPush = await shouldSendNewStudentPush(supabase, email)
-        if (!sendPush) return
-        await sendNewStudentEnrollmentPush(supabase)
+        const claim = await claimNewStudentPushSend({
+            supabase,
+            email,
+            notificationId: inserted.id,
+        })
+        if (claim === "skip") return
+
+        const result = await sendNewStudentEnrollmentPush(supabase)
+        console.log("[admin-push] new_student push result", {
+            claim,
+            attempted: result.attempted,
+            accepted: result.accepted,
+            removed: result.removed,
+        })
     } catch {
         console.error("[admin-push] new_student push failed (non-blocking)")
     }
