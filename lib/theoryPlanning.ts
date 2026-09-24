@@ -409,3 +409,50 @@ export function serializeTheoryPlanningGroup(
         members: extras?.members ?? undefined,
     }
 }
+
+/** Max distinct theory sessions in the first Full Program quota window. */
+export const THEORY_QUOTA_MAX_CLASSES = 2
+
+export type TheoryQuotaBoardStudent = {
+    id: string
+    email: string
+    first_name: string | null
+    last_name: string | null
+    plan: string
+    period_start: string | null
+    period_end: string | null
+    consumed: number
+    remaining: number
+    quota_max: number
+    is_active: boolean
+}
+
+export type TheoryQuotaBoardNonEligible = TheoryQuotaBoardStudent & {
+    reason:
+        | "theory_access_denied"
+        | "period_not_configured"
+        | "quota_over"
+        | "lookup_failed"
+}
+
+export type TheoryQuotaBoardBucket = "pending_2" | "pending_1" | "pending_0"
+
+/**
+ * Classify an eligible Full Program student by ledger consumptions in the
+ * persisted quota window. Mutually exclusive for consumed 0 / 1 / 2.
+ * Does not invent periods or claim consumptions.
+ */
+export function classifyTheoryQuotaBoardBucket(
+    consumed: number
+): TheoryQuotaBoardBucket | "over" {
+    if (consumed === 0) return "pending_2"
+    if (consumed === 1) return "pending_1"
+    if (consumed === 2) return "pending_0"
+    return "over"
+}
+
+export function theoryQuotaRemaining(consumed: number): number {
+    if (consumed <= 0) return THEORY_QUOTA_MAX_CLASSES
+    if (consumed >= THEORY_QUOTA_MAX_CLASSES) return 0
+    return THEORY_QUOTA_MAX_CLASSES - consumed
+}
