@@ -4,6 +4,7 @@ import { requireAuthorizedAdminFromCookies } from "@/lib/adminAuth"
 import { isAuthorizedAdminEmail } from "@/lib/adminEmails"
 import {
     evaluateTheoryAccess,
+    normalizeAccessType,
     type TradingStudentAccessRow,
 } from "@/lib/studentAcademyAccess"
 import { resolveSubscriptionPlan } from "@/lib/subscriptionPlans"
@@ -21,6 +22,7 @@ export const runtime = "nodejs"
 
 /**
  * Read-only Full Program theory quota board for Admin Planning.
+ * Excludes Free students (board-only); does not change live theory access.
  * Counts only student_theory_consumptions in the persisted first-window bounds.
  * Does not invent periods, claim consumptions, or touch group membership.
  */
@@ -53,6 +55,8 @@ export async function GET() {
             if (typeof row.id !== "string" || typeof row.email !== "string") continue
             if (isAuthorizedAdminEmail(row.email)) continue
             if (resolveSubscriptionPlan(row.plan as string | null) !== "full_program") continue
+            // Admin quota board only: Free + Full Program retain live theory access, but are omitted here.
+            if (normalizeAccessType(row.access_type as string | null) === "free") continue
 
             const accessRow = row as TradingStudentAccessRow
             const theory = evaluateTheoryAccess(accessRow)
