@@ -35,7 +35,7 @@ export async function GET() {
         const { data: students, error } = await supabase
             .from("trading_students")
             .select(
-                "id, email, first_name, last_name, plan, access_type, is_active, access_expires_at, program_theory_until, theory_quota_period_start, theory_quota_period_end, subscription_id, subscription_status"
+                "id, email, first_name, last_name, plan, access_type, access_code, is_active, access_expires_at, program_theory_until, theory_quota_period_start, theory_quota_period_end, subscription_id, subscription_status"
             )
             .eq("plan", "full_program")
             .order("created_at", { ascending: false })
