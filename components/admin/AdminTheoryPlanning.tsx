@@ -41,14 +41,7 @@ type QuotaBoardNonEligible = QuotaBoardStudent & {
     reason: "theory_access_denied" | "period_not_configured" | "quota_over" | "lookup_failed"
 }
 
-type DivisionAccent = {
-    panel: string
-    header: string
-    badge: string
-    ratio: string
-    divider: string
-    empty: string
-}
+type ColumnTone = "emerald" | "amber" | "red" | "neutral"
 
 type MutationPayload = {
     ok?: unknown
@@ -78,21 +71,36 @@ function formatQuotaPeriod(
     return s || e
 }
 
-function formatDateTime(iso: string | null | undefined): string {
-    if (typeof iso !== "string" || !iso.trim()) return "—"
-    const ms = Date.parse(iso)
-    if (!Number.isFinite(ms)) return iso.trim().slice(0, 19)
+function formatHeldDate(isoDate: string): string {
+    const raw = isoDate.trim().slice(0, 10)
+    const ms = Date.parse(`${raw}T00:00:00.000Z`)
+    if (!Number.isFinite(ms)) return raw
     try {
-        return new Date(ms).toLocaleString()
+        return new Date(ms).toLocaleDateString(undefined, {
+            year: "numeric",
+            month: "short",
+            day: "numeric",
+            timeZone: "UTC",
+        })
     } catch {
-        return iso.trim().slice(0, 19)
+        return raw
     }
 }
 
-function quotaBadgeClass(remaining: number): string {
-    if (remaining >= 2) return "border-emerald-400/40 bg-emerald-500/15 text-emerald-100"
-    if (remaining === 1) return "border-amber-400/40 bg-amber-500/15 text-amber-100"
-    return "border-violet-400/40 bg-violet-500/15 text-violet-100"
+function toneFromRemaining(remaining: number): ColumnTone {
+    if (remaining >= 2) return "emerald"
+    if (remaining === 1) return "amber"
+    return "red"
+}
+
+function remainingLabel(remaining: number, t: TranslationKeys): string {
+    if (remaining === 1) {
+        return t.adminTheoryPlanningQuotaBoardClassRemaining.replace("{count}", "1")
+    }
+    return t.adminTheoryPlanningQuotaBoardClassesRemaining.replace(
+        "{count}",
+        String(remaining)
+    )
 }
 
 function normalizeExternals(raw: unknown): QuotaBoardExternal[] {
@@ -208,35 +216,70 @@ function mapExternalErrorCode(code: string, t: TranslationKeys): string {
     }
 }
 
-const DIVISION_ACCENTS = {
-    pending2: {
-        panel: "border-emerald-400/25 bg-gradient-to-b from-emerald-500/[0.08] to-white/[0.02]",
-        header: "border-emerald-400/20 bg-emerald-500/[0.12]",
-        badge: "border-emerald-400/40 bg-emerald-500/20 text-emerald-100",
-        ratio: "border-emerald-400/35 bg-emerald-500/10 text-emerald-100",
-        divider: "border-emerald-400/20",
-        empty: "border-emerald-400/15 bg-emerald-500/[0.04] text-emerald-100/70",
+const COLUMN_STYLES: Record<
+    Exclude<ColumnTone, "neutral">,
+    { panel: string; title: string; subtitle: string; count: string; empty: string }
+> = {
+    emerald: {
+        panel: "border-emerald-500/20 bg-emerald-500/[0.04]",
+        title: "text-emerald-100",
+        subtitle: "text-emerald-200/70",
+        count: "bg-emerald-500/15 text-emerald-100 border-emerald-400/25",
+        empty: "border-emerald-500/15 text-emerald-100/60",
     },
-    pending1: {
-        panel: "border-amber-400/25 bg-gradient-to-b from-amber-500/[0.08] to-white/[0.02]",
-        header: "border-amber-400/20 bg-amber-500/[0.12]",
-        badge: "border-amber-400/40 bg-amber-500/20 text-amber-100",
-        ratio: "border-amber-400/35 bg-amber-500/10 text-amber-100",
-        divider: "border-amber-400/20",
-        empty: "border-amber-400/15 bg-amber-500/[0.04] text-amber-100/70",
+    amber: {
+        panel: "border-amber-500/20 bg-amber-500/[0.04]",
+        title: "text-amber-100",
+        subtitle: "text-amber-200/70",
+        count: "bg-amber-500/15 text-amber-100 border-amber-400/25",
+        empty: "border-amber-500/15 text-amber-100/60",
     },
-    pending0: {
-        panel: "border-violet-400/25 bg-gradient-to-b from-violet-500/[0.08] to-white/[0.02]",
-        header: "border-violet-400/20 bg-violet-500/[0.12]",
-        badge: "border-violet-400/40 bg-violet-500/20 text-violet-100",
-        ratio: "border-violet-400/35 bg-violet-500/10 text-violet-100",
-        divider: "border-violet-400/20",
-        empty: "border-violet-400/15 bg-violet-500/[0.04] text-violet-100/70",
+    red: {
+        panel: "border-red-500/20 bg-red-500/[0.04]",
+        title: "text-red-100",
+        subtitle: "text-red-200/70",
+        count: "bg-red-500/15 text-red-100 border-red-400/25",
+        empty: "border-red-500/15 text-red-100/60",
     },
-} as const satisfies Record<string, DivisionAccent>
+}
+
+const REMAINING_TEXT: Record<ColumnTone, string> = {
+    emerald: "text-emerald-300",
+    amber: "text-amber-300",
+    red: "text-red-300",
+    neutral: "text-slate-400",
+}
+
+const PROGRESS_FILL: Record<ColumnTone, string> = {
+    emerald: "bg-emerald-400",
+    amber: "bg-amber-400",
+    red: "bg-red-400",
+    neutral: "bg-slate-500",
+}
+
+const REGISTER_BTN: Record<ColumnTone, string> = {
+    emerald:
+        "border-emerald-400/35 bg-emerald-500/15 text-emerald-50 hover:bg-emerald-500/25 focus-visible:ring-emerald-400/40",
+    amber: "border-amber-400/35 bg-amber-500/15 text-amber-50 hover:bg-amber-500/25 focus-visible:ring-amber-400/40",
+    red: "border-red-400/30 bg-red-500/10 text-red-100/70",
+    neutral:
+        "border-white/15 bg-white/5 text-slate-200 hover:bg-white/10 focus-visible:ring-white/30",
+}
 
 async function readJson(res: Response): Promise<Record<string, unknown>> {
     return (await res.json().catch(() => ({}))) as Record<string, unknown>
+}
+
+function studentCounts(student: QuotaBoardStudent) {
+    const max = student.quota_max > 0 ? student.quota_max : 2
+    const used = student.total_consumed ?? student.consumed
+    const remaining = student.pending ?? student.remaining
+    const academy =
+        typeof student.academy_consumed === "number"
+            ? student.academy_consumed
+            : Math.max(0, used - (student.external_consumed ?? 0))
+    const external = typeof student.external_consumed === "number" ? student.external_consumed : 0
+    return { max, used, remaining, academy, external }
 }
 
 export default function AdminTheoryPlanning() {
@@ -250,6 +293,9 @@ export default function AdminTheoryPlanning() {
     const [quotaError, setQuotaError] = useState<string | null>(null)
     const [quotaSearch, setQuotaSearch] = useState("")
     const [quotaMax, setQuotaMax] = useState(2)
+
+    const [detailsStudentId, setDetailsStudentId] = useState<string | null>(null)
+    const [detailsEligible, setDetailsEligible] = useState(false)
 
     const [registerTarget, setRegisterTarget] = useState<QuotaBoardStudent | null>(null)
     const [registerDate, setRegisterDate] = useState("")
@@ -350,6 +396,23 @@ export default function AdminTheoryPlanning() {
         void loadQuotaBoard()
     }, [loadQuotaBoard])
 
+    const allBoardStudents = useMemo(
+        () => [...quotaPending2, ...quotaPending1, ...quotaPending0, ...quotaNonEligible],
+        [quotaPending2, quotaPending1, quotaPending0, quotaNonEligible]
+    )
+
+    const detailsStudent = useMemo(() => {
+        if (!detailsStudentId) return null
+        return allBoardStudents.find((s) => s.id === detailsStudentId) ?? null
+    }, [allBoardStudents, detailsStudentId])
+
+    useEffect(() => {
+        if (detailsStudentId && !detailsStudent) {
+            setDetailsStudentId(null)
+            setDetailsEligible(false)
+        }
+    }, [detailsStudent, detailsStudentId])
+
     const openRegisterModal = (student: QuotaBoardStudent) => {
         setRegisterTarget(student)
         setRegisterDate("")
@@ -373,6 +436,16 @@ export default function AdminTheoryPlanning() {
         if (reverseSubmitting) return
         setReverseTarget(null)
         setReverseError(null)
+    }
+
+    const openDetails = (student: QuotaBoardStudent, eligible: boolean) => {
+        setDetailsStudentId(student.id)
+        setDetailsEligible(eligible)
+    }
+
+    const closeDetails = () => {
+        setDetailsStudentId(null)
+        setDetailsEligible(false)
     }
 
     const submitRegister = async () => {
@@ -502,219 +575,186 @@ export default function AdminTheoryPlanning() {
         [t]
     )
 
-    const renderExternalHistory = (student: QuotaBoardStudent, showActions: boolean) => {
-        const externals = student.externals ?? []
-        return (
-            <div className="mt-3 border-t border-white/10 pt-3">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-                    {t.adminTheoryPlanningExternalHistoryTitle}
-                </p>
-                {externals.length === 0 ? (
-                    <p className="mt-1.5 text-[11px] text-slate-500">
-                        {t.adminTheoryPlanningExternalHistoryEmpty}
-                    </p>
-                ) : (
-                    <ul className="mt-2 space-y-2">
-                        {externals.map((ext) => {
-                            const active = !ext.reversed_at
-                            return (
-                                <li
-                                    key={ext.id}
-                                    className="rounded-lg border border-white/10 bg-black/20 px-2.5 py-2"
-                                >
-                                    <div className="flex items-start justify-between gap-2">
-                                        <div className="min-w-0 flex-1">
-                                            <p className="text-[11px] font-semibold text-slate-200">
-                                                {t.adminTheoryPlanningExternalClassHeldOn.replace(
-                                                    "{date}",
-                                                    ext.class_held_on
-                                                )}
-                                            </p>
-                                            <p className="mt-0.5 text-[10px] text-slate-500">
-                                                {t.adminTheoryPlanningExternalCreatedAt.replace(
-                                                    "{datetime}",
-                                                    formatDateTime(ext.created_at)
-                                                )}
-                                            </p>
-                                            {ext.notes ? (
-                                                <p className="mt-1 text-[11px] text-slate-400">
-                                                    {ext.notes}
-                                                </p>
-                                            ) : null}
-                                            <p
-                                                className={[
-                                                    "mt-1 text-[10px] font-semibold uppercase tracking-wide",
-                                                    active ? "text-emerald-300/90" : "text-slate-500",
-                                                ].join(" ")}
-                                            >
-                                                {active
-                                                    ? t.adminTheoryPlanningExternalStatusActive
-                                                    : t.adminTheoryPlanningExternalStatusReversed}
-                                            </p>
-                                        </div>
-                                        {showActions && active ? (
-                                            <button
-                                                type="button"
-                                                onClick={() => openReverseModal(student, ext)}
-                                                className="shrink-0 rounded-md border border-amber-400/30 bg-amber-500/10 px-2 py-1 text-[10px] font-bold text-amber-100 transition hover:bg-amber-500/20"
-                                            >
-                                                {t.adminTheoryPlanningExternalReverseAction}
-                                            </button>
-                                        ) : null}
-                                    </div>
-                                </li>
-                            )
-                        })}
-                    </ul>
-                )}
-            </div>
-        )
-    }
-
-    const renderQuotaStudentCard = (
+    const renderStudentCard = (
         student: QuotaBoardStudent,
-        extra?: { reasonLabel?: string; eligible?: boolean }
+        opts?: { reasonLabel?: string; eligible?: boolean; tone?: ColumnTone }
     ) => {
-        const eligible = extra?.eligible === true
+        const eligible = opts?.eligible === true
+        const { max, used, remaining, academy, external } = studentCounts(student)
+        const tone = opts?.tone ?? (eligible ? toneFromRemaining(remaining) : "neutral")
+        const progressPct = Math.max(0, Math.min(100, max > 0 ? (used / max) * 100 : 0))
+        const canRegister = eligible && remaining > 0
+
         return (
             <li
                 key={student.id}
-                className="rounded-xl border border-white/10 bg-[#0B1120]/80 px-3 py-3"
+                className="rounded-xl border border-white/10 bg-[#0B1120]/90 p-3.5 shadow-[0_8px_24px_rgba(2,6,23,0.25)]"
             >
-                <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0 flex-1 overflow-hidden">
-                        <p className="truncate text-sm font-semibold text-slate-100">
-                            {studentDisplayName(student)}
-                        </p>
-                        <p className="mt-0.5 truncate text-xs text-slate-500">{student.email}</p>
-                        <p className="mt-2 text-[11px] text-slate-400">
-                            {t.adminTheoryPlanningQuotaBoardRemaining.replace(
-                                "{count}",
-                                String(student.remaining)
-                            )}
-                        </p>
-                        {extra?.reasonLabel ? (
-                            <p className="mt-1 text-[11px] text-amber-200/90">{extra.reasonLabel}</p>
-                        ) : (
-                            <p className="mt-1 truncate text-[11px] text-slate-500">
-                                {formatQuotaPeriod(
-                                    student.period_start,
-                                    student.period_end,
-                                    t.adminTheoryPlanningQuotaBoardPeriodUnknown
-                                )}
-                            </p>
-                        )}
-                    </div>
-                    <span
-                        className={[
-                            "shrink-0 rounded-lg border px-2 py-1 text-xs font-bold tabular-nums",
-                            quotaBadgeClass(student.remaining),
-                        ].join(" ")}
+                <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-slate-50">
+                        {studentDisplayName(student)}
+                    </p>
+                    <p className="mt-0.5 truncate text-xs text-slate-500">{student.email}</p>
+                    <p className="mt-2 text-[11px] font-medium uppercase tracking-wide text-slate-400">
+                        {t.adminTheoryPlanningQuotaBoardPlanFull}
+                    </p>
+                    {opts?.reasonLabel ? (
+                        <p className="mt-1 text-[11px] text-amber-200/90">{opts.reasonLabel}</p>
+                    ) : null}
+                </div>
+
+                <div className="mt-3">
+                    <p className="text-sm font-semibold tabular-nums text-slate-100">
+                        {t.adminTheoryPlanningQuotaBoardUsedRatio
+                            .replace("{used}", String(used))
+                            .replace("{max}", String(max))}
+                    </p>
+                    <div
+                        className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10"
+                        role="progressbar"
+                        aria-valuenow={used}
+                        aria-valuemin={0}
+                        aria-valuemax={max}
+                        aria-label={t.adminTheoryPlanningQuotaBoardUsedRatio
+                            .replace("{used}", String(used))
+                            .replace("{max}", String(max))}
                     >
-                        {student.consumed}/{student.quota_max || quotaMax}
+                        <div
+                            className={["h-full rounded-full transition-all", PROGRESS_FILL[tone]].join(
+                                " "
+                            )}
+                            style={{ width: `${progressPct}%` }}
+                        />
+                    </div>
+                </div>
+
+                <div className="mt-3 flex items-center justify-between gap-3 text-[11px] text-slate-400">
+                    <span>
+                        {t.adminTheoryPlanningQuotaBoardAcademyShort}{" "}
+                        <span className="font-semibold tabular-nums text-slate-200">{academy}</span>
+                    </span>
+                    <span>
+                        {t.adminTheoryPlanningQuotaBoardExternalShort}{" "}
+                        <span className="font-semibold tabular-nums text-slate-200">{external}</span>
                     </span>
                 </div>
 
+                <p
+                    className={[
+                        "mt-3 text-sm font-semibold",
+                        REMAINING_TEXT[tone],
+                    ].join(" ")}
+                >
+                    {remainingLabel(remaining, t)}
+                </p>
+
                 {eligible ? (
-                    <div className="mt-3">
+                    <div className="mt-3 space-y-2">
                         <button
                             type="button"
+                            disabled={!canRegister}
                             onClick={() => openRegisterModal(student)}
-                            className="w-full rounded-lg border border-blue-400/30 bg-blue-500/15 px-2.5 py-1.5 text-[11px] font-bold text-blue-100 transition hover:bg-blue-500/25"
+                            className={[
+                                "w-full rounded-lg border px-3 py-2 text-[11px] font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-0 disabled:cursor-not-allowed disabled:opacity-45",
+                                REGISTER_BTN[tone],
+                            ].join(" ")}
                         >
                             {t.adminTheoryPlanningExternalRegisterAction}
                         </button>
+                        <button
+                            type="button"
+                            onClick={() => openDetails(student, true)}
+                            className="w-full rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-[11px] font-semibold text-slate-300 transition hover:bg-white/[0.06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/25"
+                        >
+                            {t.adminTheoryPlanningQuotaBoardViewDetails}
+                        </button>
                     </div>
-                ) : null}
-
-                {eligible || (student.externals && student.externals.length > 0)
-                    ? renderExternalHistory(student, eligible)
-                    : null}
+                ) : (
+                    <div className="mt-3">
+                        <button
+                            type="button"
+                            onClick={() => openDetails(student, false)}
+                            className="w-full rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-[11px] font-semibold text-slate-300 transition hover:bg-white/[0.06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/25"
+                        >
+                            {t.adminTheoryPlanningQuotaBoardViewDetails}
+                        </button>
+                    </div>
+                )}
             </li>
         )
     }
 
-    const renderQuotaDivision = (args: {
+    const renderColumn = (args: {
         title: string
+        usedLabel: string
         count: number
-        consumedRatio: string
         filtered: QuotaBoardStudent[]
         totalInBucket: number
-        accent: DivisionAccent
-        eligible: boolean
-    }) => (
-        <article
-            className={[
-                "flex min-h-[20rem] min-w-0 flex-col overflow-hidden rounded-2xl border shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]",
-                args.accent.panel,
-            ].join(" ")}
-        >
-            <header
+        tone: Exclude<ColumnTone, "neutral">
+    }) => {
+        const styles = COLUMN_STYLES[args.tone]
+        return (
+            <article
                 className={[
-                    "border-b px-3.5 py-3.5 sm:px-4",
-                    args.accent.header,
-                    args.accent.divider,
+                    "flex min-h-[18rem] min-w-0 flex-col overflow-hidden rounded-2xl border",
+                    styles.panel,
                 ].join(" ")}
             >
-                <div className="flex items-start justify-between gap-3">
+                <header className="flex items-start justify-between gap-3 border-b border-white/5 px-4 py-3.5">
                     <div className="min-w-0">
-                        <h4 className="text-sm font-bold leading-snug text-slate-50">{args.title}</h4>
+                        <h4 className={["text-sm font-bold tracking-wide", styles.title].join(" ")}>
+                            {args.title}
+                        </h4>
+                        <p className={["mt-1 text-[11px]", styles.subtitle].join(" ")}>
+                            {args.usedLabel}
+                        </p>
                         {quotaSearch.trim() && args.filtered.length !== args.totalInBucket ? (
-                            <p className="mt-1 text-[11px] text-slate-400">
+                            <p className="mt-1 text-[11px] text-slate-500">
                                 {args.filtered.length} / {args.totalInBucket}
                             </p>
                         ) : null}
                     </div>
-                    <div className="flex shrink-0 flex-col items-end gap-1.5">
-                        <span
-                            className={[
-                                "inline-flex min-w-[2.5rem] items-center justify-center rounded-lg border px-2 py-0.5 text-xs font-bold tabular-nums",
-                                args.accent.badge,
-                            ].join(" ")}
-                        >
-                            {args.count}
-                        </span>
-                        <span
-                            className={[
-                                "rounded-md border px-2 py-0.5 text-[11px] font-bold tabular-nums",
-                                args.accent.ratio,
-                            ].join(" ")}
-                        >
-                            {args.consumedRatio}
-                        </span>
-                    </div>
-                </div>
-            </header>
+                    <span
+                        className={[
+                            "inline-flex min-w-[2.25rem] items-center justify-center rounded-lg border px-2 py-0.5 text-xs font-bold tabular-nums",
+                            styles.count,
+                        ].join(" ")}
+                        aria-label={`${args.count}`}
+                    >
+                        {args.count}
+                    </span>
+                </header>
 
-            <div className="flex min-h-0 min-w-0 flex-1 flex-col px-3 py-3 sm:px-3.5">
-                {args.totalInBucket === 0 ? (
-                    <div
-                        className={[
-                            "flex flex-1 items-center justify-center rounded-xl border border-dashed px-4 py-8 text-center text-sm",
-                            args.accent.empty,
-                        ].join(" ")}
-                    >
-                        {t.adminTheoryPlanningQuotaBoardEmpty}
-                    </div>
-                ) : args.filtered.length === 0 ? (
-                    <div
-                        className={[
-                            "flex flex-1 items-center justify-center rounded-xl border border-dashed px-4 py-8 text-center text-sm",
-                            args.accent.empty,
-                        ].join(" ")}
-                    >
-                        {t.adminTheoryPlanningQuotaBoardNoneMatch}
-                    </div>
-                ) : (
-                    <ul className="max-h-[28rem] space-y-2 overflow-y-auto overflow-x-hidden pr-0.5 lg:max-h-[32rem]">
-                        {args.filtered.map((s) =>
-                            renderQuotaStudentCard(s, { eligible: args.eligible })
-                        )}
-                    </ul>
-                )}
-            </div>
-        </article>
-    )
+                <div className="flex min-h-0 flex-1 flex-col px-3 py-3">
+                    {args.totalInBucket === 0 ? (
+                        <div
+                            className={[
+                                "flex flex-1 items-center justify-center rounded-xl border border-dashed px-4 py-8 text-center text-sm",
+                                styles.empty,
+                            ].join(" ")}
+                        >
+                            {t.adminTheoryPlanningQuotaBoardEmpty}
+                        </div>
+                    ) : args.filtered.length === 0 ? (
+                        <div
+                            className={[
+                                "flex flex-1 items-center justify-center rounded-xl border border-dashed px-4 py-8 text-center text-sm",
+                                styles.empty,
+                            ].join(" ")}
+                        >
+                            {t.adminTheoryPlanningQuotaBoardNoneMatch}
+                        </div>
+                    ) : (
+                        <ul className="max-h-[30rem] space-y-2.5 overflow-y-auto overflow-x-hidden pr-0.5">
+                            {args.filtered.map((s) =>
+                                renderStudentCard(s, { eligible: true, tone: args.tone })
+                            )}
+                        </ul>
+                    )}
+                </div>
+            </article>
+        )
+    }
 
     const registerAcademy =
         registerTarget?.academy_consumed ??
@@ -723,133 +763,309 @@ export default function AdminTheoryPlanning() {
     const registerTotal = registerTarget?.total_consumed ?? registerTarget?.consumed ?? 0
     const registerRemaining = registerTarget?.pending ?? registerTarget?.remaining ?? 0
 
+    const detailsCounts = detailsStudent ? studentCounts(detailsStudent) : null
+    const detailsTone = detailsCounts
+        ? detailsEligible
+            ? toneFromRemaining(detailsCounts.remaining)
+            : "neutral"
+        : "neutral"
+    const detailsCanRegister =
+        detailsEligible && detailsCounts != null && detailsCounts.remaining > 0
+
     return (
         <div className="space-y-6">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                <p className="max-w-2xl text-sm text-slate-400">{t.adminTheoryPlanningSubtitle}</p>
+            <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                <div className="min-w-0 space-y-1">
+                    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+                        {t.adminTheoryPlanning}
+                    </p>
+                    <h2 className="text-xl font-bold tracking-tight text-slate-50 sm:text-2xl">
+                        {t.adminTheoryPlanningQuotaBoardTitle}
+                    </h2>
+                    <p className="max-w-2xl text-sm text-slate-400">
+                        {t.adminTheoryPlanningQuotaBoardSubtitle}
+                    </p>
+                    <p className="pt-1 text-xs font-medium text-slate-500">
+                        {t.adminTheoryPlanningQuotaBoardEligibleTotal.replace(
+                            "{count}",
+                            String(quotaEligibleTotal)
+                        )}
+                    </p>
+                </div>
                 <button
                     type="button"
                     onClick={() => void loadQuotaBoard()}
-                    className="shrink-0 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs font-bold text-slate-200 transition hover:bg-white/10"
+                    className="shrink-0 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs font-bold text-slate-200 transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/25"
                 >
-                    {t.adminTheoryPlanningRefresh}
+                    {t.adminTheoryPlanningQuotaBoardRefresh}
                 </button>
-            </div>
+            </header>
 
-            <section className="space-y-4 rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.04] to-transparent p-4 sm:p-5">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="min-w-0">
-                        <h3 className="text-base font-bold text-slate-50">
-                            {t.adminTheoryPlanningQuotaBoardTitle}
-                        </h3>
-                        <p className="mt-1 max-w-2xl text-xs text-slate-400">
-                            {t.adminTheoryPlanningQuotaBoardSubtitle}
-                        </p>
-                        <p className="mt-2 text-xs font-semibold text-slate-300">
-                            {t.adminTheoryPlanningQuotaBoardEligibleTotal.replace(
-                                "{count}",
-                                String(quotaEligibleTotal)
-                            )}
-                        </p>
-                    </div>
-                    <button
-                        type="button"
-                        onClick={() => void loadQuotaBoard()}
-                        className="shrink-0 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs font-bold text-slate-200 transition hover:bg-white/10"
-                    >
-                        {t.adminTheoryPlanningQuotaBoardRefresh}
-                    </button>
-                </div>
-
-                <label className="block text-sm">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <label className="block min-w-0 flex-1 text-sm">
                     <span className="sr-only">{t.adminTheoryPlanningQuotaBoardSearch}</span>
                     <input
                         type="search"
                         value={quotaSearch}
                         onChange={(e) => setQuotaSearch(e.target.value)}
                         placeholder={t.adminTheoryPlanningQuotaBoardSearch}
-                        className="w-full rounded-xl border border-white/10 bg-[#0B1120] px-3 py-2.5 text-slate-100 outline-none focus:border-blue-400/50"
+                        className="w-full rounded-xl border border-white/10 bg-[#0B1120] px-3 py-2.5 text-sm text-slate-100 outline-none focus:border-blue-400/40 focus-visible:ring-2 focus-visible:ring-blue-400/30"
                     />
                 </label>
+            </div>
 
-                {quotaLoading ? (
-                    <p className="text-sm text-slate-400">{t.adminTheoryPlanningQuotaBoardLoading}</p>
-                ) : quotaError ? (
-                    <div className="space-y-2">
-                        <p className="text-sm text-red-300">{quotaError}</p>
-                        <button
-                            type="button"
-                            onClick={() => void loadQuotaBoard()}
-                            className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-bold text-slate-200"
-                        >
-                            {t.adminTheoryPlanningRetry}
-                        </button>
+            {quotaLoading ? (
+                <p className="text-sm text-slate-400">{t.adminTheoryPlanningQuotaBoardLoading}</p>
+            ) : quotaError ? (
+                <div className="space-y-2 rounded-xl border border-red-400/20 bg-red-500/5 px-4 py-3">
+                    <p className="text-sm text-red-300">{quotaError}</p>
+                    <button
+                        type="button"
+                        onClick={() => void loadQuotaBoard()}
+                        className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-bold text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/25"
+                    >
+                        {t.adminTheoryPlanningRetry}
+                    </button>
+                </div>
+            ) : (
+                <div className="space-y-4">
+                    <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:items-stretch">
+                        {renderColumn({
+                            title: t.adminTheoryPlanningQuotaBoardPending2,
+                            usedLabel: t.adminTheoryPlanningQuotaBoardUsedOfMax
+                                .replace("{used}", "0")
+                                .replace("{max}", String(quotaMax)),
+                            count: quotaPending2.length,
+                            filtered: filteredQuotaPending2,
+                            totalInBucket: quotaPending2.length,
+                            tone: "emerald",
+                        })}
+                        {renderColumn({
+                            title: t.adminTheoryPlanningQuotaBoardPending1,
+                            usedLabel: t.adminTheoryPlanningQuotaBoardUsedOfMax
+                                .replace("{used}", "1")
+                                .replace("{max}", String(quotaMax)),
+                            count: quotaPending1.length,
+                            filtered: filteredQuotaPending1,
+                            totalInBucket: quotaPending1.length,
+                            tone: "amber",
+                        })}
+                        {renderColumn({
+                            title: t.adminTheoryPlanningQuotaBoardPending0,
+                            usedLabel: t.adminTheoryPlanningQuotaBoardUsedOfMax
+                                .replace("{used}", String(quotaMax))
+                                .replace("{max}", String(quotaMax)),
+                            count: quotaPending0.length,
+                            filtered: filteredQuotaPending0,
+                            totalInBucket: quotaPending0.length,
+                            tone: "red",
+                        })}
                     </div>
-                ) : (
-                    <div className="space-y-4">
-                        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:items-stretch">
-                            {renderQuotaDivision({
-                                title: t.adminTheoryPlanningQuotaBoardPending2,
-                                count: quotaPending2.length,
-                                consumedRatio: `0/${quotaMax}`,
-                                filtered: filteredQuotaPending2,
-                                totalInBucket: quotaPending2.length,
-                                accent: DIVISION_ACCENTS.pending2,
-                                eligible: true,
-                            })}
-                            {renderQuotaDivision({
-                                title: t.adminTheoryPlanningQuotaBoardPending1,
-                                count: quotaPending1.length,
-                                consumedRatio: `1/${quotaMax}`,
-                                filtered: filteredQuotaPending1,
-                                totalInBucket: quotaPending1.length,
-                                accent: DIVISION_ACCENTS.pending1,
-                                eligible: true,
-                            })}
-                            {renderQuotaDivision({
-                                title: t.adminTheoryPlanningQuotaBoardPending0,
-                                count: quotaPending0.length,
-                                consumedRatio: `${quotaMax}/${quotaMax}`,
-                                filtered: filteredQuotaPending0,
-                                totalInBucket: quotaPending0.length,
-                                accent: DIVISION_ACCENTS.pending0,
-                                eligible: true,
-                            })}
+
+                    <details className="rounded-2xl border border-white/10 bg-white/[0.02]">
+                        <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm font-semibold text-slate-400 [&::-webkit-details-marker]:hidden sm:px-5">
+                            <span className="flex items-center gap-2">
+                                <span className="inline-flex min-w-[2.25rem] items-center justify-center rounded-lg border border-white/10 bg-white/5 px-2 py-0.5 text-xs tabular-nums text-slate-400">
+                                    {quotaNonEligible.length}
+                                </span>
+                                {t.adminTheoryPlanningQuotaBoardNonEligible}
+                            </span>
+                        </summary>
+                        <div className="border-t border-white/10 px-4 py-3 sm:px-5">
+                            {quotaNonEligible.length === 0 ? (
+                                <p className="text-sm text-slate-500">
+                                    {t.adminTheoryPlanningQuotaBoardEmpty}
+                                </p>
+                            ) : filteredQuotaNonEligible.length === 0 ? (
+                                <p className="text-sm text-slate-500">
+                                    {t.adminTheoryPlanningQuotaBoardNoneMatch}
+                                </p>
+                            ) : (
+                                <ul className="grid grid-cols-1 gap-2.5 md:grid-cols-2 xl:grid-cols-3">
+                                    {filteredQuotaNonEligible.map((s) =>
+                                        renderStudentCard(s, {
+                                            reasonLabel: quotaReasonLabel(s.reason),
+                                            eligible: false,
+                                            tone: "neutral",
+                                        })
+                                    )}
+                                </ul>
+                            )}
+                        </div>
+                    </details>
+                </div>
+            )}
+
+            {detailsStudent && detailsCounts ? (
+                <div
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="quota-details-title"
+                    className="fixed inset-0 z-[55] flex justify-end bg-black/60"
+                    onClick={closeDetails}
+                >
+                    <aside
+                        className="flex h-full w-full max-w-md flex-col border-l border-white/10 bg-[#0B1120] shadow-2xl sm:max-w-lg"
+                        onClick={(ev) => ev.stopPropagation()}
+                    >
+                        <div className="flex items-start justify-between gap-3 border-b border-white/10 px-5 py-4">
+                            <div className="min-w-0">
+                                <h2
+                                    id="quota-details-title"
+                                    className="truncate text-lg font-bold text-slate-50"
+                                >
+                                    {studentDisplayName(detailsStudent)}
+                                </h2>
+                                <p className="mt-0.5 truncate text-sm text-slate-500">
+                                    {detailsStudent.email}
+                                </p>
+                                <p className="mt-2 text-[11px] font-medium uppercase tracking-wide text-slate-400">
+                                    {t.adminTheoryPlanningQuotaBoardPlanFull}
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={closeDetails}
+                                className="shrink-0 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-slate-300 transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/25"
+                            >
+                                {t.adminTheoryPlanningQuotaBoardCloseDetails}
+                            </button>
                         </div>
 
-                        <details className="rounded-2xl border border-white/10 bg-white/[0.02]">
-                            <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm font-bold text-slate-300 [&::-webkit-details-marker]:hidden sm:px-5">
-                                <span className="flex items-center gap-2">
-                                    <span className="inline-flex min-w-[2.5rem] items-center justify-center rounded-lg border border-white/15 bg-white/5 px-2 py-0.5 text-xs tabular-nums text-slate-300">
-                                        {quotaNonEligible.length}
-                                    </span>
-                                    {t.adminTheoryPlanningQuotaBoardNonEligible}
-                                </span>
-                            </summary>
-                            <div className="border-t border-white/10 px-4 py-3 sm:px-5">
-                                {quotaNonEligible.length === 0 ? (
-                                    <p className="text-sm text-slate-400">
-                                        {t.adminTheoryPlanningQuotaBoardEmpty}
-                                    </p>
-                                ) : filteredQuotaNonEligible.length === 0 ? (
-                                    <p className="text-sm text-slate-400">
-                                        {t.adminTheoryPlanningQuotaBoardNoneMatch}
+                        <div className="flex-1 space-y-6 overflow-y-auto px-5 py-5">
+                            <section className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-5 text-center">
+                                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                                    {t.adminTheoryPlanningQuotaBoardTheoryQuota}
+                                </p>
+                                <p className="mt-3 text-3xl font-bold tabular-nums text-slate-50">
+                                    {detailsCounts.used} / {detailsCounts.max}
+                                </p>
+                                <p className="mt-1 text-sm text-slate-400">
+                                    {t.adminTheoryPlanningQuotaBoardClassesUsed}
+                                </p>
+                                <p
+                                    className={[
+                                        "mt-4 text-sm font-semibold",
+                                        REMAINING_TEXT[detailsTone],
+                                    ].join(" ")}
+                                >
+                                    {remainingLabel(detailsCounts.remaining, t)}
+                                </p>
+                                <div className="mt-5 grid grid-cols-2 gap-3 text-left text-sm">
+                                    <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-2.5">
+                                        <p className="text-[11px] text-slate-500">
+                                            {t.adminTheoryPlanningQuotaBoardAcademyShort}
+                                        </p>
+                                        <p className="mt-1 text-lg font-semibold tabular-nums text-slate-100">
+                                            {detailsCounts.academy}
+                                        </p>
+                                    </div>
+                                    <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-2.5">
+                                        <p className="text-[11px] text-slate-500">
+                                            {t.adminTheoryPlanningQuotaBoardExternalShort}
+                                        </p>
+                                        <p className="mt-1 text-lg font-semibold tabular-nums text-slate-100">
+                                            {detailsCounts.external}
+                                        </p>
+                                    </div>
+                                </div>
+                                <p className="mt-4 text-[11px] text-slate-500">
+                                    {t.adminTheoryPlanningQuotaBoardPeriod}:{" "}
+                                    {formatQuotaPeriod(
+                                        detailsStudent.period_start,
+                                        detailsStudent.period_end,
+                                        t.adminTheoryPlanningQuotaBoardPeriodUnknown
+                                    )}
+                                </p>
+                            </section>
+
+                            <section>
+                                <h3 className="text-sm font-semibold text-slate-200">
+                                    {t.adminTheoryPlanningExternalHistoryTitle}
+                                </h3>
+                                {(detailsStudent.externals ?? []).length === 0 ? (
+                                    <p className="mt-3 text-sm text-slate-500">
+                                        {t.adminTheoryPlanningExternalHistoryEmpty}
                                     </p>
                                 ) : (
-                                    <ul className="space-y-2">
-                                        {filteredQuotaNonEligible.map((s) =>
-                                            renderQuotaStudentCard(s, {
-                                                reasonLabel: quotaReasonLabel(s.reason),
-                                                eligible: false,
-                                            })
-                                        )}
+                                    <ul className="mt-3 space-y-2.5">
+                                        {(detailsStudent.externals ?? []).map((ext) => {
+                                            const active = !ext.reversed_at
+                                            return (
+                                                <li
+                                                    key={ext.id}
+                                                    className={[
+                                                        "rounded-xl border px-3.5 py-3",
+                                                        active
+                                                            ? "border-white/10 bg-white/[0.03]"
+                                                            : "border-white/5 bg-white/[0.02] opacity-80",
+                                                    ].join(" ")}
+                                                >
+                                                    <div className="flex items-start justify-between gap-3">
+                                                        <div className="min-w-0">
+                                                            <p className="text-sm font-semibold text-slate-100">
+                                                                {formatHeldDate(ext.class_held_on)}
+                                                            </p>
+                                                            <p className="mt-0.5 text-xs text-slate-500">
+                                                                {
+                                                                    t.adminTheoryPlanningExternalHistoryItemLabel
+                                                                }
+                                                            </p>
+                                                            {ext.notes ? (
+                                                                <p className="mt-2 text-xs text-slate-400">
+                                                                    {t.adminTheoryPlanningExternalNotesLabel}
+                                                                    : {ext.notes}
+                                                                </p>
+                                                            ) : null}
+                                                            <p
+                                                                className={[
+                                                                    "mt-2 text-[10px] font-semibold uppercase tracking-wide",
+                                                                    active
+                                                                        ? "text-emerald-300/90"
+                                                                        : "text-slate-500",
+                                                                ].join(" ")}
+                                                            >
+                                                                {active
+                                                                    ? t.adminTheoryPlanningExternalStatusActive
+                                                                    : t.adminTheoryPlanningExternalStatusReversed}
+                                                            </p>
+                                                        </div>
+                                                        {detailsEligible && active ? (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() =>
+                                                                    openReverseModal(detailsStudent, ext)
+                                                                }
+                                                                className="shrink-0 rounded-lg border border-amber-400/30 bg-amber-500/10 px-2.5 py-1.5 text-[11px] font-bold text-amber-100 transition hover:bg-amber-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/40"
+                                                            >
+                                                                {t.adminTheoryPlanningExternalReverseAction}
+                                                            </button>
+                                                        ) : null}
+                                                    </div>
+                                                </li>
+                                            )
+                                        })}
                                     </ul>
                                 )}
-                            </div>
-                        </details>
-                    </div>
-                )}
-            </section>
+
+                                {detailsEligible ? (
+                                    <button
+                                        type="button"
+                                        disabled={!detailsCanRegister}
+                                        onClick={() => openRegisterModal(detailsStudent)}
+                                        className={[
+                                            "mt-4 w-full rounded-lg border px-3 py-2.5 text-xs font-bold transition focus-visible:outline-none focus-visible:ring-2 disabled:cursor-not-allowed disabled:opacity-45",
+                                            REGISTER_BTN[detailsTone],
+                                        ].join(" ")}
+                                    >
+                                        {t.adminTheoryPlanningExternalRegisterAction}
+                                    </button>
+                                ) : null}
+                            </section>
+                        </div>
+                    </aside>
+                </div>
+            ) : null}
 
             {registerTarget ? (
                 <div
