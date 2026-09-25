@@ -9,12 +9,18 @@ import {
 
 export const runtime = "nodejs"
 
+const LESSON_SELECT_STUDENT =
+    "id, title, description, video_url, source_type, class_date, class_type, created_at"
+
+const LESSON_SELECT_ADMIN =
+    "id, title, description, video_url, source_type, storage_path, class_date, class_type, created_at"
+
 /**
- * Recorded classes / lessons (video_url).
+ * Recorded classes / lessons.
  * Admins: published list for management.
- * Students: any with valid academy access (dashboard-eligible).
- * Does NOT require full_program / program_theory_until / theory entitlement.
- * Unauthenticated → 401; inactive / expired / unpaid → 403.
+ * Students: academy access only (unchanged rules via evaluateAcademyAccess).
+ * Does NOT require full_program / theory entitlement.
+ * Omits storage_path from student responses.
  */
 export async function GET() {
     try {
@@ -23,16 +29,17 @@ export async function GET() {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
         }
 
+        const supabase = createSupabaseServiceRoleClient()
+
         if (isAuthorizedAdminEmail(email)) {
-            const supabase = createSupabaseServiceRoleClient()
             const { data, error } = await supabase
                 .from("lessons")
-                .select("id, title, description, video_url, created_at")
+                .select(LESSON_SELECT_ADMIN)
                 .eq("is_published", true)
                 .order("created_at", { ascending: false })
 
             if (error) {
-                console.error("[api/lessons] GET admin", error)
+                console.error("[api/lessons] GET admin", error.message)
                 return NextResponse.json(
                     { error: "Failed to load lessons", details: error.message },
                     { status: 500 }
@@ -42,15 +49,16 @@ export async function GET() {
             return NextResponse.json(Array.isArray(data) ? data : [])
         }
 
-        const supabase = createSupabaseServiceRoleClient()
         const { data: row, error: accessErr } = await supabase
             .from("trading_students")
-            .select("access_code, access_type, is_active, access_expires_at, subscription_id, subscription_status")
+            .select(
+                "access_code, access_type, is_active, access_expires_at, subscription_id, subscription_status"
+            )
             .eq("email", email)
             .maybeSingle()
 
         if (accessErr) {
-            console.error("[api/lessons] access lookup", accessErr)
+            console.error("[api/lessons] access lookup", accessErr.message)
             return NextResponse.json({ error: "Access check failed" }, { status: 500 })
         }
 
@@ -67,12 +75,12 @@ export async function GET() {
 
         const { data, error } = await supabase
             .from("lessons")
-            .select("id, title, description, video_url, created_at")
+            .select(LESSON_SELECT_STUDENT)
             .eq("is_published", true)
             .order("created_at", { ascending: false })
 
         if (error) {
-            console.error("[api/lessons] GET", error)
+            console.error("[api/lessons] GET", error.message)
             return NextResponse.json(
                 { error: "Failed to load lessons", details: error.message },
                 { status: 500 }
