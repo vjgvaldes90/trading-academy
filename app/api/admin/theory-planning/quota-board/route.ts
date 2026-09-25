@@ -8,12 +8,13 @@ import {
     type TradingStudentAccessRow,
 } from "@/lib/studentAcademyAccess"
 import { resolveSubscriptionPlan } from "@/lib/subscriptionPlans"
-import { parseTheoryPeriodBounds } from "@/lib/theoryClassQuota"
+import { parseTheoryPeriodBounds } from "@/lib/theoryPeriod"
 import {
     THEORY_QUOTA_MAX_CLASSES,
     classifyTheoryQuotaBoardBucket,
-    countTheoryConsumptionsInPersistedWindow,
-    theoryQuotaRemaining,
+    emptyTheoryQuotaBoardFields,
+    loadTheoryQuotaLedgersForStudents,
+    summarizeTheoryQuotaInPersistedWindow,
     type TheoryQuotaBoardNonEligible,
     type TheoryQuotaBoardStudent,
 } from "@/lib/theoryPlanning"
@@ -23,7 +24,7 @@ export const runtime = "nodejs"
 /**
  * Read-only Full Program theory quota board for Admin Planning.
  * Excludes Free students (board-only); does not change live theory access.
- * Counts only student_theory_consumptions in the persisted first-window bounds.
+ * Counts Academy + active external consumptions in the persisted first-window bounds.
  * Does not invent periods, claim consumptions, or touch group membership.
  */
 export async function GET() {
@@ -46,10 +47,13 @@ export async function GET() {
             return NextResponse.json({ error: "Failed to load students" }, { status: 500 })
         }
 
-        const pending2: TheoryQuotaBoardStudent[] = []
-        const pending1: TheoryQuotaBoardStudent[] = []
-        const pending0: TheoryQuotaBoardStudent[] = []
-        const nonEligible: TheoryQuotaBoardNonEligible[] = []
+        type Candidate = {
+            base: TheoryQuotaBoardStudent
+            period: { start: Date; end: Date } | null
+            accessOk: boolean
+        }
+
+        const candidates: Candidate[] = []
 
         for (const row of students ?? []) {
             if (typeof row.id !== "string" || typeof row.email !== "string") continue
@@ -73,13 +77,40 @@ export async function GET() {
                 plan: "full_program",
                 period_start: period ? period.start.toISOString() : null,
                 period_end: period ? period.end.toISOString() : null,
-                consumed: 0,
-                remaining: THEORY_QUOTA_MAX_CLASSES,
+                ...emptyTheoryQuotaBoardFields(),
                 quota_max: THEORY_QUOTA_MAX_CLASSES,
                 is_active: row.is_active !== false,
             }
 
-            if (!theory.ok) {
+            candidates.push({
+                base,
+                period,
+                accessOk: theory.ok,
+            })
+        }
+
+        const periodStudentIds = candidates
+            .filter((c) => c.accessOk && c.period)
+            .map((c) => c.base.id)
+
+        const ledgers = await loadTheoryQuotaLedgersForStudents(supabase, periodStudentIds)
+        if (!ledgers.ok) {
+            console.error(
+                "[api/admin/theory-planning/quota-board] ledger batch failed",
+                ledgers.error
+            )
+            return NextResponse.json({ error: "Failed to load quota ledgers" }, { status: 500 })
+        }
+
+        const pending2: TheoryQuotaBoardStudent[] = []
+        const pending1: TheoryQuotaBoardStudent[] = []
+        const pending0: TheoryQuotaBoardStudent[] = []
+        const nonEligible: TheoryQuotaBoardNonEligible[] = []
+
+        for (const candidate of candidates) {
+            const { base, period, accessOk } = candidate
+
+            if (!accessOk) {
                 nonEligible.push({
                     ...base,
                     reason: "theory_access_denied",
@@ -95,38 +126,32 @@ export async function GET() {
                 continue
             }
 
-            const counted = await countTheoryConsumptionsInPersistedWindow(
-                supabase,
-                row.id,
+            const summary = summarizeTheoryQuotaInPersistedWindow(
+                ledgers.academyByStudent.get(base.id) ?? [],
+                ledgers.externalByStudent.get(base.id) ?? [],
                 period.start,
                 period.end
             )
-            if (!counted.ok) {
-                console.error(
-                    "[api/admin/theory-planning/quota-board] count failed",
-                    counted.error
-                )
-                nonEligible.push({
-                    ...base,
-                    reason: "lookup_failed",
-                })
-                continue
-            }
 
-            const consumed = counted.count
             const entry: TheoryQuotaBoardStudent = {
                 ...base,
-                consumed,
-                remaining: theoryQuotaRemaining(consumed),
+                consumed: summary.total_consumed,
+                academy_consumed: summary.academy_consumed,
+                external_consumed: summary.external_consumed,
+                total_consumed: summary.total_consumed,
+                pending: summary.pending,
+                remaining: summary.remaining,
+                externals: summary.externals,
             }
 
-            const bucket = classifyTheoryQuotaBoardBucket(consumed)
+            const bucket = classifyTheoryQuotaBoardBucket(summary.total_consumed)
             if (bucket === "pending_2") pending2.push(entry)
             else if (bucket === "pending_1") pending1.push(entry)
             else if (bucket === "pending_0") pending0.push(entry)
             else {
                 nonEligible.push({
                     ...entry,
+                    pending: 0,
                     remaining: 0,
                     reason: "quota_over",
                 })

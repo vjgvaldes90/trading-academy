@@ -17,6 +17,18 @@ import {
     type TradingStudentAccessRow,
 } from "@/lib/studentAcademyAccess"
 import { planIncludesTheory } from "@/lib/subscriptionPlans"
+import {
+    parseTheoryPeriodBounds,
+    sameBillingInstant,
+    type TheoryBillingPeriod,
+} from "@/lib/theoryPeriod"
+import {
+    THEORY_QUOTA_MAX_CLASSES,
+    loadTheoryQuotaSummaryForStudent,
+} from "@/lib/theoryQuotaLedger"
+
+export type { TheoryBillingPeriod }
+export { parseTheoryPeriodBounds, sameBillingInstant }
 
 /**
  * Immutable lifetime window for Free + Full Program Theory quota.
@@ -24,11 +36,6 @@ import { planIncludesTheory } from "@/lib/subscriptionPlans"
  */
 export const FREE_FULL_PROGRAM_THEORY_PERIOD_START_ISO = "2000-01-01T00:00:00.000Z"
 export const FREE_FULL_PROGRAM_THEORY_PERIOD_END_ISO = "9999-12-31T23:59:59.000Z"
-
-export type TheoryBillingPeriod = {
-    start: Date
-    end: Date
-}
 
 export function freeFullProgramTheoryPeriod(): TheoryBillingPeriod {
     return {
@@ -55,23 +62,6 @@ type StudentQuotaRow = TradingStudentAccessRow & {
     program_theory_until?: string | null
     theory_quota_period_start?: string | null
     theory_quota_period_end?: string | null
-}
-
-/** Compare billing instants at second precision (Stripe unix vs stored ISO). */
-export function sameBillingInstant(a: Date, b: Date): boolean {
-    return Math.floor(a.getTime() / 1000) === Math.floor(b.getTime() / 1000)
-}
-
-export function parseTheoryPeriodBounds(
-    startRaw: string | null | undefined,
-    endRaw: string | null | undefined
-): TheoryBillingPeriod | null {
-    if (typeof startRaw !== "string" || !startRaw.trim()) return null
-    if (typeof endRaw !== "string" || !endRaw.trim()) return null
-    const startMs = Date.parse(startRaw.trim())
-    const endMs = Date.parse(endRaw.trim())
-    if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs <= startMs) return null
-    return { start: new Date(startMs), end: new Date(endMs) }
 }
 
 /**
@@ -343,18 +333,19 @@ export async function assertOrClaimTheoryConsumption(args: {
     }
 
     if (!args.consume) {
-        const { count, error: countErr } = await args.supabase
-            .from("student_theory_consumptions")
-            .select("id", { count: "exact", head: true })
-            .eq("student_id", studentId)
-            .eq("billing_period_start", periodStartIso)
-            .eq("billing_period_end", periodEndIso)
-
-        if (countErr) {
-            console.error("[theoryClassQuota] count failed", countErr)
+        // Preview only: Academy + active external in the persisted window.
+        // Claim path below still uses claim_theory_consumption (Phase A RPC).
+        const summary = await loadTheoryQuotaSummaryForStudent(
+            args.supabase,
+            studentId,
+            period.start,
+            period.end
+        )
+        if (!summary.ok) {
+            console.error("[theoryClassQuota] combined preview count failed", summary.error)
             return { ok: false, code: "claim_failed", error: "Failed to check theory quota" }
         }
-        if ((count ?? 0) >= 2) {
+        if (summary.summary.total_consumed >= THEORY_QUOTA_MAX_CLASSES) {
             return {
                 ok: false,
                 code: "theory_quota_exceeded",

@@ -1,18 +1,33 @@
 /**
  * Admin Theory Planning helpers used by the quota board.
- * Read-only against student_theory_consumptions / theory_quota_period_*.
+ * Read-only against Academy + external theory ledgers in the persisted window.
  * Never claims or inserts quota consumptions.
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js"
-import { parseTheoryPeriodBounds, sameBillingInstant } from "@/lib/theoryClassQuota"
+import {
+    THEORY_QUOTA_MAX_CLASSES,
+    loadTheoryQuotaLedgersForStudents,
+    loadTheoryQuotaSummaryForStudent,
+    summarizeTheoryQuotaInPersistedWindow,
+    theoryQuotaRemaining,
+    type TheoryQuotaExternalEntry,
+    type TheoryQuotaWindowSummary,
+} from "@/lib/theoryQuotaLedger"
 
-/** Max distinct theory sessions in the first Full Program quota window. */
-export const THEORY_QUOTA_MAX_CLASSES = 2
+export { THEORY_QUOTA_MAX_CLASSES }
+export {
+    loadTheoryQuotaLedgersForStudents,
+    loadTheoryQuotaSummaryForStudent,
+    summarizeTheoryQuotaInPersistedWindow,
+    theoryQuotaRemaining,
+}
+export type { TheoryQuotaWindowSummary }
+export type TheoryQuotaBoardExternalEntry = TheoryQuotaExternalEntry
 
 /**
- * Count ledger rows in the student's persisted first-$450 window.
- * Read-only; filters with second-precision matching (same as claim RPC).
+ * Count Academy + active external units in the student's persisted window.
+ * If the external table is not migrated yet, treats external as 0.
  */
 export async function countTheoryConsumptionsInPersistedWindow(
     supabase: SupabaseClient,
@@ -20,30 +35,14 @@ export async function countTheoryConsumptionsInPersistedWindow(
     periodStart: Date,
     periodEnd: Date
 ): Promise<{ ok: true; count: number } | { ok: false; error: string }> {
-    const { data, error } = await supabase
-        .from("student_theory_consumptions")
-        .select("id, billing_period_start, billing_period_end")
-        .eq("student_id", studentId)
-
-    if (error) {
-        return { ok: false, error: error.message }
-    }
-
-    let count = 0
-    for (const row of data ?? []) {
-        const startRaw =
-            typeof row.billing_period_start === "string" ? row.billing_period_start : null
-        const endRaw = typeof row.billing_period_end === "string" ? row.billing_period_end : null
-        const bounds = parseTheoryPeriodBounds(startRaw, endRaw)
-        if (!bounds) continue
-        if (
-            sameBillingInstant(bounds.start, periodStart) &&
-            sameBillingInstant(bounds.end, periodEnd)
-        ) {
-            count += 1
-        }
-    }
-    return { ok: true, count }
+    const summary = await loadTheoryQuotaSummaryForStudent(
+        supabase,
+        studentId,
+        periodStart,
+        periodEnd
+    )
+    if (!summary.ok) return summary
+    return { ok: true, count: summary.summary.total_consumed }
 }
 
 export type TheoryQuotaBoardStudent = {
@@ -54,10 +53,16 @@ export type TheoryQuotaBoardStudent = {
     plan: string
     period_start: string | null
     period_end: string | null
+    /** Kept for existing UI compatibility — same as total_consumed. */
     consumed: number
+    academy_consumed: number
+    external_consumed: number
+    total_consumed: number
+    pending: number
     remaining: number
     quota_max: number
     is_active: boolean
+    externals: TheoryQuotaBoardExternalEntry[]
 }
 
 export type TheoryQuotaBoardNonEligible = TheoryQuotaBoardStudent & {
@@ -71,9 +76,7 @@ export type TheoryQuotaBoardNonEligible = TheoryQuotaBoardStudent & {
 export type TheoryQuotaBoardBucket = "pending_2" | "pending_1" | "pending_0"
 
 /**
- * Classify an eligible Full Program student by ledger consumptions in the
- * persisted quota window. Mutually exclusive for consumed 0 / 1 / 2.
- * Does not invent periods or claim consumptions.
+ * Classify by combined ledger units in the persisted window (0 / 1 / 2).
  */
 export function classifyTheoryQuotaBoardBucket(
     consumed: number
@@ -84,8 +87,23 @@ export function classifyTheoryQuotaBoardBucket(
     return "over"
 }
 
-export function theoryQuotaRemaining(consumed: number): number {
-    if (consumed <= 0) return THEORY_QUOTA_MAX_CLASSES
-    if (consumed >= THEORY_QUOTA_MAX_CLASSES) return 0
-    return THEORY_QUOTA_MAX_CLASSES - consumed
+export function emptyTheoryQuotaBoardFields(): Pick<
+    TheoryQuotaBoardStudent,
+    | "consumed"
+    | "academy_consumed"
+    | "external_consumed"
+    | "total_consumed"
+    | "pending"
+    | "remaining"
+    | "externals"
+> {
+    return {
+        consumed: 0,
+        academy_consumed: 0,
+        external_consumed: 0,
+        total_consumed: 0,
+        pending: THEORY_QUOTA_MAX_CLASSES,
+        remaining: THEORY_QUOTA_MAX_CLASSES,
+        externals: [],
+    }
 }
