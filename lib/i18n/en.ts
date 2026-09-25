@@ -1275,6 +1275,52 @@ export const en = {
     adminTheoryPlanningQuotaBoardReasonOver: "More than 2 consumptions in the window",
     adminTheoryPlanningQuotaBoardReasonLookup: "Could not count consumptions",
 
+    // Admin Theory Planning — external class registration
+    adminTheoryPlanningExternalRegisterAction: "Register external class",
+    adminTheoryPlanningExternalRegisterTitle: "Register external theory class",
+    adminTheoryPlanningExternalStudentLabel: "Student",
+    adminTheoryPlanningExternalAcademyConsumed: "Academy consumed: {count}",
+    adminTheoryPlanningExternalExternalConsumed: "External consumed: {count}",
+    adminTheoryPlanningExternalTotalConsumed: "Total consumed: {count}",
+    adminTheoryPlanningExternalRemaining: "Remaining: {count}",
+    adminTheoryPlanningExternalClassDateLabel: "Class date",
+    adminTheoryPlanningExternalNotesLabel: "Note",
+    adminTheoryPlanningExternalNotesOptional: "Optional",
+    adminTheoryPlanningExternalRegisterHint:
+        "This external class will count as 1 of the 2 theory classes available for this student in their current period.",
+    adminTheoryPlanningExternalCancel: "Cancel",
+    adminTheoryPlanningExternalRegisterConfirm: "Register external class",
+    adminTheoryPlanningExternalRegistering: "Registering…",
+    adminTheoryPlanningExternalRegisterSuccess: "External theory class registered.",
+    adminTheoryPlanningExternalHistoryTitle: "External classes",
+    adminTheoryPlanningExternalHistoryEmpty: "No external classes recorded.",
+    adminTheoryPlanningExternalStatusActive: "Active",
+    adminTheoryPlanningExternalStatusReversed: "Reversed",
+    adminTheoryPlanningExternalReverseAction: "Reverse",
+    adminTheoryPlanningExternalReverseTitle: "Reverse external class?",
+    adminTheoryPlanningExternalReverseHint:
+        "Reversing this class will return 1 available theory consumption to the student.",
+    adminTheoryPlanningExternalReverseReasonLabel: "Reversal reason",
+    adminTheoryPlanningExternalReverseConfirm: "Reverse class",
+    adminTheoryPlanningExternalReversing: "Reversing…",
+    adminTheoryPlanningExternalReverseSuccess: "External theory class reversed.",
+    adminTheoryPlanningExternalErrorQuotaExceeded:
+        "Cannot register the external class because the student already used both theory classes for this period.",
+    adminTheoryPlanningExternalErrorFreeNotAllowed:
+        "Free students do not have external theory classes that can be registered from this board.",
+    adminTheoryPlanningExternalErrorNotFullProgram:
+        "This student does not have an eligible Full Program plan for registering theory classes.",
+    adminTheoryPlanningExternalErrorPeriodNotConfigured:
+        "There is no valid theory quota period configured for this student.",
+    adminTheoryPlanningExternalErrorAlreadyReversed: "This external class was already reversed.",
+    adminTheoryPlanningExternalErrorUnavailable:
+        "External theory registration is not available yet. Apply the Phase A migration first.",
+    adminTheoryPlanningExternalErrorGeneric: "Could not complete the external theory action.",
+    adminTheoryPlanningExternalErrorNotFound: "External class record was not found.",
+    adminTheoryPlanningExternalErrorInvalidArgs: "Check the form fields and try again.",
+    adminTheoryPlanningExternalCreatedAt: "Recorded: {datetime}",
+    adminTheoryPlanningExternalClassHeldOn: "Held: {date}",
+
     // Student Announcements
     announcementsTitle: "Announcements",
     announcementsSubtitle: "Updates and notices from the academy.",
