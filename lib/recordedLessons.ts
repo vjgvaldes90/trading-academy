@@ -20,6 +20,7 @@ export type RecordedClassMime = (typeof RECORDED_CLASS_ALLOWED_MIME)[number]
 
 export type LessonSourceType = "youtube" | "upload"
 export type LessonClassType = "trading" | "theory"
+export type LessonContentType = "recorded_class" | "tutorial"
 
 const EXT_BY_MIME: Record<RecordedClassMime, string> = {
     "video/mp4": "mp4",
@@ -33,6 +34,15 @@ export function isLessonSourceType(value: unknown): value is LessonSourceType {
 
 export function isLessonClassType(value: unknown): value is LessonClassType {
     return value === "trading" || value === "theory"
+}
+
+export function isLessonContentType(value: unknown): value is LessonContentType {
+    return value === "recorded_class" || value === "tutorial"
+}
+
+/** Missing / unknown → recorded_class (rows created before content_type existed). */
+export function resolveLessonContentType(value: unknown): LessonContentType {
+    return value === "tutorial" ? "tutorial" : "recorded_class"
 }
 
 export function isAllowedRecordedMime(value: string): value is RecordedClassMime {

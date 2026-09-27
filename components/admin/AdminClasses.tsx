@@ -8,6 +8,8 @@ import {
     RECORDED_CLASS_MAX_BYTES,
     formatBytes,
     isAllowedRecordedMime,
+    resolveLessonContentType,
+    type LessonContentType,
 } from "@/lib/recordedLessons"
 import { requireBrowserSupabaseEnv } from "@/lib/supabase/publicEnv"
 
@@ -20,6 +22,7 @@ type LessonRow = {
     description: string | null
     video_url: string | null
     source_type?: string | null
+    content_type?: string | null
     class_date?: string | null
     class_type?: string | null
     created_at: string
@@ -76,6 +79,7 @@ export default function AdminClasses() {
     const [description, setDescription] = useState("")
     const [videoUrl, setVideoUrl] = useState("")
     const [classDate, setClassDate] = useState("")
+    const [contentType, setContentType] = useState<LessonContentType>("recorded_class")
     const [classType, setClassType] = useState<LessonClassType | "">("")
     const [file, setFile] = useState<File | null>(null)
 
@@ -128,6 +132,7 @@ export default function AdminClasses() {
         setDescription("")
         setVideoUrl("")
         setClassDate("")
+        setContentType("recorded_class")
         setClassType("")
         setFile(null)
         setUploadPct(null)
@@ -171,6 +176,9 @@ export default function AdminClasses() {
                 throw new Error(t.titleLabel)
             }
 
+            const classTypeForSave =
+                contentType === "recorded_class" && classType ? classType : undefined
+
             if (mode === "youtube") {
                 if (!videoUrl.trim()) {
                     throw new Error(t.adminVideoUrlLabel)
@@ -184,8 +192,9 @@ export default function AdminClasses() {
                         title: title.trim(),
                         description: description.trim(),
                         videoUrl: videoUrl.trim(),
+                        contentType,
                         classDate: classDate.trim() || undefined,
-                        classType: classType || undefined,
+                        classType: classTypeForSave,
                     }),
                 })
                 const payload = (await res.json().catch(() => ({}))) as { error?: string }
@@ -282,8 +291,9 @@ export default function AdminClasses() {
                         title: title.trim(),
                         description: description.trim(),
                         storagePath: path,
+                        contentType,
                         classDate: classDate.trim() || undefined,
-                        classType: classType || undefined,
+                        classType: classTypeForSave,
                     }),
                 })
                 const savePayload = (await saveRes.json().catch(() => ({}))) as { error?: string }
@@ -395,6 +405,31 @@ export default function AdminClasses() {
                         </div>
 
                         <div style={{ marginBottom: 14 }}>
+                            <label style={labelStyle}>{t.recordedClassContentLabel}</label>
+                            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                                <button
+                                    type="button"
+                                    disabled={busy}
+                                    style={modeBtn(contentType === "recorded_class")}
+                                    onClick={() => setContentType("recorded_class")}
+                                >
+                                    {t.recordedClassContentRecorded}
+                                </button>
+                                <button
+                                    type="button"
+                                    disabled={busy}
+                                    style={modeBtn(contentType === "tutorial")}
+                                    onClick={() => {
+                                        setContentType("tutorial")
+                                        setClassType("")
+                                    }}
+                                >
+                                    {t.recordedClassContentTutorial}
+                                </button>
+                            </div>
+                        </div>
+
+                        <div style={{ marginBottom: 14 }}>
                             <label style={labelStyle}>{t.titleLabel}</label>
                             <input
                                 type="text"
@@ -434,25 +469,27 @@ export default function AdminClasses() {
                                     style={inputStyle}
                                 />
                             </div>
-                            <div>
-                                <label style={labelStyle}>{t.recordedClassTypeLabel}</label>
-                                <select
-                                    value={classType}
-                                    onChange={(e) =>
-                                        setClassType(
-                                            e.target.value === "trading" || e.target.value === "theory"
-                                                ? e.target.value
-                                                : ""
-                                        )
-                                    }
-                                    disabled={busy}
-                                    style={inputStyle}
-                                >
-                                    <option value="">{t.recordedClassTypeOptional}</option>
-                                    <option value="trading">{t.recordedClassTypeTrading}</option>
-                                    <option value="theory">{t.recordedClassTypeTheory}</option>
-                                </select>
-                            </div>
+                            {contentType === "recorded_class" ? (
+                                <div>
+                                    <label style={labelStyle}>{t.recordedClassTypeLabel}</label>
+                                    <select
+                                        value={classType}
+                                        onChange={(e) =>
+                                            setClassType(
+                                                e.target.value === "trading" || e.target.value === "theory"
+                                                    ? e.target.value
+                                                    : ""
+                                            )
+                                        }
+                                        disabled={busy}
+                                        style={inputStyle}
+                                    >
+                                        <option value="">{t.recordedClassTypeOptional}</option>
+                                        <option value="trading">{t.recordedClassTypeTrading}</option>
+                                        <option value="theory">{t.recordedClassTypeTheory}</option>
+                                    </select>
+                                </div>
+                            ) : null}
                         </div>
 
                         {mode === "youtube" ? (
@@ -610,6 +647,7 @@ export default function AdminClasses() {
                                 {lessons.map((lesson) => {
                                     const source =
                                         lesson.source_type === "upload" ? "upload" : "youtube"
+                                    const content = resolveLessonContentType(lesson.content_type)
                                     return (
                                         <li
                                             key={lesson.id}
@@ -630,6 +668,10 @@ export default function AdminClasses() {
                                                 {lesson.title}
                                             </div>
                                             <div style={{ fontSize: "0.8rem", color: "#94a3b8" }}>
+                                                {content === "tutorial"
+                                                    ? t.recordedClassContentTutorial
+                                                    : t.recordedClassContentRecorded}
+                                                {" · "}
                                                 {source === "upload"
                                                     ? t.recordedClassSourceUpload
                                                     : t.recordedClassSourceYoutube}

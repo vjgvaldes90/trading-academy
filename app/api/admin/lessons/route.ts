@@ -3,8 +3,10 @@ import { requireAuthorizedAdminFromCookies } from "@/lib/adminAuth"
 import {
     RECORDED_CLASSES_BUCKET,
     isLessonClassType,
+    isLessonContentType,
     isLessonSourceType,
     isValidRecordedClassStoragePath,
+    type LessonContentType,
 } from "@/lib/recordedLessons"
 import { supabaseAdmin } from "@/lib/supabase/admin"
 
@@ -15,6 +17,7 @@ type Body = {
     description?: unknown
     videoUrl?: unknown
     sourceType?: unknown
+    contentType?: unknown
     storagePath?: unknown
     classDate?: unknown
     classType?: unknown
@@ -33,8 +36,9 @@ async function removeUploadedObject(path: string): Promise<void> {
 
 /**
  * Admin create lesson metadata.
- * - YouTube: { title, description?, videoUrl, classDate?, classType? }
- * - Upload:  { title, description?, sourceType: "upload", storagePath, classDate?, classType? }
+ * - YouTube: { title, description?, videoUrl, contentType?, classDate?, classType? }
+ * - Upload:  { title, description?, sourceType: "upload", storagePath, contentType?, classDate?, classType? }
+ * contentType defaults to "recorded_class"; tutorials never store a classType.
  * Does not accept multipart video bodies.
  */
 export async function POST(req: Request) {
@@ -64,8 +68,24 @@ export async function POST(req: Request) {
               ? "upload"
               : "youtube"
 
+        let contentType: LessonContentType = "recorded_class"
+        if (body.contentType !== undefined && body.contentType !== null && body.contentType !== "") {
+            if (!isLessonContentType(body.contentType)) {
+                return NextResponse.json(
+                    { error: 'contentType must be "recorded_class" or "tutorial"' },
+                    { status: 400 }
+                )
+            }
+            contentType = body.contentType
+        }
+
         let classType: string | null = null
-        if (body.classType !== undefined && body.classType !== null && body.classType !== "") {
+        if (
+            contentType === "recorded_class" &&
+            body.classType !== undefined &&
+            body.classType !== null &&
+            body.classType !== ""
+        ) {
             if (!isLessonClassType(body.classType)) {
                 return NextResponse.json(
                     { error: 'classType must be "trading" or "theory"' },
@@ -99,6 +119,7 @@ export async function POST(req: Request) {
                         description,
                         video_url: videoUrl,
                         source_type: "youtube",
+                        content_type: contentType,
                         storage_path: null,
                         class_date: classDate,
                         class_type: classType,
@@ -106,7 +127,7 @@ export async function POST(req: Request) {
                     },
                 ])
                 .select(
-                    "id, title, description, video_url, source_type, storage_path, class_date, class_type, is_published, created_at"
+                    "id, title, description, video_url, source_type, content_type, storage_path, class_date, class_type, is_published, created_at"
                 )
                 .single()
 
@@ -166,6 +187,7 @@ export async function POST(req: Request) {
                     description,
                     video_url: null,
                     source_type: "upload",
+                    content_type: contentType,
                     storage_path: storagePath,
                     class_date: classDate,
                     class_type: classType,
@@ -173,7 +195,7 @@ export async function POST(req: Request) {
                 },
             ])
             .select(
-                "id, title, description, video_url, source_type, storage_path, class_date, class_type, is_published, created_at"
+                "id, title, description, video_url, source_type, content_type, storage_path, class_date, class_type, is_published, created_at"
             )
             .single()
 

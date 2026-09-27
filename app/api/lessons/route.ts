@@ -10,10 +10,10 @@ import {
 export const runtime = "nodejs"
 
 const LESSON_SELECT_STUDENT =
-    "id, title, description, video_url, source_type, class_date, class_type, created_at"
+    "id, title, description, video_url, source_type, content_type, class_date, class_type, created_at"
 
 const LESSON_SELECT_ADMIN =
-    "id, title, description, video_url, source_type, storage_path, class_date, class_type, created_at"
+    "id, title, description, video_url, source_type, content_type, storage_path, class_date, class_type, created_at"
 
 /**
  * Recorded classes / lessons.
