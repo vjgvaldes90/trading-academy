@@ -59,7 +59,7 @@ function DashboardShell({
     const [focusAnnouncementId, setFocusAnnouncementId] = useState<string | null>(null)
 
     const navigateStudentView = useCallback((view: StudentDashboardView) => {
-        if (view === "classes" || view === "resources") {
+        if (view === "resources") {
             setComingSoonFeature(view)
             return
         }
