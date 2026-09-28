@@ -4,6 +4,7 @@ import {
     GoogleDriveApiError,
     GoogleDriveConfigError,
     getGoogleDriveAccessToken,
+    getGoogleWifDiagnostics,
     isGoogleWifConfigured,
     listSharedDriveFiles,
 } from "@/lib/googleDrive"
@@ -65,6 +66,7 @@ export async function GET(req: Request) {
                     status: e.status,
                     googleCode: e.googleCode,
                     error: e.message,
+                    ...(e.stage === "sts" ? { diagnostics: getGoogleWifDiagnostics() } : {}),
                 },
                 { status: 502 }
             )

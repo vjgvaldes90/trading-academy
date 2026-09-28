@@ -111,6 +111,22 @@ function wifProviderAudience(env: RequiredWifEnv): string {
     )
 }
 
+/** Non-secret WIF identifiers for temporary admin diagnostics (no tokens, no service account). */
+export function getGoogleWifDiagnostics() {
+    const env = getGoogleWifEnv()
+    const audience = wifProviderAudience(env)
+    return {
+        audience,
+        audienceLength: audience.length,
+        projectNumber: env.projectNumber,
+        projectNumberLength: env.projectNumber.length,
+        poolId: env.poolId,
+        poolIdLength: env.poolId.length,
+        providerId: env.providerId,
+        providerIdLength: env.providerId.length,
+    }
+}
+
 /** Vercel OIDC token: request header in Vercel Functions, env fallback for builds / local dev. */
 export function getVercelOidcTokenFromHeaders(requestHeaders: Headers): string {
     const fromHeader = requestHeaders.get(VERCEL_OIDC_HEADER)?.trim()
