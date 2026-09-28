@@ -22,8 +22,10 @@
 const STS_TOKEN_URL = "https://sts.googleapis.com/v1/token"
 const IAM_CREDENTIALS_API = "https://iamcredentials.googleapis.com/v1"
 const DRIVE_API = "https://www.googleapis.com/drive/v3"
+const DRIVE_UPLOAD_API = "https://www.googleapis.com/upload/drive/v3"
 
 export const GOOGLE_DRIVE_READONLY_SCOPE = "https://www.googleapis.com/auth/drive.readonly"
+export const GOOGLE_DRIVE_SCOPE = "https://www.googleapis.com/auth/drive"
 
 const VERCEL_OIDC_HEADER = "x-vercel-oidc-token"
 const FETCH_TIMEOUT_MS = 15_000
@@ -140,11 +142,11 @@ export function getVercelOidcTokenFromHeaders(requestHeaders: Headers): string {
 
 type JsonResult = { ok: boolean; status: number; json: unknown }
 
-async function fetchJson(url: string, init: RequestInit): Promise<JsonResult> {
+async function fetchJson(url: string, init: RequestInit, timeoutMs: number = FETCH_TIMEOUT_MS): Promise<JsonResult> {
     const res = await fetch(url, {
         ...init,
         cache: "no-store",
-        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+        signal: AbortSignal.timeout(timeoutMs),
     })
     const text = await res.text()
     let json: unknown = null
@@ -348,5 +350,152 @@ export async function listSharedDriveFiles(
         drive,
         files: toSharedDriveFiles(listRes.json),
         hasMore: readString(listRes.json, "nextPageToken") !== "",
+    }
+}
+
+const DRIVE_FOLDER_MIME = "application/vnd.google-apps.folder"
+const DRIVE_ITEM_ID_RE = /^[A-Za-z0-9_-]{10,128}$/
+const UPLOAD_TIMEOUT_MS = 60_000
+
+/** Max size accepted by the temporary Drive write test (below Vercel's request body limit). */
+export const GOOGLE_DRIVE_TEST_UPLOAD_MAX_BYTES = 4 * 1024 * 1024
+
+export type SharedDriveFolder = {
+    id: string
+    name: string
+    driveId: string
+}
+
+/**
+ * Read + validate that `folderId` is a non-trashed folder inside `sharedDriveId`.
+ * Uses the write-scoped token so the upload that follows reuses the cached token.
+ */
+export async function getSharedDriveFolder(
+    folderId: string,
+    sharedDriveId: string,
+    requestHeaders: Headers
+): Promise<SharedDriveFolder> {
+    const fid = folderId.trim()
+    const driveId = sharedDriveId.trim()
+    if (!DRIVE_ITEM_ID_RE.test(fid)) {
+        throw new GoogleDriveConfigError("Invalid Drive folder ID format")
+    }
+    if (!SHARED_DRIVE_ID_RE.test(driveId)) {
+        throw new GoogleDriveConfigError("Invalid Shared Drive ID format")
+    }
+
+    const token = await getGoogleDriveAccessToken(requestHeaders, GOOGLE_DRIVE_SCOPE)
+    const params = new URLSearchParams({
+        supportsAllDrives: "true",
+        fields: "id,name,mimeType,driveId,trashed",
+    })
+    const res = await fetchJson(`${DRIVE_API}/files/${encodeURIComponent(fid)}?${params.toString()}`, {
+        method: "GET",
+        headers: { Authorization: `Bearer ${token}` },
+    })
+    if (!res.ok) {
+        failGoogle("drive", res.status, res.json, `Google Drive files.get failed (${res.status})`)
+    }
+
+    const trashed =
+        res.json && typeof res.json === "object" && (res.json as Record<string, unknown>).trashed === true
+    const folder = {
+        id: readString(res.json, "id"),
+        name: readString(res.json, "name"),
+        driveId: readString(res.json, "driveId"),
+        mimeType: readString(res.json, "mimeType"),
+    }
+
+    if (folder.id !== fid || folder.driveId !== driveId || folder.mimeType !== DRIVE_FOLDER_MIME || trashed) {
+        throw new GoogleDriveConfigError("Target folder is not a valid folder inside the configured Shared Drive")
+    }
+
+    return { id: folder.id, name: folder.name, driveId: folder.driveId }
+}
+
+export type UploadedDriveFile = {
+    id: string
+    name: string
+    mimeType: string
+    size: string
+    parents: string[]
+    driveId: string
+    webViewLink: string
+}
+
+/**
+ * Temporary write test: multipart upload (≤ 4 MB, video/mp4 only) into a Shared Drive folder.
+ * No permissions are created — the file inherits the Shared Drive membership.
+ */
+export async function uploadSmallFileToSharedDrive(input: {
+    sharedDriveId: string
+    folderId: string
+    name: string
+    mimeType: string
+    data: Uint8Array
+    headers: Headers
+}): Promise<UploadedDriveFile> {
+    if (input.mimeType !== "video/mp4") {
+        throw new GoogleDriveConfigError("Only video/mp4 is accepted")
+    }
+    if (input.data.byteLength === 0 || input.data.byteLength > GOOGLE_DRIVE_TEST_UPLOAD_MAX_BYTES) {
+        throw new GoogleDriveConfigError("File size is outside the allowed test range")
+    }
+    const name = input.name.trim()
+    if (!name) {
+        throw new GoogleDriveConfigError("File name is required")
+    }
+
+    const folder = await getSharedDriveFolder(input.folderId, input.sharedDriveId, input.headers)
+    const token = await getGoogleDriveAccessToken(input.headers, GOOGLE_DRIVE_SCOPE)
+
+    const metadata = {
+        name,
+        mimeType: "video/mp4",
+        parents: [folder.id],
+        appProperties: { smartOptionTest: "true" },
+    }
+    const boundary = `smart-option-${crypto.randomUUID()}`
+    const body = Buffer.concat([
+        Buffer.from(
+            `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n` +
+                `${JSON.stringify(metadata)}\r\n` +
+                `--${boundary}\r\nContent-Type: video/mp4\r\n\r\n`
+        ),
+        Buffer.from(input.data),
+        Buffer.from(`\r\n--${boundary}--\r\n`),
+    ])
+
+    const params = new URLSearchParams({
+        uploadType: "multipart",
+        supportsAllDrives: "true",
+        fields: "id,name,mimeType,size,parents,driveId,webViewLink",
+    })
+    const res = await fetchJson(
+        `${DRIVE_UPLOAD_API}/files?${params.toString()}`,
+        {
+            method: "POST",
+            headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": `multipart/related; boundary=${boundary}`,
+            },
+            body,
+        },
+        UPLOAD_TIMEOUT_MS
+    )
+    if (!res.ok) {
+        failGoogle("drive", res.status, res.json, `Google Drive upload failed (${res.status})`)
+    }
+
+    const parentsRaw =
+        res.json && typeof res.json === "object" ? (res.json as Record<string, unknown>).parents : null
+    return {
+        id: readString(res.json, "id"),
+        name: readString(res.json, "name"),
+        mimeType: readString(res.json, "mimeType"),
+        size: readString(res.json, "size"),
+        parents: Array.isArray(parentsRaw) ? parentsRaw.filter((p): p is string => typeof p === "string") : [],
+        driveId: readString(res.json, "driveId"),
+        webViewLink: readString(res.json, "webViewLink"),
     }
 }
