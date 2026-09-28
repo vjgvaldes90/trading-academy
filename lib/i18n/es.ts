@@ -33,7 +33,7 @@ export const es: TranslationKeys = {
 
     // Class start announcement (landing marketing)
     classStartEyebrow: "Clases en vivo",
-    classStartTitle: "Las clases comienzan este septiembre",
+    classStartTitle: "Próximas clases",
     classStartSubtitle: "Tu camino en los mercados comienza muy pronto.",
     classStartHighlight:
         "2 programas. 2 fechas de inicio. Un mismo objetivo: convertirte en un mejor trader.",
@@ -47,6 +47,11 @@ export const es: TranslationKeys = {
     classStartTradingProgramDate: "28 de septiembre",
     classStartTradingProgramFocus: "Trading en vivo",
     classStartTradingProgramStarts: "Comienza el 28 de septiembre",
+    classStartFullProgramCycleLabel: "Próximo ciclo de clases",
+    classStartFullProgramCycleStarts: "comienza el {date}",
+    classStartTradingProgramDaysBadge: "LUN — MIÉ",
+    classStartTradingProgramDays: "Lunes - miércoles",
+    classStartTradingProgramHours: "9:30 AM — 10:30 AM",
     classStartFooter: "Elige el programa que mejor se adapte a tus objetivos.",
     classStartViewPrograms: "Ver programas",
 

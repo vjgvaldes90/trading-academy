@@ -31,7 +31,7 @@ export const en = {
 
     // Class start announcement (landing marketing)
     classStartEyebrow: "Live Classes",
-    classStartTitle: "Classes Start This September",
+    classStartTitle: "Upcoming Classes",
     classStartSubtitle: "Your journey into the markets begins soon.",
     classStartHighlight:
         "2 programs. 2 start dates. One goal: Become a better trader.",
@@ -45,6 +45,11 @@ export const en = {
     classStartTradingProgramDate: "September 28",
     classStartTradingProgramFocus: "Live Trading",
     classStartTradingProgramStarts: "Starts September 28",
+    classStartFullProgramCycleLabel: "Next class cycle",
+    classStartFullProgramCycleStarts: "starts {date}",
+    classStartTradingProgramDaysBadge: "MON — WED",
+    classStartTradingProgramDays: "Monday - Wednesday",
+    classStartTradingProgramHours: "9:30 AM — 10:30 AM",
     classStartFooter: "Choose the program that fits your goals.",
     classStartViewPrograms: "View Programs",
 

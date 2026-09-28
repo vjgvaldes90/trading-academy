@@ -1,7 +1,29 @@
 "use client"
 
+import { useSyncExternalStore } from "react"
 import { GraduationCap, LineChart } from "lucide-react"
 import { useLanguage } from "@/context/LanguageProvider"
+import {
+    FULL_PROGRAM_CYCLE_BASE_YMD,
+    formatCycleBadge,
+    formatCycleLongDate,
+    getEtTodayYmd,
+    getNextFullProgramCycleYmd,
+} from "@/lib/programCycles"
+
+const noopSubscribe = () => () => {}
+
+/**
+ * The landing page is statically prerendered: server/hydration render the base cycle date,
+ * then the client re-renders with today's America/New_York date.
+ */
+function useNextFullProgramCycleYmd(): string {
+    return useSyncExternalStore(
+        noopSubscribe,
+        () => getNextFullProgramCycleYmd(getEtTodayYmd()),
+        () => FULL_PROGRAM_CYCLE_BASE_YMD
+    )
+}
 
 type ClassStartAnnouncementProps = {
     className?: string
@@ -18,7 +40,9 @@ export default function ClassStartAnnouncement({
     className = "",
     showViewProgramsCta = false,
 }: ClassStartAnnouncementProps) {
-    const { t } = useLanguage()
+    const { t, language } = useLanguage()
+    const nextCycleYmd = useNextFullProgramCycleYmd()
+    const nextCycleLongDate = formatCycleLongDate(nextCycleYmd, language)
 
     const cardBase =
         "relative flex min-w-0 flex-col gap-1 rounded-xl border border-white/12 bg-[#0B1220]/75 px-3.5 py-3 shadow-[0_12px_28px_rgba(2,6,23,0.45)] backdrop-blur-md sm:px-4 sm:py-3.5"
@@ -59,10 +83,13 @@ export default function ClassStartAnnouncement({
                         className="relative font-mono text-xl font-extrabold tracking-tight text-white sm:text-2xl"
                         aria-hidden
                     >
-                        {t.classStartFullProgramBadge}
+                        {formatCycleBadge(nextCycleYmd, language)}
                     </p>
-                    <p className="relative text-xs font-medium text-slate-200 sm:text-[13px]">
-                        {t.classStartFullProgramDate}
+                    <p className="relative text-xs font-medium leading-snug text-slate-200 sm:text-[13px]">
+                        <span className="block">{t.classStartFullProgramCycleLabel}</span>
+                        <span className="block">
+                            {t.classStartFullProgramCycleStarts.replace("{date}", nextCycleLongDate)}
+                        </span>
                     </p>
                     <p className="relative text-[11px] leading-snug text-slate-400 sm:text-xs">
                         {t.classStartFullProgramFocus}
@@ -81,13 +108,14 @@ export default function ClassStartAnnouncement({
                         </h3>
                     </div>
                     <p
-                        className="relative font-mono text-xl font-extrabold tracking-tight text-white sm:text-2xl"
+                        className="relative whitespace-nowrap font-mono text-xl font-extrabold tracking-tight text-white sm:text-2xl"
                         aria-hidden
                     >
-                        {t.classStartTradingProgramBadge}
+                        {t.classStartTradingProgramDaysBadge}
                     </p>
-                    <p className="relative text-xs font-medium text-slate-200 sm:text-[13px]">
-                        {t.classStartTradingProgramDate}
+                    <p className="relative text-xs font-medium leading-snug text-slate-200 sm:text-[13px]">
+                        <span className="sr-only">{t.classStartTradingProgramDays}, </span>
+                        {t.classStartTradingProgramHours}
                     </p>
                     <p className="relative text-[11px] leading-snug text-slate-400 sm:text-xs">
                         {t.classStartTradingProgramFocus}
