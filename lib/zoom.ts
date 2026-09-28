@@ -260,6 +260,8 @@ export async function createZoomMeeting(input: {
     duration: number
     /** Optional IANA timezone; defaults to {@link getZoomSessionTimezone} (Trading/Theory unchanged). */
     timezone?: string
+    /** When true, sends `auto_recording: "cloud"`. Omit for Private Classes. */
+    autoRecording?: boolean
 }): Promise<ZoomMeetingDetails> {
     const { accountId, clientId, clientSecret, webhookSecret } = getZoomEnv()
     logZoomEnvCheck(accountId, clientId, clientSecret, webhookSecret)
@@ -286,6 +288,7 @@ export async function createZoomMeeting(input: {
             waiting_room: true,
             join_before_host: false,
             ...(alternativeHosts ? { alternative_hosts: alternativeHosts } : {}),
+            ...(input.autoRecording === true ? { auto_recording: "cloud" } : {}),
         },
     })
 
@@ -311,6 +314,8 @@ export type ZoomMeetingUpdateInput = {
     topic?: string
     /** Optional IANA timezone when updating start_time; defaults to {@link getZoomSessionTimezone}. */
     timezone?: string
+    /** When true, sends `auto_recording: "cloud"`. Omit for Private Classes. */
+    autoRecording?: boolean
 }
 
 /**
@@ -344,8 +349,15 @@ export async function updateZoomMeeting(meetingId: string, patch: ZoomMeetingUpd
         body.start_time = patch.start_time.trim()
         body.timezone = timezone
     }
+    const settings: Record<string, unknown> = {}
     if (alternativeHosts) {
-        body.settings = { alternative_hosts: alternativeHosts }
+        settings.alternative_hosts = alternativeHosts
+    }
+    if (patch.autoRecording === true) {
+        settings.auto_recording = "cloud"
+    }
+    if (Object.keys(settings).length > 0) {
+        body.settings = settings
     }
 
     if (Object.keys(body).length === 0) {
@@ -420,4 +432,114 @@ export async function deleteZoomMeeting(meetingId: string): Promise<void> {
     }
 
     console.log("[ZOOM DELETED]", id)
+}
+
+export type ZoomRecordingFile = {
+    id: string
+    recordingType: string
+    fileType: string
+    fileSize: number
+    status: string
+    recordingStart: string
+    downloadUrl: string
+}
+
+function readRecordingString(obj: Record<string, unknown>, key: string): string {
+    const v = obj[key]
+    return typeof v === "string" ? v.trim() : ""
+}
+
+/** Normalize Zoom `recording_files` (webhook payload or REST response). */
+export function parseZoomRecordingFiles(raw: unknown): ZoomRecordingFile[] {
+    if (!Array.isArray(raw)) return []
+    const out: ZoomRecordingFile[] = []
+    for (const item of raw) {
+        if (!item || typeof item !== "object") continue
+        const rec = item as Record<string, unknown>
+        const size = rec.file_size
+        out.push({
+            id: readRecordingString(rec, "id"),
+            recordingType: readRecordingString(rec, "recording_type"),
+            fileType: readRecordingString(rec, "file_type").toUpperCase(),
+            fileSize: typeof size === "number" && Number.isFinite(size) ? size : 0,
+            status: readRecordingString(rec, "status").toLowerCase(),
+            recordingStart: readRecordingString(rec, "recording_start"),
+            downloadUrl: readRecordingString(rec, "download_url"),
+        })
+    }
+    return out
+}
+
+/** Zoom requires double-encoding meeting UUIDs that start with `/` or contain `//`. */
+function encodeZoomMeetingUuid(uuid: string): string {
+    const once = encodeURIComponent(uuid)
+    return uuid.startsWith("/") || uuid.includes("//") ? encodeURIComponent(once) : once
+}
+
+export type ZoomMeetingRecordings = {
+    /** Short-lived; never persist or log. */
+    downloadAccessToken: string
+    files: ZoomRecordingFile[]
+}
+
+/** Past meeting instance recordings (+ fresh download access token) via S2S OAuth. */
+export async function getZoomMeetingRecordings(meetingUuid: string): Promise<ZoomMeetingRecordings> {
+    const { accountId, clientId, clientSecret } = getZoomEnv()
+    throwIfZoomOAuthIncomplete(accountId, clientId, clientSecret)
+
+    const uuid = meetingUuid.trim()
+    if (!uuid) {
+        throw new ZoomConfigError("getZoomMeetingRecordings: empty meeting uuid")
+    }
+
+    const url = `${ZOOM_API}/meetings/${encodeZoomMeetingUuid(uuid)}/recordings?include_fields=download_access_token`
+    const { ok, status, json, text } = await zoomFetchJson("GET", url)
+    if (!ok || !json || typeof json !== "object") {
+        console.error("[ZOOM ERROR]", "get_recordings", status, text.slice(0, 300))
+        throw new ZoomApiError(`Zoom get meeting recordings failed (${status})`, status)
+    }
+
+    const rec = json as Record<string, unknown>
+    return {
+        downloadAccessToken: readRecordingString(rec, "download_access_token"),
+        files: parseZoomRecordingFiles(rec.recording_files),
+    }
+}
+
+function isZoomDownloadUrl(raw: string): boolean {
+    try {
+        const u = new URL(raw)
+        return u.protocol === "https:" && /(^|\.)zoom\.(us|com)$/i.test(u.hostname)
+    } catch {
+        return false
+    }
+}
+
+/**
+ * Open a streaming download of a recording file (never buffers the body).
+ * `rangeStart > 0` requests `Range: bytes=N-`; callers must handle a 200 (range ignored).
+ */
+export async function openZoomRecordingDownload(input: {
+    downloadUrl: string
+    downloadToken: string
+    rangeStart: number
+    timeoutMs: number
+}): Promise<Response> {
+    if (!isZoomDownloadUrl(input.downloadUrl)) {
+        throw new ZoomConfigError("Recording download URL is not a Zoom URL")
+    }
+    if (!input.downloadToken) {
+        throw new ZoomConfigError("Recording download token is missing")
+    }
+    const headers: Record<string, string> = { Authorization: `Bearer ${input.downloadToken}` }
+    if (input.rangeStart > 0) {
+        headers.Range = `bytes=${input.rangeStart}-`
+    }
+    return fetch(input.downloadUrl, {
+        method: "GET",
+        headers,
+        redirect: "follow",
+        cache: "no-store",
+        signal: AbortSignal.timeout(input.timeoutMs),
+    })
 }

@@ -273,6 +273,11 @@ export async function getGoogleDriveAccessToken(
     }
 }
 
+/** Drop a cached token (e.g. after a Drive 401) so the next call re-runs the WIF exchange. */
+export function invalidateGoogleDriveAccessToken(scope: string): void {
+    tokenCache.delete(scope)
+}
+
 const SHARED_DRIVE_ID_RE = /^[A-Za-z0-9_-]{10,128}$/
 
 export type SharedDriveFile = {
@@ -498,4 +503,219 @@ export async function uploadSmallFileToSharedDrive(input: {
         driveId: readString(res.json, "driveId"),
         webViewLink: readString(res.json, "webViewLink"),
     }
+}
+
+// ---------------------------------------------------------------------------
+// Resumable uploads (large files). Session URIs are credentials: never log or return them.
+// ---------------------------------------------------------------------------
+
+const DRIVE_FILE_FIELDS = "id,name,size,mimeType,driveId,parents,trashed"
+const RESUMABLE_CHUNK_TIMEOUT_MS = 120_000
+const APP_PROPERTY_VALUE_RE = /^[A-Za-z0-9_\-+/=.]{1,124}$/
+
+export type DriveFileMetadata = {
+    id: string
+    name: string
+    size: number
+    mimeType: string
+    driveId: string
+    parents: string[]
+    trashed: boolean
+}
+
+function toDriveFileMetadata(json: unknown): DriveFileMetadata {
+    const rec = json && typeof json === "object" ? (json as Record<string, unknown>) : {}
+    const sizeNum = Number(readString(rec, "size"))
+    return {
+        id: readString(rec, "id"),
+        name: readString(rec, "name"),
+        size: Number.isFinite(sizeNum) ? sizeNum : -1,
+        mimeType: readString(rec, "mimeType"),
+        driveId: readString(rec, "driveId"),
+        parents: Array.isArray(rec.parents) ? rec.parents.filter((p): p is string => typeof p === "string") : [],
+        trashed: rec.trashed === true,
+    }
+}
+
+async function readJsonBody(res: Response): Promise<unknown> {
+    const text = await res.text()
+    try {
+        return text ? JSON.parse(text) : null
+    } catch {
+        return null
+    }
+}
+
+/** Read-only: file metadata inside any drive the service account can access. */
+export async function getDriveFileMetadata(fileId: string, requestHeaders: Headers): Promise<DriveFileMetadata> {
+    const fid = fileId.trim()
+    if (!DRIVE_ITEM_ID_RE.test(fid)) {
+        throw new GoogleDriveConfigError("Invalid Drive file ID format")
+    }
+    const token = await getGoogleDriveAccessToken(requestHeaders, GOOGLE_DRIVE_SCOPE)
+    const params = new URLSearchParams({ supportsAllDrives: "true", fields: DRIVE_FILE_FIELDS })
+    const res = await fetchJson(`${DRIVE_API}/files/${encodeURIComponent(fid)}?${params.toString()}`, {
+        method: "GET",
+        headers: { Authorization: `Bearer ${token}` },
+    })
+    if (!res.ok) {
+        failGoogle("drive", res.status, res.json, `Google Drive files.get failed (${res.status})`)
+    }
+    return toDriveFileMetadata(res.json)
+}
+
+/** Read-only: first non-trashed file in the Shared Drive whose appProperties[key] === value. */
+export async function findDriveFileByAppProperty(input: {
+    sharedDriveId: string
+    key: string
+    value: string
+    headers: Headers
+}): Promise<DriveFileMetadata | null> {
+    const driveId = input.sharedDriveId.trim()
+    if (!SHARED_DRIVE_ID_RE.test(driveId)) {
+        throw new GoogleDriveConfigError("Invalid Shared Drive ID format")
+    }
+    if (!/^[A-Za-z0-9_]{1,64}$/.test(input.key) || !APP_PROPERTY_VALUE_RE.test(input.value)) {
+        throw new GoogleDriveConfigError("Invalid appProperties lookup")
+    }
+    const token = await getGoogleDriveAccessToken(input.headers, GOOGLE_DRIVE_SCOPE)
+    const params = new URLSearchParams({
+        corpora: "drive",
+        driveId,
+        includeItemsFromAllDrives: "true",
+        supportsAllDrives: "true",
+        q: `appProperties has { key='${input.key}' and value='${input.value}' } and trashed = false`,
+        pageSize: "10",
+        fields: `files(${DRIVE_FILE_FIELDS})`,
+    })
+    const res = await fetchJson(`${DRIVE_API}/files?${params.toString()}`, {
+        method: "GET",
+        headers: { Authorization: `Bearer ${token}` },
+    })
+    if (!res.ok) {
+        failGoogle("drive", res.status, res.json, `Google Drive files.list failed (${res.status})`)
+    }
+    const files =
+        res.json && typeof res.json === "object" ? (res.json as Record<string, unknown>).files : null
+    if (!Array.isArray(files) || files.length === 0) return null
+    const first = toDriveFileMetadata(files[0])
+    return first.id ? first : null
+}
+
+/** Start a resumable upload session; returns the session URI (treat as a secret). */
+export async function startResumableUpload(input: {
+    folderId: string
+    name: string
+    totalBytes: number
+    appProperties: Record<string, string>
+    headers: Headers
+}): Promise<string> {
+    if (!Number.isSafeInteger(input.totalBytes) || input.totalBytes <= 0) {
+        throw new GoogleDriveConfigError("Invalid upload size")
+    }
+    const token = await getGoogleDriveAccessToken(input.headers, GOOGLE_DRIVE_SCOPE)
+    const params = new URLSearchParams({
+        uploadType: "resumable",
+        supportsAllDrives: "true",
+        fields: DRIVE_FILE_FIELDS,
+    })
+    const res = await fetch(`${DRIVE_UPLOAD_API}/files?${params.toString()}`, {
+        method: "POST",
+        headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json; charset=UTF-8",
+            "X-Upload-Content-Type": "video/mp4",
+            "X-Upload-Content-Length": String(input.totalBytes),
+        },
+        body: JSON.stringify({
+            name: input.name,
+            mimeType: "video/mp4",
+            parents: [input.folderId],
+            appProperties: input.appProperties,
+        }),
+        cache: "no-store",
+        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    })
+    if (!res.ok) {
+        failGoogle("drive", res.status, await readJsonBody(res), `Google Drive resumable start failed (${res.status})`)
+    }
+    const location = res.headers.get("location")?.trim() || ""
+    if (!location.startsWith(`${DRIVE_UPLOAD_API}/`)) {
+        throw new GoogleDriveApiError("Google Drive resumable start returned no session URI", "drive", res.status, null)
+    }
+    return location
+}
+
+export type ResumableUploadState =
+    | { done: false; nextOffset: number }
+    | { done: true; file: DriveFileMetadata }
+
+async function toResumableState(res: Response, fallback: string): Promise<ResumableUploadState> {
+    if (res.status === 308) {
+        const range = res.headers.get("range") || ""
+        const m = /bytes=0-(\d+)/.exec(range)
+        await res.body?.cancel()
+        return { done: false, nextOffset: m ? Number(m[1]) + 1 : 0 }
+    }
+    const json = await readJsonBody(res)
+    if (res.status === 200 || res.status === 201) {
+        return { done: true, file: toDriveFileMetadata(json) }
+    }
+    failGoogle("drive", res.status, json, fallback)
+}
+
+function isDriveUploadSessionUri(sessionUri: string): boolean {
+    return sessionUri.startsWith(`${DRIVE_UPLOAD_API}/`)
+}
+
+/** PUT one chunk (`start` inclusive). Non-final chunks must be multiples of 256 KiB. */
+export async function uploadResumableChunk(input: {
+    sessionUri: string
+    chunk: Uint8Array<ArrayBuffer>
+    start: number
+    totalBytes: number
+    headers: Headers
+}): Promise<ResumableUploadState> {
+    if (!isDriveUploadSessionUri(input.sessionUri)) {
+        throw new GoogleDriveConfigError("Invalid resumable session URI")
+    }
+    const end = input.start + input.chunk.byteLength - 1
+    if (input.chunk.byteLength === 0 || end >= input.totalBytes) {
+        throw new GoogleDriveConfigError("Invalid resumable chunk range")
+    }
+    const token = await getGoogleDriveAccessToken(input.headers, GOOGLE_DRIVE_SCOPE)
+    const res = await fetch(input.sessionUri, {
+        method: "PUT",
+        headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "video/mp4",
+            "Content-Range": `bytes ${input.start}-${end}/${input.totalBytes}`,
+        },
+        body: input.chunk,
+        cache: "no-store",
+        signal: AbortSignal.timeout(RESUMABLE_CHUNK_TIMEOUT_MS),
+    })
+    return toResumableState(res, `Google Drive chunk upload failed (${res.status})`)
+}
+
+/** Ask Drive how many bytes of the session it has persisted (or whether it completed). */
+export async function queryResumableUploadStatus(input: {
+    sessionUri: string
+    totalBytes: number
+    headers: Headers
+}): Promise<ResumableUploadState> {
+    if (!isDriveUploadSessionUri(input.sessionUri)) {
+        throw new GoogleDriveConfigError("Invalid resumable session URI")
+    }
+    const token = await getGoogleDriveAccessToken(input.headers, GOOGLE_DRIVE_SCOPE)
+    const res = await fetch(input.sessionUri, {
+        method: "PUT",
+        headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Range": `bytes */${input.totalBytes}`,
+        },
+        cache: "no-store",
+        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    })
+    return toResumableState(res, `Google Drive resumable status failed (${res.status})`)
 }

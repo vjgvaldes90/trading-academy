@@ -94,6 +94,7 @@ export async function POST(req: Request) {
                 topic,
                 start_time: startTimeZoom,
                 duration,
+                autoRecording: true,
             })
         } catch (e: unknown) {
             if (e instanceof ZoomConfigError) {

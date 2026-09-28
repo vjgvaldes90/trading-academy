@@ -223,13 +223,14 @@ export async function PATCH(req: Request, context: RouteCtx) {
 
         try {
             if (zoomMeetingId) {
-                zoomUrls = await updateZoomMeeting(zoomMeetingId, { start_time: startZoom })
+                zoomUrls = await updateZoomMeeting(zoomMeetingId, { start_time: startZoom, autoRecording: true })
             } else {
                 const topic = `Smart Option Academy — ${day} ${timeRaw}`
                 zoomUrls = await createZoomMeeting({
                     topic,
                     start_time: startZoom,
                     duration: defaultMeetingDurationMinutes(),
+                    autoRecording: true,
                 })
                 zoomMeetingId = zoomUrls.meeting_id
             }
