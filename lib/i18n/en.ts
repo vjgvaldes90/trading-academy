@@ -900,7 +900,7 @@ export const en = {
     getAccess: "Get access →",
     opening: "Opening…",
     joinLiveSession: "Join Live Session",
-    availableTenMinBefore: "Available 10 minutes before",
+    availableTenMinBefore: "Available 20 minutes before",
     liveSession: "Live Session",
 
     // Book session tabs
@@ -1008,7 +1008,7 @@ export const en = {
     secureJoinSessionNotFound: "Session not found",
     secureJoinSessionUnavailable: "Session is not available",
     secureJoinOutsideWindow:
-        "Join is only available from 10 minutes before start until 2 hours after start",
+        "Join is only available from 20 minutes before start until 2 hours after start",
     secureJoinMissingLink: "Meeting link not configured",
     secureJoinTheoryQuotaExceeded:
         "You have reached the 2-theory-class limit for your Full Program.",

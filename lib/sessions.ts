@@ -20,12 +20,12 @@ export type SessionStatus = "live" | "today" | "next"
 const LIVE_WINDOW_MINUTES = 10
 
 /** Student dashboard: join allowed up to this many minutes before start, or anytime after start until hidden. */
-const STUDENT_JOIN_MINUTES_BEFORE_START = 10
+const STUDENT_JOIN_MINUTES_BEFORE_START = 20
 /** Student dashboard: hide sessions more than this many minutes after start. */
 const STUDENT_SESSION_HIDE_MINUTES_AFTER_START = 120
 
 /** Secure join API: same window as {@link isWithinStudentSecureJoinWindow}. */
-export const STUDENT_SECURE_JOIN_MINUTES_BEFORE = 10
+export const STUDENT_SECURE_JOIN_MINUTES_BEFORE = 20
 export const STUDENT_SECURE_JOIN_MINUTES_AFTER = 120
 /** Admin host URL: allowed from this many minutes before start onward. */
 export const ADMIN_HOST_MINUTES_BEFORE = 15
@@ -264,7 +264,7 @@ export function canShowStudentLiveJoinButton(s: DbSession, now: Date, options: S
     return isWithinStudentSecureJoinWindow(s, now)
 }
 
-/** More than 10 minutes before start (session still in the future). */
+/** More than 20 minutes before start (session still in the future). */
 export function isStudentJoinTooEarly(s: DbSession, now: Date): boolean {
     const diff = getMinutesUntilSessionStart(s, now)
     if (diff === null) return false

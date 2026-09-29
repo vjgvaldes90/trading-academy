@@ -903,7 +903,7 @@ export const es: TranslationKeys = {
     getAccess: "Obtener acceso →",
     opening: "Abriendo…",
     joinLiveSession: "Unirse a sesión en vivo",
-    availableTenMinBefore: "Disponible 10 minutos antes",
+    availableTenMinBefore: "Disponible 20 minutos antes",
     liveSession: "Sesión en vivo",
 
     // Book session tabs
@@ -1011,7 +1011,7 @@ export const es: TranslationKeys = {
     secureJoinSessionNotFound: "Sesión no encontrada",
     secureJoinSessionUnavailable: "La sesión no está disponible",
     secureJoinOutsideWindow:
-        "Solo puedes unirte desde 10 minutos antes del inicio hasta 2 horas después",
+        "Solo puedes unirte desde 20 minutos antes del inicio hasta 2 horas después",
     secureJoinMissingLink: "Enlace de reunión no configurado",
     secureJoinTheoryQuotaExceeded:
         "Has alcanzado el límite de 2 clases teóricas de tu Programa Completo.",
