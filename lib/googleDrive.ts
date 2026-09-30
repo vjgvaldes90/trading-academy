@@ -719,3 +719,80 @@ export async function queryResumableUploadStatus(input: {
     })
     return toResumableState(res, `Google Drive resumable status failed (${res.status})`)
 }
+
+// ---------------------------------------------------------------------------
+// Private downloads (read-only scope). The token never leaves the server.
+// ---------------------------------------------------------------------------
+
+export type DriveDownloadFile = {
+    id: string
+    name: string
+    size: number
+    mimeType: string
+    driveId: string
+    trashed: boolean
+    md5Checksum: string
+    modifiedTime: string
+}
+
+/** Read-only metadata needed to stream a private file (size, validators). */
+export async function getDriveFileForDownload(fileId: string, requestHeaders: Headers): Promise<DriveDownloadFile> {
+    const fid = fileId.trim()
+    if (!DRIVE_ITEM_ID_RE.test(fid)) {
+        throw new GoogleDriveConfigError("Invalid Drive file ID format")
+    }
+    const token = await getGoogleDriveAccessToken(requestHeaders, GOOGLE_DRIVE_READONLY_SCOPE)
+    const params = new URLSearchParams({
+        supportsAllDrives: "true",
+        fields: "id,name,size,mimeType,driveId,trashed,md5Checksum,modifiedTime",
+    })
+    const res = await fetchJson(`${DRIVE_API}/files/${encodeURIComponent(fid)}?${params.toString()}`, {
+        method: "GET",
+        headers: { Authorization: `Bearer ${token}` },
+    })
+    if (!res.ok) {
+        failGoogle("drive", res.status, res.json, `Google Drive files.get failed (${res.status})`)
+    }
+    const sizeNum = Number(readString(res.json, "size"))
+    const trashed =
+        typeof res.json === "object" && res.json !== null && (res.json as Record<string, unknown>).trashed === true
+    return {
+        id: readString(res.json, "id"),
+        name: readString(res.json, "name"),
+        size: Number.isSafeInteger(sizeNum) ? sizeNum : -1,
+        mimeType: readString(res.json, "mimeType"),
+        driveId: readString(res.json, "driveId"),
+        trashed,
+        md5Checksum: readString(res.json, "md5Checksum"),
+        modifiedTime: readString(res.json, "modifiedTime"),
+    }
+}
+
+/**
+ * Open a streaming `alt=media` download of a private file (read-only scope).
+ * `range` is forwarded as `Range: bytes=start-end`. The caller owns the returned body.
+ */
+export async function openDriveFileMedia(input: {
+    fileId: string
+    headers: Headers
+    range: { start: number; end: number } | null
+    signal?: AbortSignal
+}): Promise<Response> {
+    const fid = input.fileId.trim()
+    if (!DRIVE_ITEM_ID_RE.test(fid)) {
+        throw new GoogleDriveConfigError("Invalid Drive file ID format")
+    }
+    const token = await getGoogleDriveAccessToken(input.headers, GOOGLE_DRIVE_READONLY_SCOPE)
+    const driveHeaders: Record<string, string> = {
+        Authorization: `Bearer ${token}`,
+        "Accept-Encoding": "identity",
+    }
+    if (input.range) driveHeaders.Range = `bytes=${input.range.start}-${input.range.end}`
+    const params = new URLSearchParams({ alt: "media", supportsAllDrives: "true" })
+    return fetch(`${DRIVE_API}/files/${encodeURIComponent(fid)}?${params.toString()}`, {
+        method: "GET",
+        headers: driveHeaders,
+        cache: "no-store",
+        signal: input.signal,
+    })
+}

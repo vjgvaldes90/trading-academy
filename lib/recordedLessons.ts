@@ -45,6 +45,11 @@ export function resolveLessonContentType(value: unknown): LessonContentType {
     return value === "tutorial" ? "tutorial" : "recorded_class"
 }
 
+/** Google Drive file IDs: URL-safe characters only (same bound as the DB CHECK). */
+export function isValidGoogleDriveFileId(value: string): boolean {
+    return /^[A-Za-z0-9_-]{10,128}$/.test(value)
+}
+
 export function isAllowedRecordedMime(value: string): value is RecordedClassMime {
     return (RECORDED_CLASS_ALLOWED_MIME as readonly string[]).includes(value)
 }

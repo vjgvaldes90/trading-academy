@@ -8,6 +8,7 @@ import {
     RECORDED_CLASS_MAX_BYTES,
     formatBytes,
     isAllowedRecordedMime,
+    isValidGoogleDriveFileId,
     resolveLessonContentType,
     type LessonContentType,
 } from "@/lib/recordedLessons"
@@ -25,10 +26,141 @@ type LessonRow = {
     content_type?: string | null
     class_date?: string | null
     class_type?: string | null
+    google_drive_file_id?: string | null
     created_at: string
 }
 
 type CreateMode = "youtube" | "upload"
+
+function RecordedClassDriveFileEditor({
+    lessonId,
+    initialFileId,
+    onSaved,
+}: {
+    lessonId: string
+    initialFileId: string | null
+    onSaved: (fileId: string | null) => void
+}) {
+    const { t } = useLanguage()
+    const [value, setValue] = useState(initialFileId ?? "")
+    const [saving, setSaving] = useState(false)
+    const [message, setMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(null)
+
+    const save = async (next: string | null) => {
+        if (saving) return
+        if (next !== null && !isValidGoogleDriveFileId(next)) {
+            setMessage({ kind: "error", text: t.recordedClassDriveFileIdInvalid })
+            return
+        }
+        setSaving(true)
+        setMessage(null)
+        try {
+            const res = await fetch(`/api/admin/lessons/${encodeURIComponent(lessonId)}`, {
+                method: "PATCH",
+                credentials: "include",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ googleDriveFileId: next }),
+            })
+            const payload = (await res.json().catch(() => ({}))) as { code?: unknown }
+            if (!res.ok) {
+                throw new Error(
+                    payload.code === "invalid_google_drive_file_id"
+                        ? t.recordedClassDriveFileIdInvalid
+                        : t.recordedClassDriveFileIdSaveError
+                )
+            }
+            setValue(next ?? "")
+            onSaved(next)
+            setMessage({
+                kind: "ok",
+                text: next === null ? t.recordedClassDriveFileIdRemoved : t.recordedClassDriveFileIdSaved,
+            })
+        } catch (e) {
+            setMessage({
+                kind: "error",
+                text: e instanceof Error ? e.message : t.recordedClassDriveFileIdSaveError,
+            })
+        } finally {
+            setSaving(false)
+        }
+    }
+
+    const trimmed = value.trim()
+    const btn = (color: string, disabled: boolean): CSSProperties => ({
+        padding: "6px 12px",
+        borderRadius: 10,
+        border: `1px solid ${color}`,
+        background: "rgba(15,23,42,0.6)",
+        color: "#e5e7eb",
+        fontWeight: 800,
+        fontSize: "0.75rem",
+        cursor: disabled ? "not-allowed" : "pointer",
+        opacity: disabled ? 0.6 : 1,
+    })
+
+    return (
+        <div style={{ marginTop: 10 }}>
+            <label
+                htmlFor={`drive-file-${lessonId}`}
+                style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#cbd5e1", marginBottom: 4 }}
+            >
+                {t.recordedClassDriveFileIdLabel}
+            </label>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+                <input
+                    id={`drive-file-${lessonId}`}
+                    type="text"
+                    value={value}
+                    onChange={(e) => setValue(e.target.value)}
+                    disabled={saving}
+                    autoComplete="off"
+                    spellCheck={false}
+                    style={{
+                        flex: "1 1 220px",
+                        minWidth: 0,
+                        padding: "8px 10px",
+                        borderRadius: 10,
+                        border: "1px solid rgba(148,163,184,0.35)",
+                        background: "rgba(15,23,42,0.85)",
+                        color: "#e5e7eb",
+                        fontSize: "0.8rem",
+                        fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+                        outline: "none",
+                    }}
+                />
+                <button
+                    type="button"
+                    onClick={() => void save(trimmed)}
+                    disabled={saving || !trimmed || trimmed === (initialFileId ?? "")}
+                    style={btn("rgba(250,204,21,0.45)", saving || !trimmed || trimmed === (initialFileId ?? ""))}
+                >
+                    {saving ? t.recordedClassDriveFileIdSaving : t.recordedClassDriveFileIdSave}
+                </button>
+                {initialFileId ? (
+                    <button
+                        type="button"
+                        onClick={() => void save(null)}
+                        disabled={saving}
+                        style={btn("rgba(239,68,68,0.45)", saving)}
+                    >
+                        {t.recordedClassDriveFileIdRemove}
+                    </button>
+                ) : null}
+            </div>
+            {message ? (
+                <p
+                    style={{
+                        margin: "6px 0 0",
+                        fontSize: "0.75rem",
+                        color: message.kind === "ok" ? "#4ade80" : "#ef4444",
+                    }}
+                >
+                    {message.text}
+                </p>
+            ) : null}
+        </div>
+    )
+}
 
 function formatCreatedAt(iso: string): string {
     const d = new Date(iso)
@@ -695,6 +827,21 @@ export default function AdminClasses() {
                                             >
                                                 {formatCreatedAt(lesson.created_at)}
                                             </div>
+                                            {content === "recorded_class" ? (
+                                                <RecordedClassDriveFileEditor
+                                                    lessonId={lesson.id}
+                                                    initialFileId={lesson.google_drive_file_id ?? null}
+                                                    onSaved={(fileId) =>
+                                                        setLessons((prev) =>
+                                                            prev.map((row) =>
+                                                                row.id === lesson.id
+                                                                    ? { ...row, google_drive_file_id: fileId }
+                                                                    : row
+                                                            )
+                                                        )
+                                                    }
+                                                />
+                                            ) : null}
                                         </li>
                                     )
                                 })}

@@ -10,10 +10,26 @@ import {
 export const runtime = "nodejs"
 
 const LESSON_SELECT_STUDENT =
-    "id, title, description, video_url, source_type, content_type, class_date, class_type, created_at"
+    "id, title, description, video_url, source_type, content_type, class_date, class_type, created_at, google_drive_file_id"
 
 const LESSON_SELECT_ADMIN =
-    "id, title, description, video_url, source_type, content_type, storage_path, class_date, class_type, created_at"
+    "id, title, description, video_url, source_type, content_type, storage_path, class_date, class_type, created_at, google_drive_file_id"
+
+function hasDriveDownload(row: Record<string, unknown>): boolean {
+    const driveFileId = row.google_drive_file_id
+    return (
+        row.content_type === "recorded_class" &&
+        typeof driveFileId === "string" &&
+        driveFileId.trim().length > 0
+    )
+}
+
+/** Students only learn whether a download exists; the Drive file ID stays server-side. */
+function toStudentLesson(row: Record<string, unknown>): Record<string, unknown> {
+    const out: Record<string, unknown> = { ...row, has_download: hasDriveDownload(row) }
+    delete out.google_drive_file_id
+    return out
+}
 
 /**
  * Recorded classes / lessons.
@@ -46,7 +62,14 @@ export async function GET() {
                 )
             }
 
-            return NextResponse.json(Array.isArray(data) ? data : [])
+            return NextResponse.json(
+                Array.isArray(data)
+                    ? (data as Record<string, unknown>[]).map((row) => ({
+                          ...row,
+                          has_download: hasDriveDownload(row),
+                      }))
+                    : []
+            )
         }
 
         const { data: row, error: accessErr } = await supabase
@@ -87,7 +110,9 @@ export async function GET() {
             )
         }
 
-        return NextResponse.json(Array.isArray(data) ? data : [])
+        return NextResponse.json(
+            Array.isArray(data) ? (data as Record<string, unknown>[]).map(toStudentLesson) : []
+        )
     } catch (e) {
         console.error("[api/lessons] GET", e)
         return NextResponse.json({ error: "Internal error" }, { status: 500 })

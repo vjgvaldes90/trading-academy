@@ -2,8 +2,8 @@
 
 import { useLanguage } from "@/context/LanguageProvider"
 import { resolveLessonContentType, type LessonContentType } from "@/lib/recordedLessons"
-import { ArrowLeft, BookOpen, Video } from "lucide-react"
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { ArrowLeft, BookOpen, Download, Video } from "lucide-react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 type LessonSourceType = "youtube" | "upload"
 
@@ -16,7 +16,58 @@ type Lesson = {
     content_type?: LessonContentType | string | null
     class_date?: string | null
     class_type?: string | null
+    /** True when a private Google Drive download exists (served by /api/lessons/[id]/download). */
+    has_download?: boolean
     created_at: string
+}
+
+const DOWNLOAD_BUTTON_COOLDOWN_MS = 4000
+
+function RecordedClassDownloadButton({ lessonId }: { lessonId: string }) {
+    const { t } = useLanguage()
+    const [busy, setBusy] = useState(false)
+    const [error, setError] = useState<string | null>(null)
+    const cooldownRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+    useEffect(() => {
+        return () => {
+            if (cooldownRef.current) clearTimeout(cooldownRef.current)
+        }
+    }, [])
+
+    const startDownload = async () => {
+        if (busy) return
+        setBusy(true)
+        setError(null)
+        const url = `/api/lessons/${encodeURIComponent(lessonId)}/download`
+        try {
+            const res = await fetch(`${url}?check=1`, { cache: "no-store", credentials: "include" })
+            const payload = (await res.json().catch(() => ({}))) as { ok?: unknown }
+            if (!res.ok || payload.ok !== true) {
+                throw new Error(t.recordedClassDownloadUnavailable)
+            }
+            window.location.assign(url)
+            cooldownRef.current = setTimeout(() => setBusy(false), DOWNLOAD_BUTTON_COOLDOWN_MS)
+        } catch (e) {
+            setError(e instanceof Error ? e.message : t.recordedClassDownloadUnavailable)
+            setBusy(false)
+        }
+    }
+
+    return (
+        <div className="mt-3">
+            <button
+                type="button"
+                onClick={() => void startDownload()}
+                disabled={busy}
+                className="inline-flex items-center gap-2 rounded-lg border border-blue-500/30 bg-blue-600/20 px-3 py-1.5 text-xs font-bold text-blue-200 transition hover:bg-blue-600/30 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+                <Download className="h-3.5 w-3.5" aria-hidden />
+                {busy ? t.recordedClassDownloadPreparing : t.recordedClassDownload}
+            </button>
+            {error ? <p className="mt-2 text-xs text-red-300">{error}</p> : null}
+        </div>
+    )
 }
 
 function formatLessonDate(iso: string): string {
@@ -306,6 +357,13 @@ export default function ClassesView() {
                                             <div className="mt-2 text-sm leading-relaxed text-white/60">
                                                 {activeLesson.description}
                                             </div>
+                                        ) : null}
+                                        {activeLesson.has_download === true &&
+                                        resolveLessonContentType(activeLesson.content_type) === "recorded_class" ? (
+                                            <RecordedClassDownloadButton
+                                                key={activeLesson.id}
+                                                lessonId={activeLesson.id}
+                                            />
                                         ) : null}
                                     </div>
                                 </>
