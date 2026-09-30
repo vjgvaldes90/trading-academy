@@ -18,7 +18,7 @@ export const RECORDED_CLASS_ALLOWED_MIME = [
 
 export type RecordedClassMime = (typeof RECORDED_CLASS_ALLOWED_MIME)[number]
 
-export type LessonSourceType = "youtube" | "upload"
+export type LessonSourceType = "youtube" | "upload" | "google_drive"
 export type LessonClassType = "trading" | "theory"
 export type LessonContentType = "recorded_class" | "tutorial"
 
@@ -29,7 +29,7 @@ const EXT_BY_MIME: Record<RecordedClassMime, string> = {
 }
 
 export function isLessonSourceType(value: unknown): value is LessonSourceType {
-    return value === "youtube" || value === "upload"
+    return value === "youtube" || value === "upload" || value === "google_drive"
 }
 
 export function isLessonClassType(value: unknown): value is LessonClassType {
@@ -48,6 +48,30 @@ export function resolveLessonContentType(value: unknown): LessonContentType {
 /** Google Drive file IDs: URL-safe characters only (same bound as the DB CHECK). */
 export function isValidGoogleDriveFileId(value: string): boolean {
     return /^[A-Za-z0-9_-]{10,128}$/.test(value)
+}
+
+/**
+ * Extract the file ID from a Drive file link (`/file/d/{id}/...`, `open?id=`, `uc?id=`)
+ * or accept a bare file ID. Returns null for anything else (folders, other hosts).
+ */
+export function parseGoogleDriveFileId(input: string): string | null {
+    const raw = input.trim()
+    if (!raw) return null
+    if (isValidGoogleDriveFileId(raw)) return raw
+
+    let url: URL
+    try {
+        url = new URL(raw)
+    } catch {
+        return null
+    }
+    if (url.protocol !== "https:") return null
+    if (url.hostname !== "drive.google.com" && url.hostname !== "docs.google.com") return null
+
+    const pathMatch = /\/file\/d\/([^/]+)/.exec(url.pathname)
+    const candidate = pathMatch ? pathMatch[1] : url.searchParams.get("id")
+    if (!candidate) return null
+    return isValidGoogleDriveFileId(candidate) ? candidate : null
 }
 
 export function isAllowedRecordedMime(value: string): value is RecordedClassMime {

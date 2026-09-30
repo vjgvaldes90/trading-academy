@@ -9,12 +9,13 @@ import {
     formatBytes,
     isAllowedRecordedMime,
     isValidGoogleDriveFileId,
+    parseGoogleDriveFileId,
     resolveLessonContentType,
     type LessonContentType,
+    type LessonSourceType,
 } from "@/lib/recordedLessons"
 import { requireBrowserSupabaseEnv } from "@/lib/supabase/publicEnv"
 
-type LessonSourceType = "youtube" | "upload"
 type LessonClassType = "trading" | "theory"
 
 type LessonRow = {
@@ -30,15 +31,17 @@ type LessonRow = {
     created_at: string
 }
 
-type CreateMode = "youtube" | "upload"
+type CreateMode = LessonSourceType
 
 function RecordedClassDriveFileEditor({
     lessonId,
     initialFileId,
+    canRemove,
     onSaved,
 }: {
     lessonId: string
     initialFileId: string | null
+    canRemove: boolean
     onSaved: (fileId: string | null) => void
 }) {
     const { t } = useLanguage()
@@ -136,7 +139,7 @@ function RecordedClassDriveFileEditor({
                 >
                     {saving ? t.recordedClassDriveFileIdSaving : t.recordedClassDriveFileIdSave}
                 </button>
-                {initialFileId ? (
+                {initialFileId && canRemove ? (
                     <button
                         type="button"
                         onClick={() => void save(null)}
@@ -210,6 +213,7 @@ export default function AdminClasses() {
     const [title, setTitle] = useState("")
     const [description, setDescription] = useState("")
     const [videoUrl, setVideoUrl] = useState("")
+    const [driveLink, setDriveLink] = useState("")
     const [classDate, setClassDate] = useState("")
     const [contentType, setContentType] = useState<LessonContentType>("recorded_class")
     const [classType, setClassType] = useState<LessonClassType | "">("")
@@ -263,6 +267,7 @@ export default function AdminClasses() {
         setTitle("")
         setDescription("")
         setVideoUrl("")
+        setDriveLink("")
         setClassDate("")
         setContentType("recorded_class")
         setClassType("")
@@ -335,6 +340,38 @@ export default function AdminClasses() {
                         typeof payload.error === "string" && payload.error.trim()
                             ? payload.error
                             : t.adminCouldNotAddClass
+                    )
+                }
+            } else if (mode === "google_drive") {
+                const googleDriveFileId = parseGoogleDriveFileId(driveLink)
+                if (!googleDriveFileId) {
+                    throw new Error(t.recordedClassGoogleDriveLinkInvalid)
+                }
+                const res = await fetch("/api/admin/lessons", {
+                    method: "POST",
+                    credentials: "include",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        sourceType: "google_drive" satisfies LessonSourceType,
+                        title: title.trim(),
+                        description: description.trim(),
+                        googleDriveFileId,
+                        contentType: "recorded_class" satisfies LessonContentType,
+                        classDate: classDate.trim() || undefined,
+                        classType: classType || undefined,
+                    }),
+                })
+                const payload = (await res.json().catch(() => ({}))) as {
+                    error?: string
+                    code?: unknown
+                }
+                if (!res.ok) {
+                    throw new Error(
+                        payload.code === "invalid_google_drive_file_id"
+                            ? t.recordedClassGoogleDriveLinkInvalid
+                            : typeof payload.error === "string" && payload.error.trim()
+                              ? payload.error
+                              : t.adminCouldNotAddClass
                     )
                 }
             } else {
@@ -515,6 +552,7 @@ export default function AdminClasses() {
                                 onClick={() => {
                                     setMode("youtube")
                                     setFile(null)
+                                    setDriveLink("")
                                     setUploadPct(null)
                                     setFormError(null)
                                 }}
@@ -524,10 +562,26 @@ export default function AdminClasses() {
                             <button
                                 type="button"
                                 disabled={busy}
+                                style={modeBtn(mode === "google_drive")}
+                                onClick={() => {
+                                    setMode("google_drive")
+                                    setVideoUrl("")
+                                    setFile(null)
+                                    setContentType("recorded_class")
+                                    setUploadPct(null)
+                                    setFormError(null)
+                                }}
+                            >
+                                {t.recordedClassModeGoogleDrive}
+                            </button>
+                            <button
+                                type="button"
+                                disabled={busy}
                                 style={modeBtn(mode === "upload")}
                                 onClick={() => {
                                     setMode("upload")
                                     setVideoUrl("")
+                                    setDriveLink("")
                                     setUploadPct(null)
                                     setFormError(null)
                                 }}
@@ -549,8 +603,13 @@ export default function AdminClasses() {
                                 </button>
                                 <button
                                     type="button"
-                                    disabled={busy}
-                                    style={modeBtn(contentType === "tutorial")}
+                                    disabled={busy || mode === "google_drive"}
+                                    style={{
+                                        ...modeBtn(contentType === "tutorial"),
+                                        ...(mode === "google_drive"
+                                            ? { cursor: "not-allowed", opacity: 0.5 }
+                                            : null),
+                                    }}
                                     onClick={() => {
                                         setContentType("tutorial")
                                         setClassType("")
@@ -636,6 +695,27 @@ export default function AdminClasses() {
                                     placeholder="https://www.youtube.com/embed/..."
                                     style={inputStyle}
                                 />
+                            </div>
+                        ) : mode === "google_drive" ? (
+                            <div style={{ marginBottom: 16 }}>
+                                <label htmlFor="recorded-class-drive-link" style={labelStyle}>
+                                    {t.recordedClassGoogleDriveLinkLabel}
+                                </label>
+                                <input
+                                    id="recorded-class-drive-link"
+                                    type="text"
+                                    value={driveLink}
+                                    onChange={(e) => setDriveLink(e.target.value)}
+                                    required
+                                    disabled={busy}
+                                    autoComplete="off"
+                                    spellCheck={false}
+                                    placeholder="https://drive.google.com/file/d/..."
+                                    style={inputStyle}
+                                />
+                                <p style={{ margin: "8px 0 0", fontSize: "0.75rem", color: "#94a3b8" }}>
+                                    {t.recordedClassGoogleDriveLinkHint}
+                                </p>
                             </div>
                         ) : (
                             <div style={{ marginBottom: 16 }}>
@@ -777,8 +857,10 @@ export default function AdminClasses() {
                                 }}
                             >
                                 {lessons.map((lesson) => {
-                                    const source =
-                                        lesson.source_type === "upload" ? "upload" : "youtube"
+                                    const source: LessonSourceType =
+                                        lesson.source_type === "upload" || lesson.source_type === "google_drive"
+                                            ? lesson.source_type
+                                            : "youtube"
                                     const content = resolveLessonContentType(lesson.content_type)
                                     return (
                                         <li
@@ -806,7 +888,9 @@ export default function AdminClasses() {
                                                 {" · "}
                                                 {source === "upload"
                                                     ? t.recordedClassSourceUpload
-                                                    : t.recordedClassSourceYoutube}
+                                                    : source === "google_drive"
+                                                      ? t.recordedClassSourceGoogleDrive
+                                                      : t.recordedClassSourceYoutube}
                                                 {" · "}
                                                 {t.recordedClassDateLabel}:{" "}
                                                 {formatClassDate(lesson.class_date)}
@@ -831,6 +915,7 @@ export default function AdminClasses() {
                                                 <RecordedClassDriveFileEditor
                                                     lessonId={lesson.id}
                                                     initialFileId={lesson.google_drive_file_id ?? null}
+                                                    canRemove={source !== "google_drive"}
                                                     onSaved={(fileId) =>
                                                         setLessons((prev) =>
                                                             prev.map((row) =>

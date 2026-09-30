@@ -5,6 +5,7 @@ import {
     isLessonClassType,
     isLessonContentType,
     isLessonSourceType,
+    isValidGoogleDriveFileId,
     isValidRecordedClassStoragePath,
     type LessonContentType,
 } from "@/lib/recordedLessons"
@@ -19,6 +20,7 @@ type Body = {
     sourceType?: unknown
     contentType?: unknown
     storagePath?: unknown
+    googleDriveFileId?: unknown
     classDate?: unknown
     classType?: unknown
 }
@@ -38,7 +40,9 @@ async function removeUploadedObject(path: string): Promise<void> {
  * Admin create lesson metadata.
  * - YouTube: { title, description?, videoUrl, contentType?, classDate?, classType? }
  * - Upload:  { title, description?, sourceType: "upload", storagePath, contentType?, classDate?, classType? }
+ * - Drive:   { title, description?, sourceType: "google_drive", googleDriveFileId, classDate?, classType? }
  * contentType defaults to "recorded_class"; tutorials never store a classType.
+ * Google Drive is recorded_class only; only the file ID is stored (the file stays private).
  * Does not accept multipart video bodies.
  */
 export async function POST(req: Request) {
@@ -133,6 +137,57 @@ export async function POST(req: Request) {
 
             if (error) {
                 console.error("[api/admin/lessons] insert youtube", error.message)
+                return NextResponse.json(
+                    { error: "Failed to create lesson", details: error.message },
+                    { status: 500 }
+                )
+            }
+
+            return NextResponse.json(data, { status: 201 })
+        }
+
+        if (sourceType === "google_drive") {
+            if (contentType !== "recorded_class") {
+                return NextResponse.json(
+                    {
+                        error: "Only recorded classes can use Google Drive",
+                        code: "not_recorded_class",
+                    },
+                    { status: 400 }
+                )
+            }
+
+            const googleDriveFileId = trimString(body.googleDriveFileId)
+            if (!isValidGoogleDriveFileId(googleDriveFileId)) {
+                return NextResponse.json(
+                    { error: "Invalid Google Drive file ID", code: "invalid_google_drive_file_id" },
+                    { status: 400 }
+                )
+            }
+
+            const { data, error } = await supabaseAdmin
+                .from("lessons")
+                .insert([
+                    {
+                        title,
+                        description,
+                        video_url: null,
+                        source_type: "google_drive",
+                        content_type: contentType,
+                        storage_path: null,
+                        google_drive_file_id: googleDriveFileId,
+                        class_date: classDate,
+                        class_type: classType,
+                        is_published: true,
+                    },
+                ])
+                .select(
+                    "id, title, description, video_url, source_type, content_type, storage_path, google_drive_file_id, class_date, class_type, is_published, created_at"
+                )
+                .single()
+
+            if (error) {
+                console.error("[api/admin/lessons] insert google_drive", error.message)
                 return NextResponse.json(
                     { error: "Failed to create lesson", details: error.message },
                     { status: 500 }

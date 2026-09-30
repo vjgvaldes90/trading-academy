@@ -63,7 +63,7 @@ export async function PATCH(req: Request, context: RouteContext) {
 
         const { data: lesson, error: lessonErr } = await supabaseAdmin
             .from("lessons")
-            .select("id, content_type")
+            .select("id, content_type, source_type")
             .eq("id", id)
             .maybeSingle()
 
@@ -77,6 +77,15 @@ export async function PATCH(req: Request, context: RouteContext) {
         if (resolveLessonContentType(lesson.content_type) !== "recorded_class") {
             return NextResponse.json(
                 { error: "Only recorded classes can have a Google Drive file", code: "not_recorded_class" },
+                { status: 400 }
+            )
+        }
+        if (googleDriveFileId === null && lesson.source_type === "google_drive") {
+            return NextResponse.json(
+                {
+                    error: "Google Drive is the video source of this lesson and cannot be removed",
+                    code: "google_drive_source_required",
+                },
                 { status: 400 }
             )
         }

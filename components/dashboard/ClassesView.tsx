@@ -5,7 +5,7 @@ import { resolveLessonContentType, type LessonContentType } from "@/lib/recorded
 import { ArrowLeft, BookOpen, Download, Video } from "lucide-react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
-type LessonSourceType = "youtube" | "upload"
+type LessonSourceType = "youtube" | "upload" | "google_drive"
 
 type Lesson = {
     id: string
@@ -79,6 +79,7 @@ function formatLessonDate(iso: string): string {
 function resolveSourceType(lesson: Lesson): LessonSourceType {
     if (lesson.source_type === "upload") return "upload"
     if (lesson.source_type === "youtube") return "youtube"
+    if (lesson.source_type === "google_drive") return "google_drive"
     // Pre-migration / legacy rows
     return "youtube"
 }
@@ -296,7 +297,7 @@ export default function ClassesView() {
                                 </p>
                             ) : (
                                 <>
-                                    {activeSource === "youtube" ? (
+                                    {activeSource === "google_drive" ? null : activeSource === "youtube" ? (
                                         <iframe
                                             src={activeLesson.video_url ?? ""}
                                             className="aspect-video w-full rounded-xl border border-white/10 bg-black shadow-lg lg:aspect-auto lg:h-[420px]"
@@ -339,7 +340,7 @@ export default function ClassesView() {
                                         </div>
                                     )}
 
-                                    <div className="mt-4">
+                                    <div className={activeSource === "google_drive" ? undefined : "mt-4"}>
                                         <div className="text-lg font-extrabold text-slate-50">
                                             {activeLesson.title}
                                         </div>
