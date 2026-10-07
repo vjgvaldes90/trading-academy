@@ -2,8 +2,9 @@
 
 import { useLanguage } from "@/context/LanguageProvider"
 import { resolveLessonContentType, type LessonContentType } from "@/lib/recordedLessons"
-import { ArrowLeft, BookOpen, Download, Video } from "lucide-react"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { ArrowLeft, BookOpen, Video } from "lucide-react"
+import { useCallback, useEffect, useMemo, useState } from "react"
+import RecordedClassesView from "./RecordedClassesView"
 
 type LessonSourceType = "youtube" | "upload" | "google_drive"
 
@@ -19,55 +20,6 @@ type Lesson = {
     /** True when a private Google Drive download exists (served by /api/lessons/[id]/download). */
     has_download?: boolean
     created_at: string
-}
-
-const DOWNLOAD_BUTTON_COOLDOWN_MS = 4000
-
-function RecordedClassDownloadButton({ lessonId }: { lessonId: string }) {
-    const { t } = useLanguage()
-    const [busy, setBusy] = useState(false)
-    const [error, setError] = useState<string | null>(null)
-    const cooldownRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-    useEffect(() => {
-        return () => {
-            if (cooldownRef.current) clearTimeout(cooldownRef.current)
-        }
-    }, [])
-
-    const startDownload = async () => {
-        if (busy) return
-        setBusy(true)
-        setError(null)
-        const url = `/api/lessons/${encodeURIComponent(lessonId)}/download`
-        try {
-            const res = await fetch(`${url}?check=1`, { cache: "no-store", credentials: "include" })
-            const payload = (await res.json().catch(() => ({}))) as { ok?: unknown }
-            if (!res.ok || payload.ok !== true) {
-                throw new Error(t.recordedClassDownloadUnavailable)
-            }
-            window.location.assign(url)
-            cooldownRef.current = setTimeout(() => setBusy(false), DOWNLOAD_BUTTON_COOLDOWN_MS)
-        } catch (e) {
-            setError(e instanceof Error ? e.message : t.recordedClassDownloadUnavailable)
-            setBusy(false)
-        }
-    }
-
-    return (
-        <div className="mt-3">
-            <button
-                type="button"
-                onClick={() => void startDownload()}
-                disabled={busy}
-                className="inline-flex items-center gap-2 rounded-lg border border-blue-500/30 bg-blue-600/20 px-3 py-1.5 text-xs font-bold text-blue-200 transition hover:bg-blue-600/30 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-                <Download className="h-3.5 w-3.5" aria-hidden />
-                {busy ? t.recordedClassDownloadPreparing : t.recordedClassDownload}
-            </button>
-            {error ? <p className="mt-2 text-xs text-red-300">{error}</p> : null}
-        </div>
-    )
 }
 
 function formatLessonDate(iso: string): string {
@@ -172,7 +124,10 @@ export default function ClassesView() {
             setPlaybackLoading(false)
             return
         }
-        if (resolveSourceType(activeLesson) !== "upload") {
+        if (
+            resolveLessonContentType(activeLesson.content_type) === "recorded_class" ||
+            resolveSourceType(activeLesson) !== "upload"
+        ) {
             setPlaybackUrl(null)
             setPlaybackError(null)
             setPlaybackLoading(false)
@@ -212,25 +167,21 @@ export default function ClassesView() {
     return (
         <div className="space-y-6">
             <header>
-                <h2 className="text-xl font-semibold">
-                    {category === "tutorial"
-                        ? t.classesCategoryTutorialsTitle
-                        : category === "recorded_class"
-                          ? t.classesCategoryRecordedTitle
-                          : t.myClassesTitle}
+                <h2 className="text-xl font-semibold text-slate-50 sm:text-2xl">
+                    {category === "tutorial" ? t.classesCategoryTutorialsTitle : t.myClassesTitle}
                 </h2>
-                <p className="text-white/60 mt-1">
+                <p className="mt-1 text-slate-300">
                     {category === "tutorial"
                         ? t.classesCategoryTutorialsDesc
                         : category === "recorded_class"
-                          ? t.classesCategoryRecordedDesc
+                          ? t.classesRecordedPageSubtitle
                           : t.selectLessonSubtitle}
                 </p>
             </header>
 
             {category === null ? (
                 loading ? (
-                    <p className="m-0 text-sm text-white/60">{t.loadingClasses}</p>
+                    <p className="m-0 text-sm text-slate-300">{t.loadingClasses}</p>
                 ) : error ? (
                     <p className="m-0 text-sm text-red-400">{error}</p>
                 ) : (
@@ -262,7 +213,7 @@ export default function ClassesView() {
                                 </div>
                                 <div className="min-w-0">
                                     <div className="text-base font-extrabold text-slate-50">{title}</div>
-                                    <div className="mt-0.5 text-sm text-white/60">{description}</div>
+                                    <div className="mt-0.5 text-sm text-slate-300">{description}</div>
                                     <div className="mt-1 text-xs font-semibold text-blue-200/80">
                                         {t.classesCategoryCount.replace(
                                             "{count}",
@@ -285,14 +236,23 @@ export default function ClassesView() {
                         {t.classesBackToCategories}
                     </button>
 
+                    {category === "recorded_class" ? (
+                        <RecordedClassesView
+                            lessons={visibleLessons}
+                            selected={activeLesson}
+                            onSelect={setActiveLesson}
+                            loading={loading}
+                            error={error}
+                        />
+                    ) : (
                     <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
                         <div className="rounded-2xl border border-white/10 bg-[#111827] p-6 shadow-sm lg:col-span-2">
                             {loading ? (
-                                <p className="m-0 text-sm text-white/60">{t.loadingClasses}</p>
+                                <p className="m-0 text-sm text-slate-300">{t.loadingClasses}</p>
                             ) : error ? (
                                 <p className="m-0 text-sm text-red-400">{error}</p>
                             ) : !activeLesson ? (
-                                <p className="m-0 text-sm text-white/60">
+                                <p className="m-0 text-sm text-slate-300">
                                     {category === "tutorial" ? t.noTutorialsYet : t.noClassesAvailable}
                                 </p>
                             ) : (
@@ -308,7 +268,7 @@ export default function ClassesView() {
                                         />
                                     ) : playbackLoading ? (
                                         <div className="flex aspect-video w-full items-center justify-center rounded-xl border border-white/10 bg-black lg:h-[420px] lg:aspect-auto">
-                                            <p className="text-sm text-white/60">{t.loading}</p>
+                                            <p className="text-sm text-slate-300">{t.loading}</p>
                                         </div>
                                     ) : playbackError ? (
                                         <div className="flex aspect-video w-full flex-col items-center justify-center gap-3 rounded-xl border border-white/10 bg-black px-4 lg:h-[420px] lg:aspect-auto">
@@ -336,7 +296,7 @@ export default function ClassesView() {
                                         </video>
                                     ) : (
                                         <div className="flex aspect-video w-full items-center justify-center rounded-xl border border-white/10 bg-black lg:h-[420px] lg:aspect-auto">
-                                            <p className="text-sm text-white/60">{t.recordedClassPlaybackError}</p>
+                                            <p className="text-sm text-slate-300">{t.recordedClassPlaybackError}</p>
                                         </div>
                                     )}
 
@@ -345,7 +305,7 @@ export default function ClassesView() {
                                             {activeLesson.title}
                                         </div>
                                         {displayDate ? (
-                                            <div className="mt-1 text-xs text-white/50">{displayDate}</div>
+                                            <div className="mt-1 text-xs text-slate-400">{displayDate}</div>
                                         ) : null}
                                         {activeLesson.class_type ? (
                                             <div className="mt-1 text-xs font-semibold uppercase tracking-wide text-blue-200/80">
@@ -355,16 +315,9 @@ export default function ClassesView() {
                                             </div>
                                         ) : null}
                                         {activeLesson.description ? (
-                                            <div className="mt-2 text-sm leading-relaxed text-white/60">
+                                            <div className="mt-2 text-sm leading-relaxed text-slate-300">
                                                 {activeLesson.description}
                                             </div>
-                                        ) : null}
-                                        {activeLesson.has_download === true &&
-                                        resolveLessonContentType(activeLesson.content_type) === "recorded_class" ? (
-                                            <RecordedClassDownloadButton
-                                                key={activeLesson.id}
-                                                lessonId={activeLesson.id}
-                                            />
                                         ) : null}
                                     </div>
                                 </>
@@ -375,9 +328,9 @@ export default function ClassesView() {
                             <div className="font-extrabold text-slate-50">{t.lessonsTitle}</div>
                             <div className="mt-4 max-h-[520px] overflow-auto pr-1">
                                 {loading ? (
-                                    <p className="m-0 text-sm text-white/60">{t.loading}</p>
+                                    <p className="m-0 text-sm text-slate-300">{t.loading}</p>
                                 ) : visibleLessons.length === 0 ? (
-                                    <p className="m-0 text-sm text-white/60">
+                                    <p className="m-0 text-sm text-slate-300">
                                         {category === "tutorial" ? t.noTutorialsYet : t.noLessonsYet}
                                     </p>
                                 ) : (
@@ -404,7 +357,7 @@ export default function ClassesView() {
                                                     <div className="truncate text-sm font-extrabold">
                                                         {lesson.title}
                                                     </div>
-                                                    <div className="mt-1 text-[12px] text-white/60">
+                                                    <div className="mt-1 text-[12px] text-slate-300">
                                                         {dateLabel}
                                                     </div>
                                                 </button>
@@ -415,6 +368,7 @@ export default function ClassesView() {
                             </div>
                         </aside>
                     </div>
+                    )}
                 </>
             )}
         </div>
