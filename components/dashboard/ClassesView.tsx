@@ -5,6 +5,7 @@ import { resolveLessonContentType, type LessonContentType } from "@/lib/recorded
 import { ArrowLeft, BookOpen, Video } from "lucide-react"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import RecordedClassesView from "./RecordedClassesView"
+import TutorialsView from "./TutorialsView"
 
 type LessonSourceType = "youtube" | "upload" | "google_drive"
 
@@ -20,12 +21,6 @@ type Lesson = {
     /** True when a private Google Drive download exists (served by /api/lessons/[id]/download). */
     has_download?: boolean
     created_at: string
-}
-
-function formatLessonDate(iso: string): string {
-    const d = new Date(iso)
-    if (Number.isNaN(d.getTime())) return iso
-    return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })
 }
 
 function resolveSourceType(lesson: Lesson): LessonSourceType {
@@ -157,12 +152,49 @@ export default function ClassesView() {
     }
 
     const activeSource = activeLesson ? resolveSourceType(activeLesson) : null
-    const displayDate =
-        activeLesson?.class_date && String(activeLesson.class_date).trim()
-            ? formatLessonDate(String(activeLesson.class_date))
-            : activeLesson
-              ? formatLessonDate(activeLesson.created_at)
-              : null
+
+    const tutorialPlayer = !activeLesson ? null : activeSource === "google_drive" ? null : activeSource === "youtube" ? (
+        <iframe
+            src={activeLesson.video_url ?? ""}
+            className="aspect-video w-full rounded-xl border border-white/10 bg-black shadow-lg lg:aspect-auto lg:h-[420px]"
+            allowFullScreen
+            title={activeLesson.title}
+            referrerPolicy="strict-origin-when-cross-origin"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+        />
+    ) : playbackLoading ? (
+        <div className="flex aspect-video w-full items-center justify-center rounded-xl border border-white/10 bg-black lg:h-[420px] lg:aspect-auto">
+            <p className="text-sm text-slate-300">{t.loading}</p>
+        </div>
+    ) : playbackError ? (
+        <div className="flex aspect-video w-full flex-col items-center justify-center gap-3 rounded-xl border border-white/10 bg-black px-4 lg:h-[420px] lg:aspect-auto">
+            <p className="text-center text-sm text-red-300">{playbackError}</p>
+            <button
+                type="button"
+                onClick={() => void loadPlaybackUrl(activeLesson.id)}
+                className="rounded-lg border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-bold text-slate-200 hover:bg-white/10"
+            >
+                {t.recordedClassRetryPlayback}
+            </button>
+        </div>
+    ) : playbackUrl ? (
+        <video
+            key={playbackUrl}
+            controls
+            playsInline
+            className="aspect-video w-full rounded-xl border border-white/10 bg-black shadow-lg lg:aspect-auto lg:h-[420px]"
+            src={playbackUrl}
+            onError={() => {
+                setPlaybackError(t.recordedClassPlaybackExpired)
+            }}
+        >
+            <track kind="captions" />
+        </video>
+    ) : (
+        <div className="flex aspect-video w-full items-center justify-center rounded-xl border border-white/10 bg-black lg:h-[420px] lg:aspect-auto">
+            <p className="text-sm text-slate-300">{t.recordedClassPlaybackError}</p>
+        </div>
+    )
 
     return (
         <div className="space-y-6">
@@ -245,129 +277,14 @@ export default function ClassesView() {
                             error={error}
                         />
                     ) : (
-                    <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-                        <div className="rounded-2xl border border-white/10 bg-[#111827] p-6 shadow-sm lg:col-span-2">
-                            {loading ? (
-                                <p className="m-0 text-sm text-slate-300">{t.loadingClasses}</p>
-                            ) : error ? (
-                                <p className="m-0 text-sm text-red-400">{error}</p>
-                            ) : !activeLesson ? (
-                                <p className="m-0 text-sm text-slate-300">
-                                    {category === "tutorial" ? t.noTutorialsYet : t.noClassesAvailable}
-                                </p>
-                            ) : (
-                                <>
-                                    {activeSource === "google_drive" ? null : activeSource === "youtube" ? (
-                                        <iframe
-                                            src={activeLesson.video_url ?? ""}
-                                            className="aspect-video w-full rounded-xl border border-white/10 bg-black shadow-lg lg:aspect-auto lg:h-[420px]"
-                                            allowFullScreen
-                                            title={activeLesson.title}
-                                            referrerPolicy="strict-origin-when-cross-origin"
-                                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                                        />
-                                    ) : playbackLoading ? (
-                                        <div className="flex aspect-video w-full items-center justify-center rounded-xl border border-white/10 bg-black lg:h-[420px] lg:aspect-auto">
-                                            <p className="text-sm text-slate-300">{t.loading}</p>
-                                        </div>
-                                    ) : playbackError ? (
-                                        <div className="flex aspect-video w-full flex-col items-center justify-center gap-3 rounded-xl border border-white/10 bg-black px-4 lg:h-[420px] lg:aspect-auto">
-                                            <p className="text-center text-sm text-red-300">{playbackError}</p>
-                                            <button
-                                                type="button"
-                                                onClick={() => void loadPlaybackUrl(activeLesson.id)}
-                                                className="rounded-lg border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-bold text-slate-200 hover:bg-white/10"
-                                            >
-                                                {t.recordedClassRetryPlayback}
-                                            </button>
-                                        </div>
-                                    ) : playbackUrl ? (
-                                        <video
-                                            key={playbackUrl}
-                                            controls
-                                            playsInline
-                                            className="aspect-video w-full rounded-xl border border-white/10 bg-black shadow-lg lg:aspect-auto lg:h-[420px]"
-                                            src={playbackUrl}
-                                            onError={() => {
-                                                setPlaybackError(t.recordedClassPlaybackExpired)
-                                            }}
-                                        >
-                                            <track kind="captions" />
-                                        </video>
-                                    ) : (
-                                        <div className="flex aspect-video w-full items-center justify-center rounded-xl border border-white/10 bg-black lg:h-[420px] lg:aspect-auto">
-                                            <p className="text-sm text-slate-300">{t.recordedClassPlaybackError}</p>
-                                        </div>
-                                    )}
-
-                                    <div className={activeSource === "google_drive" ? undefined : "mt-4"}>
-                                        <div className="text-lg font-extrabold text-slate-50">
-                                            {activeLesson.title}
-                                        </div>
-                                        {displayDate ? (
-                                            <div className="mt-1 text-xs text-slate-400">{displayDate}</div>
-                                        ) : null}
-                                        {activeLesson.class_type ? (
-                                            <div className="mt-1 text-xs font-semibold uppercase tracking-wide text-blue-200/80">
-                                                {activeLesson.class_type === "theory"
-                                                    ? t.recordedClassTypeTheory
-                                                    : t.recordedClassTypeTrading}
-                                            </div>
-                                        ) : null}
-                                        {activeLesson.description ? (
-                                            <div className="mt-2 text-sm leading-relaxed text-slate-300">
-                                                {activeLesson.description}
-                                            </div>
-                                        ) : null}
-                                    </div>
-                                </>
-                            )}
-                        </div>
-
-                        <aside className="rounded-2xl border border-white/10 bg-[#111827] p-6 shadow-sm">
-                            <div className="font-extrabold text-slate-50">{t.lessonsTitle}</div>
-                            <div className="mt-4 max-h-[520px] overflow-auto pr-1">
-                                {loading ? (
-                                    <p className="m-0 text-sm text-slate-300">{t.loading}</p>
-                                ) : visibleLessons.length === 0 ? (
-                                    <p className="m-0 text-sm text-slate-300">
-                                        {category === "tutorial" ? t.noTutorialsYet : t.noLessonsYet}
-                                    </p>
-                                ) : (
-                                    <div className="flex flex-col gap-2">
-                                        {visibleLessons.map((lesson) => {
-                                            const active = activeLesson?.id === lesson.id
-                                            const dateLabel =
-                                                lesson.class_date && String(lesson.class_date).trim()
-                                                    ? formatLessonDate(String(lesson.class_date))
-                                                    : formatLessonDate(lesson.created_at)
-                                            return (
-                                                <button
-                                                    key={lesson.id}
-                                                    type="button"
-                                                    onClick={() => setActiveLesson(lesson)}
-                                                    className={[
-                                                        "w-full rounded-xl border px-3 py-3 text-left transition",
-                                                        "border-white/10",
-                                                        active
-                                                            ? "bg-blue-600/10 text-blue-200"
-                                                            : "bg-white/5 hover:bg-white/10",
-                                                    ].join(" ")}
-                                                >
-                                                    <div className="truncate text-sm font-extrabold">
-                                                        {lesson.title}
-                                                    </div>
-                                                    <div className="mt-1 text-[12px] text-slate-300">
-                                                        {dateLabel}
-                                                    </div>
-                                                </button>
-                                            )
-                                        })}
-                                    </div>
-                                )}
-                            </div>
-                        </aside>
-                    </div>
+                        <TutorialsView
+                            lessons={visibleLessons}
+                            selected={activeLesson}
+                            onSelect={setActiveLesson}
+                            loading={loading}
+                            error={error}
+                            player={tutorialPlayer}
+                        />
                     )}
                 </>
             )}
