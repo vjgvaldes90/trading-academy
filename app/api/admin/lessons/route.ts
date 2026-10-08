@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { requireAuthorizedAdminFromCookies } from "@/lib/adminAuth"
+import { isCalendarDate } from "@/lib/calendarDate"
 import {
     RECORDED_CLASSES_BUCKET,
     isLessonClassType,
@@ -102,11 +103,13 @@ export async function POST(req: Request) {
         let classDate: string | null = null
         if (body.classDate !== undefined && body.classDate !== null && body.classDate !== "") {
             const raw = trimString(body.classDate)
-            const ms = Date.parse(raw)
-            if (!Number.isFinite(ms)) {
-                return NextResponse.json({ error: "classDate is invalid" }, { status: 400 })
+            if (!isCalendarDate(raw)) {
+                return NextResponse.json(
+                    { error: "classDate must be a calendar date (YYYY-MM-DD)", code: "invalid_class_date" },
+                    { status: 400 }
+                )
             }
-            classDate = new Date(ms).toISOString()
+            classDate = raw
         }
 
         if (sourceType === "youtube") {

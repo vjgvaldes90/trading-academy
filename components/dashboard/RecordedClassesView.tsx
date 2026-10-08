@@ -1,6 +1,8 @@
 "use client"
 
 import { useLanguage } from "@/context/LanguageProvider"
+import { formatCalendarDate } from "@/lib/calendarDate"
+import type { Language } from "@/lib/i18n"
 import { CalendarDays, Download, Loader2, Video } from "lucide-react"
 import { useEffect, useId, useMemo, useRef, useState } from "react"
 
@@ -157,16 +159,14 @@ function TradingArtwork({
     )
 }
 
-function formatLessonDate(iso: string): string {
+function formatCreatedAtDate(iso: string): string {
     const d = new Date(iso)
     if (Number.isNaN(d.getTime())) return iso
     return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })
 }
 
-function lessonDateLabel(lesson: RecordedClassLesson): string {
-    return lesson.class_date && String(lesson.class_date).trim()
-        ? formatLessonDate(String(lesson.class_date))
-        : formatLessonDate(lesson.created_at)
+function lessonDateLabel(lesson: RecordedClassLesson, language: Language): string {
+    return formatCalendarDate(lesson.class_date, language) || formatCreatedAtDate(lesson.created_at)
 }
 
 function RecordedClassListItem({
@@ -178,7 +178,7 @@ function RecordedClassListItem({
     selected: boolean
     onSelect: () => void
 }) {
-    const { t } = useLanguage()
+    const { t, language } = useLanguage()
     const download = useRecordedClassDownload(lesson.id)
     const canDownload = lesson.has_download === true
 
@@ -222,7 +222,7 @@ function RecordedClassListItem({
                             ].join(" ")}
                         >
                             <CalendarDays className="h-3 w-3 shrink-0" aria-hidden />
-                            {lessonDateLabel(lesson)}
+                            {lessonDateLabel(lesson, language)}
                         </span>
                     </span>
                 </button>
@@ -253,7 +253,7 @@ function RecordedClassListItem({
 }
 
 function SelectedRecordedClassCard({ lesson }: { lesson: RecordedClassLesson }) {
-    const { t } = useLanguage()
+    const { t, language } = useLanguage()
     const download = useRecordedClassDownload(lesson.id)
     const canDownload = lesson.has_download === true
     const categoryLabel =
@@ -262,7 +262,7 @@ function SelectedRecordedClassCard({ lesson }: { lesson: RecordedClassLesson }) 
             : lesson.class_type === "trading"
               ? t.recordedClassTypeTrading
               : t.classesCategoryRecordedTitle
-    const dateLabel = lessonDateLabel(lesson)
+    const dateLabel = lessonDateLabel(lesson, language)
 
     const meta: { label: string; value: string }[] = [
         { label: t.classesRecordedMetaCategory, value: categoryLabel },

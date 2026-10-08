@@ -4,6 +4,7 @@ import type { CSSProperties, FormEvent } from "react"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useLanguage } from "@/context/LanguageProvider"
 import { createClient } from "@supabase/supabase-js"
+import { formatCalendarDate } from "@/lib/calendarDate"
 import {
     RECORDED_CLASS_MAX_BYTES,
     formatBytes,
@@ -174,13 +175,6 @@ function formatCreatedAt(iso: string): string {
     })
 }
 
-function formatClassDate(iso: string | null | undefined): string {
-    if (!iso || !String(iso).trim()) return "—"
-    const d = new Date(iso)
-    if (Number.isNaN(d.getTime())) return iso
-    return d.toLocaleDateString(undefined, { dateStyle: "medium" })
-}
-
 async function uploadFileWithProgress(
     signedUrl: string,
     file: File,
@@ -208,7 +202,7 @@ async function uploadFileWithProgress(
 }
 
 export default function AdminClasses() {
-    const { t } = useLanguage()
+    const { t, language } = useLanguage()
     const [mode, setMode] = useState<CreateMode>("youtube")
     const [title, setTitle] = useState("")
     const [description, setDescription] = useState("")
@@ -893,7 +887,7 @@ export default function AdminClasses() {
                                                       : t.recordedClassSourceYoutube}
                                                 {" · "}
                                                 {t.recordedClassDateLabel}:{" "}
-                                                {formatClassDate(lesson.class_date)}
+                                                {formatCalendarDate(lesson.class_date, language) || "—"}
                                                 {lesson.class_type
                                                     ? ` · ${
                                                           lesson.class_type === "theory"

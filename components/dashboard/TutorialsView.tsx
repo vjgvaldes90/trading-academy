@@ -2,6 +2,8 @@
 
 import type { ReactNode } from "react"
 import { useLanguage } from "@/context/LanguageProvider"
+import { formatCalendarDate } from "@/lib/calendarDate"
+import type { Language } from "@/lib/i18n"
 import { CalendarDays, GraduationCap, Play, PlayCircle } from "lucide-react"
 
 export type TutorialLesson = {
@@ -12,16 +14,14 @@ export type TutorialLesson = {
     created_at: string
 }
 
-function formatLessonDate(iso: string): string {
+function formatCreatedAtDate(iso: string): string {
     const d = new Date(iso)
     if (Number.isNaN(d.getTime())) return iso
     return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })
 }
 
-function lessonDateLabel(lesson: TutorialLesson): string {
-    return lesson.class_date && String(lesson.class_date).trim()
-        ? formatLessonDate(String(lesson.class_date))
-        : formatLessonDate(lesson.created_at)
+function lessonDateLabel(lesson: TutorialLesson, language: Language): string {
+    return formatCalendarDate(lesson.class_date, language) || formatCreatedAtDate(lesson.created_at)
 }
 
 /** Decorative "video lesson" illustration for the banner; purely visual. */
@@ -88,7 +88,7 @@ export default function TutorialsView<L extends TutorialLesson>({
     /** Existing tutorial player (iframe / video), rendered as-is. */
     player: ReactNode
 }) {
-    const { t } = useLanguage()
+    const { t, language } = useLanguage()
 
     return (
         <div className="space-y-6">
@@ -133,7 +133,7 @@ export default function TutorialsView<L extends TutorialLesson>({
                                 </h3>
                                 <p className="mt-2 flex items-center gap-1.5 text-sm font-medium text-slate-300">
                                     <CalendarDays className="h-4 w-4 text-blue-300" aria-hidden />
-                                    {lessonDateLabel(selected)}
+                                    {lessonDateLabel(selected, language)}
                                 </p>
                                 {selected.description ? (
                                     <p className="mt-3 text-sm leading-relaxed text-slate-300">{selected.description}</p>
@@ -200,7 +200,7 @@ export default function TutorialsView<L extends TutorialLesson>({
                                                         ].join(" ")}
                                                     >
                                                         <CalendarDays className="h-3 w-3 shrink-0" aria-hidden />
-                                                        {lessonDateLabel(lesson)}
+                                                        {lessonDateLabel(lesson, language)}
                                                     </span>
                                                 </span>
                                             </button>
