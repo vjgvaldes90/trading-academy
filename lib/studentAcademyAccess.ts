@@ -140,7 +140,7 @@ export function evaluateAcademyAccess(
  * Before official launch (America/New_York): pre_enrolled + full_program may attend theory
  * without program_theory_until (classes may start before Sep 24 payment).
  * Free + full_program: theory entitlement without Stripe / program_theory_until
- * (lifetime max 2 sessions enforced at join via theory quota ledger).
+ * (unlimited sessions; no theory quota at join).
  * After launch: paid path uses canAccessTheory (plan + future program_theory_until).
  */
 export function evaluateTheoryAccess(

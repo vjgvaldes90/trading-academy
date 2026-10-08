@@ -719,7 +719,7 @@ export const en = {
     createStudentProgramTradingOnly: "Trading Only",
     createStudentProgramFullProgram: "Full Program",
     createStudentProgramFullProgramHint:
-        "Includes trading access plus exactly 2 theory classes total (not renewable).",
+        "Includes trading access plus unlimited access to theory classes.",
     createStudent: "Create Student",
 
     // Admin subscriptions

@@ -4,10 +4,6 @@ import {
     tradingStudentExistsByEmail,
 } from "@/lib/adminNotifications"
 import { sendEmail } from "@/lib/sendEmail"
-import {
-    FREE_FULL_PROGRAM_THEORY_PERIOD_END_ISO,
-    FREE_FULL_PROGRAM_THEORY_PERIOD_START_ISO,
-} from "@/lib/theoryClassQuota"
 import type { SubscriptionPlanId } from "@/lib/subscriptionPlans"
 
 export type ProvisionStudentInput = {
@@ -71,11 +67,6 @@ export async function provisionAcademyStudent(
         const plan: SubscriptionPlanId =
             input.plan === "full_program" ? "full_program" : "trading_only"
         row.plan = plan
-        if (plan === "full_program") {
-            // Lifetime Theory quota window for claim_theory_consumption (max 2 total).
-            row.theory_quota_period_start = FREE_FULL_PROGRAM_THEORY_PERIOD_START_ISO
-            row.theory_quota_period_end = FREE_FULL_PROGRAM_THEORY_PERIOD_END_ISO
-        }
     }
 
     const { data: savedRow, error: dbErr } = await supabase

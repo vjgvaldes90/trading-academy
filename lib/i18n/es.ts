@@ -721,7 +721,7 @@ export const es: TranslationKeys = {
     createStudentProgramTradingOnly: "Solo Trading",
     createStudentProgramFullProgram: "Programa Completo",
     createStudentProgramFullProgramHint:
-        "Incluye acceso a trading y exactamente 2 clases teóricas en total (no renovables).",
+        "Incluye acceso a trading y acceso ilimitado a las clases teóricas.",
     createStudent: "Crear estudiante",
 
     // Admin subscriptions
