@@ -341,14 +341,22 @@ export default function RecordedClassesView<L extends RecordedClassLesson>({
     onSelect,
     loading,
     error,
+    title,
+    emptyText,
 }: {
     lessons: L[]
     selected: L | null
     onSelect: (lesson: L) => void
     loading: boolean
     error: string | null
+    /** Category heading for the banner badge and list (defaults to "Recorded Classes"). */
+    title?: string
+    /** Empty-state text when this category has no recordings. */
+    emptyText?: string
 }) {
     const { t } = useLanguage()
+    const heading = title ?? t.classesCategoryRecordedTitle
+    const empty = emptyText ?? t.noClassesAvailable
 
     return (
         <div className="space-y-6">
@@ -361,7 +369,7 @@ export default function RecordedClassesView<L extends RecordedClassLesson>({
                 <div className="relative max-w-xl">
                     <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-400/30 bg-blue-500/10 px-3 py-1 text-[11px] font-extrabold uppercase tracking-[0.14em] text-blue-200">
                         <Video className="h-3.5 w-3.5" aria-hidden />
-                        {t.classesCategoryRecordedTitle}
+                        {heading}
                     </span>
                     <p className="mt-3 text-lg font-extrabold text-slate-50 sm:text-xl">
                         {t.classesRecordedBannerTitle}
@@ -384,14 +392,14 @@ export default function RecordedClassesView<L extends RecordedClassLesson>({
                         <SelectedRecordedClassCard key={selected.id} lesson={selected} />
                     ) : (
                         <div className="rounded-2xl border border-white/10 bg-[#111827] p-6">
-                            <p className="m-0 text-sm text-slate-300">{t.noClassesAvailable}</p>
+                            <p className="m-0 text-sm text-slate-300">{empty}</p>
                         </div>
                     )}
                 </div>
 
                 <aside className="rounded-2xl border border-white/10 bg-[#0f1729] p-4 shadow-sm sm:p-5">
                     <div className="flex items-center justify-between gap-3">
-                        <h3 className="text-base font-extrabold text-slate-50">{t.classesCategoryRecordedTitle}</h3>
+                        <h3 className="text-base font-extrabold text-slate-50">{heading}</h3>
                         {!loading && !error ? (
                             <span className="rounded-full border border-blue-500/30 bg-blue-600/15 px-2.5 py-0.5 text-xs font-bold text-blue-100">
                                 {t.classesCategoryCount.replace("{count}", String(lessons.length))}
@@ -402,7 +410,7 @@ export default function RecordedClassesView<L extends RecordedClassLesson>({
                         {loading ? (
                             <p className="m-0 text-sm text-slate-300">{t.loading}</p>
                         ) : lessons.length === 0 ? (
-                            <p className="m-0 text-sm text-slate-300">{t.noClassesAvailable}</p>
+                            <p className="m-0 text-sm text-slate-300">{empty}</p>
                         ) : (
                             <ul className="m-0 flex list-none flex-col gap-2 p-0">
                                 {lessons.map((lesson) => (

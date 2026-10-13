@@ -36,6 +36,13 @@ export function isLessonClassType(value: unknown): value is LessonClassType {
     return value === "trading" || value === "theory"
 }
 
+/** Student "Mis Clases" bucket for a recorded class; null / unknown class_type → "other". */
+export type RecordedClassCategory = LessonClassType | "other"
+
+export function resolveRecordedClassCategory(value: unknown): RecordedClassCategory {
+    return isLessonClassType(value) ? value : "other"
+}
+
 export function isLessonContentType(value: unknown): value is LessonContentType {
     return value === "recorded_class" || value === "tutorial"
 }

@@ -1,8 +1,13 @@
 "use client"
 
 import { useLanguage } from "@/context/LanguageProvider"
-import { resolveLessonContentType, type LessonContentType } from "@/lib/recordedLessons"
-import { ArrowLeft, BookOpen, Video } from "lucide-react"
+import {
+    resolveLessonContentType,
+    resolveRecordedClassCategory,
+    type LessonContentType,
+    type RecordedClassCategory,
+} from "@/lib/recordedLessons"
+import { ArrowLeft, BookOpen, CandlestickChart, FolderOpen, GraduationCap, type LucideIcon } from "lucide-react"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import RecordedClassesView from "./RecordedClassesView"
 import TutorialsView from "./TutorialsView"
@@ -23,6 +28,8 @@ type Lesson = {
     created_at: string
 }
 
+type ClassesCategory = RecordedClassCategory | "tutorial"
+
 function resolveSourceType(lesson: Lesson): LessonSourceType {
     if (lesson.source_type === "upload") return "upload"
     if (lesson.source_type === "youtube") return "youtube"
@@ -34,7 +41,7 @@ function resolveSourceType(lesson: Lesson): LessonSourceType {
 export default function ClassesView() {
     const { t } = useLanguage()
     const [lessons, setLessons] = useState<Lesson[]>([])
-    const [category, setCategory] = useState<LessonContentType | null>(null)
+    const [category, setCategory] = useState<ClassesCategory | null>(null)
     const [activeLesson, setActiveLesson] = useState<Lesson | null>(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
@@ -132,16 +139,20 @@ export default function ClassesView() {
     }, [activeLesson, loadPlaybackUrl])
 
     const lessonsByCategory = useMemo(() => {
-        const grouped: Record<LessonContentType, Lesson[]> = { recorded_class: [], tutorial: [] }
+        const grouped: Record<ClassesCategory, Lesson[]> = { theory: [], trading: [], other: [], tutorial: [] }
         for (const lesson of lessons) {
-            grouped[resolveLessonContentType(lesson.content_type)].push(lesson)
+            if (resolveLessonContentType(lesson.content_type) === "tutorial") {
+                grouped.tutorial.push(lesson)
+            } else {
+                grouped[resolveRecordedClassCategory(lesson.class_type)].push(lesson)
+            }
         }
         return grouped
     }, [lessons])
 
     const visibleLessons = category ? lessonsByCategory[category] : []
 
-    const openCategory = (next: LessonContentType) => {
+    const openCategory = (next: ClassesCategory) => {
         setCategory(next)
         setActiveLesson(lessonsByCategory[next][0] ?? null)
     }
@@ -149,6 +160,41 @@ export default function ClassesView() {
     const backToCategories = () => {
         setCategory(null)
         setActiveLesson(null)
+    }
+
+    const recordedCategoryText: Record<RecordedClassCategory, { title: string; empty: string }> = {
+        theory: { title: t.classesCategoryTheoryTitle, empty: t.classesNoTheoryRecordings },
+        trading: { title: t.classesCategoryTradingTitle, empty: t.classesNoTradingRecordings },
+        other: { title: t.classesCategoryOtherTitle, empty: t.classesNoOtherRecordings },
+    }
+
+    const categoryCards: { key: ClassesCategory; Icon: LucideIcon; title: string; description: string }[] = [
+        {
+            key: "theory",
+            Icon: GraduationCap,
+            title: t.classesCategoryTheoryTitle,
+            description: t.classesCategoryTheoryDesc,
+        },
+        {
+            key: "trading",
+            Icon: CandlestickChart,
+            title: t.classesCategoryTradingTitle,
+            description: t.classesCategoryTradingDesc,
+        },
+        {
+            key: "tutorial",
+            Icon: BookOpen,
+            title: t.classesCategoryTutorialsTitle,
+            description: t.classesCategoryTutorialsDesc,
+        },
+    ]
+    if (lessonsByCategory.other.length > 0) {
+        categoryCards.push({
+            key: "other",
+            Icon: FolderOpen,
+            title: t.classesCategoryOtherTitle,
+            description: t.classesCategoryOtherDesc,
+        })
     }
 
     const activeSource = activeLesson ? resolveSourceType(activeLesson) : null
@@ -205,7 +251,7 @@ export default function ClassesView() {
                 <p className="mt-1 text-slate-300">
                     {category === "tutorial"
                         ? t.classesCategoryTutorialsDesc
-                        : category === "recorded_class"
+                        : category !== null
                           ? t.classesRecordedPageSubtitle
                           : t.selectLessonSubtitle}
                 </p>
@@ -217,23 +263,13 @@ export default function ClassesView() {
                 ) : error ? (
                     <p className="m-0 text-sm text-red-400">{error}</p>
                 ) : (
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                        {(
-                            [
-                                {
-                                    key: "recorded_class",
-                                    Icon: Video,
-                                    title: t.classesCategoryRecordedTitle,
-                                    description: t.classesCategoryRecordedDesc,
-                                },
-                                {
-                                    key: "tutorial",
-                                    Icon: BookOpen,
-                                    title: t.classesCategoryTutorialsTitle,
-                                    description: t.classesCategoryTutorialsDesc,
-                                },
-                            ] as const
-                        ).map(({ key, Icon, title, description }) => (
+                    <div
+                        className={[
+                            "grid grid-cols-1 gap-4 sm:grid-cols-2",
+                            categoryCards.length > 3 ? "xl:grid-cols-4" : "lg:grid-cols-3",
+                        ].join(" ")}
+                    >
+                        {categoryCards.map(({ key, Icon, title, description }) => (
                             <button
                                 key={key}
                                 type="button"
@@ -268,13 +304,15 @@ export default function ClassesView() {
                         {t.classesBackToCategories}
                     </button>
 
-                    {category === "recorded_class" ? (
+                    {category !== "tutorial" ? (
                         <RecordedClassesView
                             lessons={visibleLessons}
                             selected={activeLesson}
                             onSelect={setActiveLesson}
                             loading={loading}
                             error={error}
+                            title={recordedCategoryText[category].title}
+                            emptyText={recordedCategoryText[category].empty}
                         />
                     ) : (
                         <TutorialsView
