@@ -12,7 +12,8 @@
     "generate:zoom-guide-pdf": "node scripts/generate-zoom-guide-pdf.cjs",
     "verify:private-class-completion": "npx --yes tsx scripts/verify-private-class-completion.ts",
     "verify:pre-enrolled-checkout": "npx --yes tsx scripts/verify-pre-enrolled-checkout.ts",
-    "verify:theory-quota": "npx --yes tsx scripts/verify-theory-quota.ts"
+    "verify:theory-quota": "npx --yes tsx scripts/verify-theory-quota.ts",
+    "verify:student-welcome": "npx --yes tsx scripts/verify-student-welcome.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.2",

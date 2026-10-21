@@ -11,8 +11,8 @@ import {
     notifyNewStudentCreated,
     tradingStudentExistsByEmail,
 } from "@/lib/adminNotifications"
-import { sendEmail } from "@/lib/sendEmail"
 import { sendNewSubscriptionAdminEmail } from "@/lib/resend"
+import { deliverStudentWelcomeEmail } from "@/lib/studentWelcomeDelivery"
 import { computeRenewalAccessExpiresAtIso } from "@/lib/studentSubscriptionRenewal"
 import { SUBSCRIPTION_STATUS_CANCEL_AT_PERIOD_END } from "@/lib/subscriptionCancellation"
 import {
@@ -193,7 +193,6 @@ async function fulfillPaidAccess(args: {
     rawName?: string | null
     subscriptionId: string | null
     plan: SubscriptionPlanId
-    resendApiKey: string | undefined
     eventId?: string | null
 }): Promise<void> {
     const {
@@ -203,13 +202,8 @@ async function fulfillPaidAccess(args: {
         rawName,
         subscriptionId,
         plan,
-        resendApiKey,
         eventId,
     } = args
-
-    if (!resendApiKey) {
-        throw new Error("Missing RESEND_API_KEY")
-    }
 
     const supabase = createSupabaseServiceRoleClient()
     const existed = await tradingStudentExistsByEmail(supabase, emailForDb)
@@ -462,19 +456,26 @@ async function fulfillPaidAccess(args: {
         adminNewSubscriptionEmail: isNewPaidSubscription,
     })
 
-    if (isNewAccessCode) {
-        console.log("📧 SENDING EMAIL AFTER PAYMENT")
-        const sendResult = await sendEmail(emailForDelivery, accessCode, rawName || undefined)
-        if (!sendResult.ok) {
-            console.error(
-                "[stripe-webhook] welcome email failed after fulfill (manual resend may be needed)",
-                { email: emailForDb, error: sendResult.error }
-            )
-        } else {
-            console.log("✅ Email enviado (Resend)")
+    if (!existed) {
+        const welcome = await deliverStudentWelcomeEmail({
+            supabase,
+            email: emailForDb,
+            to: emailForDelivery,
+            accessCode,
+            name: rawName,
+            studentExisted: false,
+            context: { plan, needsProfileCompletion: true },
+        })
+        if (welcome.emailed) {
+            console.log("[stripe-webhook] welcome email sent", { email: emailForDb })
+        } else if (!welcome.skipped) {
+            console.error("[stripe-webhook] welcome email not sent (fulfill kept)", {
+                email: emailForDb,
+                error: welcome.error ?? null,
+            })
         }
     } else {
-        console.log("[stripe-webhook] welcome email skipped (existing access_code)", {
+        console.log("[stripe-webhook] welcome email skipped (existing student)", {
             email: emailForDb,
         })
     }
@@ -485,8 +486,6 @@ export async function handleStripeWebhook(req: Request): Promise<Response> {
 
     const stripeSecretKey = getStripeSecretKey()
     const webhookSecret = getStripeWebhookSecret()
-    const resendApiKey = process.env.RESEND_API_KEY
-
     if (!stripeSecretKey || !webhookSecret) {
         console.error("[stripe-webhook] Missing STRIPE_SECRET_KEY or STRIPE_WEBHOOK_SECRET")
         return new Response("Webhook error", { status: 400 })
@@ -581,7 +580,6 @@ export async function handleStripeWebhook(req: Request): Promise<Response> {
                     rawName: session.customer_details?.name?.trim() ?? null,
                     subscriptionId,
                     plan: planFromMetadata(session.metadata),
-                    resendApiKey,
                     eventId: event.id,
                 })
             }
@@ -664,7 +662,6 @@ export async function handleStripeWebhook(req: Request): Promise<Response> {
                         rawName: null,
                         subscriptionId,
                         plan,
-                        resendApiKey,
                         eventId: event.id,
                     })
                 }

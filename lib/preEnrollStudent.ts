@@ -9,7 +9,7 @@ import { isPreEnrollmentOpen } from "@/lib/academyLaunch"
 import {
     notifyNewStudentCreated,
 } from "@/lib/adminNotifications"
-import { sendEmail } from "@/lib/sendEmail"
+import { deliverStudentWelcomeEmail } from "@/lib/studentWelcomeDelivery"
 import { PRE_ENROLLED_ACCESS_TYPE } from "@/lib/studentAcademyAccess"
 import {
     isValidSubscriptionPlan,
@@ -188,8 +188,7 @@ export async function preEnrollStudent(input: PreEnrollInput): Promise<PreEnroll
                 }
             }
 
-            // Do not change plan or regenerate code. Resend welcome email with existing code.
-            const sendResult = await sendEmail(email, existingCode)
+            // Existing pre-enrollment. Do not change the plan or code, and do not send another welcome.
             return {
                 ok: true,
                 created: false,
@@ -198,8 +197,7 @@ export async function preEnrollStudent(input: PreEnrollInput): Promise<PreEnroll
                 plan: existingPlan,
                 accessType: PRE_ENROLLED_ACCESS_TYPE,
                 accessCode: existingCode,
-                emailSent: sendResult.ok,
-                emailError: sendResult.ok ? undefined : sendResult.error,
+                emailSent: false,
             }
         }
 
@@ -252,9 +250,15 @@ export async function preEnrollStudent(input: PreEnrollInput): Promise<PreEnroll
         studentId: typeof saved?.id === "string" ? saved.id : null,
     })
 
-    const sendResult = await sendEmail(email, accessCode)
-    if (!sendResult.ok) {
-        console.error("[preEnrollStudent] welcome email failed", sendResult.error)
+    const welcome = await deliverStudentWelcomeEmail({
+        supabase,
+        email,
+        accessCode,
+        studentExisted: false,
+        context: { plan, needsProfileCompletion: true },
+    })
+    if (!welcome.emailed && !welcome.skipped) {
+        console.error("[preEnrollStudent] welcome email failed", welcome.error)
     }
 
     return {
@@ -265,7 +269,7 @@ export async function preEnrollStudent(input: PreEnrollInput): Promise<PreEnroll
         plan,
         accessType: PRE_ENROLLED_ACCESS_TYPE,
         accessCode,
-        emailSent: sendResult.ok,
-        emailError: sendResult.ok ? undefined : sendResult.error,
+        emailSent: welcome.emailed,
+        emailError: welcome.emailed ? undefined : welcome.error,
     }
 }

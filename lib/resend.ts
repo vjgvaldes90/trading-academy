@@ -4,15 +4,30 @@ import {
     createAdminNewSubscriptionEmailHtml,
     type AdminNewSubscriptionEmailProps,
 } from "@/lib/adminNewSubscriptionEmail"
-import { getAppLoginUrl } from "@/lib/app-url"
+import { getAppLoginUrl, getAppUrl } from "@/lib/app-url"
 import { createPrivateClassRescheduleEmailHtml } from "@/lib/privateClassRescheduleEmail"
-import { createWelcomeEmail } from "@/lib/welcomeEmail"
+import { createWelcomeEmail, createWelcomeEmailText, type WelcomeEmailPlan } from "@/lib/welcomeEmail"
 
 /** Must match a verified domain in Resend (server-only; never import this module from client code). */
 const RESEND_FROM = "Smart Option Academy <tony@smartoptionacademy.com>"
 
-/** Internal IT inbox for new paid subscription alerts. */
+/** Internal IT inbox for new paid subscription alerts. Not the student welcome recipient. */
 const ADMIN_NEW_SUBSCRIPTION_TO = "it@smartoptionacademy.com"
+
+const SUPPORT_EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+/** Optional Reply-To for student welcome mail. Unset or invalid → no reply line. */
+export function readConfiguredSupportEmail(): string | null {
+    const raw = process.env.SUPPORT_EMAIL
+    if (typeof raw !== "string") return null
+    const trimmed = raw.trim()
+    return SUPPORT_EMAIL_RE.test(trimmed) ? trimmed : null
+}
+
+export type StudentWelcomeSendContext = {
+    plan?: WelcomeEmailPlan | null
+    needsProfileCompletion?: boolean
+}
 
 type SendEmailResult =
     | { ok: true; id: string | null }
@@ -23,12 +38,14 @@ type SendEmailResult =
  * @param code - access code (also accessCode in template)
  * @param name - optional display name for greeting
  * @param magicLoginLink - optional; Supabase magic link, or omitted to use app `/login` (Resend-only flow)
+ * @param context - program and profile step, when the enrollment flow knows them
  */
 export async function sendEmail(
     to: string,
     code: string,
     name?: string,
-    magicLoginLink?: string
+    magicLoginLink?: string,
+    context?: StudentWelcomeSendContext
 ): Promise<SendEmailResult> {
     const apiKey = process.env.RESEND_API_KEY
     if (!apiKey) {
@@ -67,21 +84,28 @@ export async function sendEmail(
     console.log("[resend] email login URL", magicLink)
 
     const displayName =
-        typeof name === "string" && name.trim().length > 0 ? name.trim() : "estudiante"
+        typeof name === "string" && name.trim().length > 0 ? name.trim() : "there"
+    const supportEmail = readConfiguredSupportEmail()
 
-    const html = createWelcomeEmail({
+    const welcomeProps = {
         name: displayName,
         email: deliveryTo,
         magicLink,
         accessCode: code,
-    })
+        plan: context?.plan ?? null,
+        siteUrl: getAppUrl(),
+        needsProfileCompletion: context?.needsProfileCompletion !== false,
+        supportEmail,
+    }
 
     try {
         const { data, error } = await resend.emails.send({
             from: RESEND_FROM,
             to: deliveryTo,
-            subject: "Accede a Smart Option Academy 🚀",
-            html,
+            subject: "Welcome to Smart Option Academy",
+            html: createWelcomeEmail(welcomeProps),
+            text: createWelcomeEmailText(welcomeProps),
+            ...(supportEmail ? { replyTo: supportEmail } : {}),
         })
 
         if (error) {

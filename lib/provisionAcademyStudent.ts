@@ -4,6 +4,8 @@ import {
     tradingStudentExistsByEmail,
 } from "@/lib/adminNotifications"
 import { sendEmail } from "@/lib/sendEmail"
+import { deliverStudentWelcomeEmail } from "@/lib/studentWelcomeDelivery"
+import { isDashboardProfileComplete } from "@/lib/tradingStudents"
 import type { SubscriptionPlanId } from "@/lib/subscriptionPlans"
 
 export type ProvisionStudentInput = {
@@ -92,11 +94,54 @@ export async function provisionAcademyStudent(
         })
     }
 
-    console.log(savedRow)
+    const welcomeContext = {
+        plan:
+            accessType === "free"
+                ? input.plan === "full_program"
+                    ? ("full_program" as const)
+                    : ("trading_only" as const)
+                : null,
+        needsProfileCompletion: !isDashboardProfileComplete({
+            email,
+            first_name: firstName,
+            last_name: lastName,
+            phone: phone || null,
+            profile_completed: false,
+        }),
+    }
 
-    const sendResult = await sendEmail(email, accessCode, name || undefined)
-    if (!sendResult.ok) {
-        throw new Error(sendResult.error)
+    // Re-provision replaces the access code. That is a new credential, so the student
+    // still gets one email. It does not go through the one-time welcome claim.
+    if (existed) {
+        const resent = await sendEmail(email, accessCode, name || undefined, undefined, welcomeContext)
+        if (!resent.ok) {
+            console.error("[provisionAcademyStudent] access code email failed (student kept)", resent.error)
+            return {
+                success: true,
+                message: "Student updated. The new access code email could not be sent.",
+            }
+        }
+        return {
+            success: true,
+            message: "Student updated and the new access code was emailed.",
+        }
+    }
+
+    const welcome = await deliverStudentWelcomeEmail({
+        supabase,
+        email,
+        accessCode,
+        name,
+        studentExisted: false,
+        context: welcomeContext,
+    })
+
+    if (!welcome.emailed) {
+        console.error("[provisionAcademyStudent] welcome email failed (student kept)", welcome.error)
+        return {
+            success: true,
+            message: "Student provisioned. Welcome email could not be sent.",
+        }
     }
 
     return {
