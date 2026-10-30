@@ -43,14 +43,24 @@ export const updateSupportTicketSchema = z
     )
 
 export const listSupportTicketsQuerySchema = z.object({
+    // Cap array filters at the enum size — enough to select every legitimate value, not unbounded payloads.
     status: z
-        .union([supportTicketStatusSchema, z.array(supportTicketStatusSchema)])
+        .union([
+            supportTicketStatusSchema,
+            z.array(supportTicketStatusSchema).max(SUPPORT_TICKET_STATUSES.length),
+        ])
         .optional(),
     priority: z
-        .union([supportTicketPrioritySchema, z.array(supportTicketPrioritySchema)])
+        .union([
+            supportTicketPrioritySchema,
+            z.array(supportTicketPrioritySchema).max(SUPPORT_TICKET_PRIORITIES.length),
+        ])
         .optional(),
     category: z
-        .union([supportTicketCategorySchema, z.array(supportTicketCategorySchema)])
+        .union([
+            supportTicketCategorySchema,
+            z.array(supportTicketCategorySchema).max(SUPPORT_TICKET_CATEGORIES.length),
+        ])
         .optional(),
     assignedAdminEmail: z.string().trim().email().optional(),
     limit: z.coerce.number().int().min(1).max(100).optional().default(50),
